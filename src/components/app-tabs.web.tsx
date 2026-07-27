@@ -21,17 +21,22 @@ export default function AppTabs() {
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
+          {/* ওয়েব সংস্করণে ব্যবহৃত ট্যাব ট্রিগারগুলো, যা নির্দিষ্ট ইউআরএল পাথের সাথে লিঙ্ক করা */}
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton>Dashboard</TabButton>
           </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
+            <TabButton>History</TabButton>
+          </TabTrigger>
+          <TabTrigger name="stats" href="/stats" asChild>
+            <TabButton>Stats</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>
   );
 }
+
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   return (
