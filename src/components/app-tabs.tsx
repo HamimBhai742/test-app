@@ -30,13 +30,13 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      {/* দ্বিতীয় ট্যাব: লেনদেনের ইতিহাস (Transactions History) */}
+      {/* দ্বিতীয় ট্যাব: বাজেট পরিকল্পনা (Budget Planner) */}
       <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Budget</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/explore.png')}
-          sf={{ default: 'clock', selected: 'clock.fill' }}
-          md="history"
+          sf={{ default: 'wallet.pass', selected: 'wallet.pass.fill' }}
+          md="account_balance_wallet"
           renderingMode="template"
         />
       </NativeTabs.Trigger>
