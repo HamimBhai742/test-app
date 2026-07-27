@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
+  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,6 +21,12 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 // ট্রানজেকশন সম্পর্কিত স্টেট ও টাইপ ইমপোর্ট করা হচ্ছে।
 import { useTransactions, Transaction } from '@/context/TransactionContext';
 import { useTheme } from '@/hooks/use-theme';
+
+const formatNumber = (num: number) => {
+  const parts = num.toString().split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+};
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -110,7 +117,7 @@ export default function HomeScreen() {
               মোট ব্যালেন্স (Total Balance)
             </ThemedText>
             <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
-              ৳ {totalBalance.toLocaleString()}
+              <Text style={{ fontSize: 18, fontWeight: '500' }}>TK </Text>{formatNumber(totalBalance)}
             </ThemedText>
 
             <View style={styles.cardDivider} />
@@ -123,7 +130,7 @@ export default function HomeScreen() {
                   <ThemedText type="small" themeColor="textSecondary">মোট আয়</ThemedText>
                 </View>
                 <ThemedText style={styles.statAmountGreen}>
-                  ৳ {totalIncome.toLocaleString()}
+                  <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalIncome)}
                 </ThemedText>
               </View>
 
@@ -133,7 +140,7 @@ export default function HomeScreen() {
                   <ThemedText type="small" themeColor="textSecondary">মোট ব্যয়</ThemedText>
                 </View>
                 <ThemedText style={styles.statAmountRed}>
-                  ৳ {totalExpenses.toLocaleString()}
+                  <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalExpenses)}
                 </ThemedText>
               </View>
             </View>
@@ -194,7 +201,7 @@ export default function HomeScreen() {
                       styles.txAmount,
                       { color: tx.type === 'income' ? '#10B981' : '#EF4444' }
                     ]}>
-                      {tx.type === 'income' ? '+' : '-'} ৳{tx.amount.toLocaleString()}
+                      {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(tx.amount)}
                     </ThemedText>
                   </View>
                 </ThemedView>

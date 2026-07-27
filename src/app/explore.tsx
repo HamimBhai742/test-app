@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Text,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +17,12 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTransactions, Transaction } from '@/context/TransactionContext';
+
+const formatNumber = (num: number) => {
+  const parts = num.toString().split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+};
 
 export default function TabTwoScreen() {
   const safeAreaInsets = useSafeAreaInsets();
@@ -204,7 +211,7 @@ export default function TabTwoScreen() {
                     styles.txAmount,
                     { color: tx.type === 'income' ? '#10B981' : '#EF4444' }
                   ]}>
-                    {tx.type === 'income' ? '+' : '-'} ৳{tx.amount.toLocaleString()}
+                    {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(tx.amount)}
                   </ThemedText>
                   
                   {/* ডিলিট বাটন: প্রেস করলে গ্লোবাল স্টেট থেকে ট্রানজেকশনটি ডিলিট হয়ে যাবে */}

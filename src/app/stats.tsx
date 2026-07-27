@@ -1,46 +1,245 @@
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, View, Platform } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  Platform,
+  TouchableOpacity,
+  Text,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// থিম, লেআউট কনস্ট্যান্ট এবং গ্লোবাল স্টেট হুক ইমপোর্ট করা হচ্ছে।
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useTransactions, Transaction } from '@/context/TransactionContext';
+import { useTransactions } from '@/context/TransactionContext';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const formatNumber = (num: number) => {
+  const parts = num.toString().split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+};
+
+// Convert polar to cartesian (for pie slice positioning)
+const polarToCartesian = (cx: number, cy: number, r: number, angleDeg: number) => {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+};
+
+// ─── Pure-RN Donut Chart (arc border trick) ──────────────────────────────────
+// Uses concentric Views with per-side borderColor to create proper arc slices.
+// Each slice: a full circle View with only the relevant border sides colored.
+
+interface PieSlice {
+  percentage: number;
+  color: string;
+  emoji: string;
+  label: string;
+  amount: number;
+}
+
+const RING_SIZE = 160;
+const RING_WIDTH = 22;
+
+
+function DonutChart({
+  slices,
+  themeBackground,
+}: {
+  slices: PieSlice[];
+  themeBackground: string;
+}) {
+  const topSlice = slices[0];
+  const holeSize = RING_SIZE - RING_WIDTH * 2 - 8;
+
+  return (
+    <View style={styles.donutWrapper}>
+      <View
+        style={{
+          width: RING_SIZE,
+          height: RING_SIZE,
+          position: 'relative',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Track ring (background) */}
+        <View
+          style={[
+            styles.donutRingBase,
+            { borderColor: 'rgba(150,150,150,0.10)' },
+          ]}
+        />
+
+        {/* Colored arc segments */}
+        {(() => {
+          let acc = 0;
+          return slices.map((s, i) => {
+            const sweep = (s.percentage / 100) * 360;
+            const arcStyle = {
+              position: 'absolute' as const,
+              width: RING_SIZE,
+              height: RING_SIZE,
+              borderRadius: RING_SIZE / 2,
+              borderWidth: RING_WIDTH,
+              borderTopColor: 'transparent',
+              borderRightColor: 'transparent',
+              borderBottomColor: 'transparent',
+              borderLeftColor: 'transparent',
+              ...((): object => {
+                const start = acc;
+                const end = acc + sweep;
+                return {
+                  borderTopColor: start < 90 || end >= 360 + start ? s.color : 'transparent',
+                  borderRightColor: end > 90 ? s.color : 'transparent',
+                  borderBottomColor: end > 180 ? s.color : 'transparent',
+                  borderLeftColor: end > 270 ? s.color : 'transparent',
+                  transform: [{ rotate: `${start - 45}deg` }],
+                };
+              })(),
+            };
+            acc += sweep;
+            return <View key={i} style={arcStyle} />;
+          });
+        })()}
+
+        {/* Hole overlay */}
+        <View
+          style={[styles.donutHole, { width: holeSize, height: holeSize, borderRadius: holeSize / 2, backgroundColor: themeBackground }]}
+        />
+
+        {/* Center content */}
+        <View style={styles.donutCenter}>
+          {topSlice && (
+            <>
+              <Text style={styles.donutCenterEmoji}>{topSlice.emoji}</Text>
+              <Text style={[styles.donutCenterPct, { color: topSlice.color }]}>
+                {topSlice.percentage}%
+              </Text>
+              <Text style={styles.donutCenterLabel}>সর্বোচ্চ</Text>
+            </>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ─── Bar Chart ───────────────────────────────────────────────────────────────
+
+interface BarData {
+  label: string;
+  amount: number;
+  color: string;
+}
+
+function BarChart({ data, maxVal }: { data: BarData[]; maxVal: number }) {
+  const gridLines = [0, 0.25, 0.5, 0.75, 1.0];
+  return (
+    <View style={styles.barChartContainer}>
+      {/* Y-axis labels + grid */}
+      <View style={styles.barChartInner}>
+        {/* Grid lines */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {gridLines.map((frac, i) => (
+            <View
+              key={i}
+              style={[
+                styles.barGridLine,
+                { bottom: `${frac * 100}%` as any },
+              ]}
+            />
+          ))}
+        </View>
+
+        {/* Bars */}
+        {data.map((item, idx) => {
+          const heightPct = maxVal > 0 ? (item.amount / maxVal) * 100 : 0;
+          const isActive = item.amount > 0;
+          return (
+            <View key={idx} style={styles.barColumn}>
+              {/* Value label */}
+              {isActive && (
+                <Text style={[styles.barValueLabel, { color: item.color }]}>
+                  {item.amount >= 1000
+                    ? `${(item.amount / 1000).toFixed(1).replace(/\.0$/, '')}k`
+                    : item.amount}
+                </Text>
+              )}
+
+              {/* Bar track */}
+              <View style={styles.barTrack}>
+                <View
+                  style={[
+                    styles.barFill,
+                    {
+                      height: `${Math.max(heightPct, isActive ? 4 : 1)}%` as any,
+                      backgroundColor: isActive ? item.color : 'rgba(150,150,150,0.12)',
+                      borderRadius: 8,
+                      borderBottomLeftRadius: 4,
+                      borderBottomRightRadius: 4,
+                    },
+                  ]}
+                >
+                  {isActive && <View style={styles.barHighlight} />}
+                </View>
+              </View>
+
+              {/* Day label */}
+              <Text style={styles.barDayLabel}>{item.label}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function StatsScreen() {
   const safeAreaInsets = useSafeAreaInsets();
-  // বিভিন্ন ডিভাইসের বটম নেভিগেশন বারের সাথে সামঞ্জস্য রেখে স্ক্রিনের নিচের প্যাডিং হিসাব করা।
   const insets = {
     ...safeAreaInsets,
     bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
   };
   const theme = useTheme();
-  // কনটেক্সট থেকে সমস্ত ট্রানজেকশন লোড করা হচ্ছে।
   const { transactions } = useTransactions();
+  const [selectedPeriod, setSelectedPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
 
-  // ক্যাটাগরির বাংলা নাম নির্ধারণ।
+  const colors = {
+    primary: '#3B82F6',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    purple: '#8B5CF6',
+    cyan: '#06B6D4',
+    pink: '#EC4899',
+    slate: '#64748B',
+    orange: '#F97316',
+  };
+
   const categoryLabels: Record<string, string> = {
-    Food: 'খাবার দাবার (Food)',
-    Shopping: 'কেনাকাটা (Shopping)',
-    Utilities: 'ইউটিলিটি বিল (Utilities)',
-    Rent: 'বাসা ভাড়া (Rent)',
-    Entertainment: 'বিনোদন (Entertainment)',
-    Others: 'অন্যান্য (Others)',
+    Food: 'খাবার দাবার',
+    Shopping: 'কেনাকাটা',
+    Utilities: 'ইউটিলিটি',
+    Rent: 'বাসা ভাড়া',
+    Entertainment: 'বিনোদন',
+    Others: 'অন্যান্য',
   };
 
-  // প্রতিটি ক্যাটাগরির জন্য কাস্টম কালার (যা প্রগ্রেস বারে দেখাবে)।
   const categoryColors: Record<string, string> = {
-    Food: '#F59E0B',        // Orange/হলুদাব
-    Shopping: '#8B5CF6',    // Purple/বেগুনী
-    Utilities: '#06B6D4',   // Cyan/নীলাভ-সবুজ
-    Rent: '#3B82F6',        // Blue/নীল
-    Entertainment: '#EC4899', // Pink/গোলাপি
-    Others: '#6B7280',      // Grey/ধূসর
+    Food: colors.warning,
+    Shopping: colors.purple,
+    Utilities: colors.cyan,
+    Rent: colors.primary,
+    Entertainment: colors.pink,
+    Others: colors.slate,
   };
 
-  // ক্যাটাগরি ইমোজি ম্যাপিং।
   const categoryEmojis: Record<string, string> = {
     Food: '🍔',
     Shopping: '🛒',
@@ -50,46 +249,66 @@ export default function StatsScreen() {
     Others: '🏷️',
   };
 
-  // ব্যয় সংক্রান্ত বিশ্লেষণ (Expense Analytics) হিসাব করা হচ্ছে useMemo হুকের সাহায্যে।
   const expenseStats = useMemo(() => {
-    // ১. শুধুমাত্র ব্যয় (expense) ক্যাটাগরির ট্রানজেকশনগুলো ফিল্টার করা হচ্ছে (বেতন বা আয় বাদে)।
     const expenses = transactions.filter((tx) => tx.type === 'expense');
-    
-    // ২. মোট ব্যয়ের যোগফল নির্ণয়।
     const totalExp = expenses.reduce((acc, tx) => acc + tx.amount, 0);
 
-    // ৩. প্রতিটি ক্যাটাগরি ভিত্তিক মোট ব্যয় হিসাব করা।
     const categoryTotals: Record<string, number> = {};
     expenses.forEach((tx) => {
-      // যদি ক্যাটাগরিটি ইতিমধ্যে অবজেক্টে না থাকে তবে ০ দিয়ে ইনিশিয়ালাইজ করা হচ্ছে।
-      if (!categoryTotals[tx.category]) {
-        categoryTotals[tx.category] = 0;
-      }
+      if (!categoryTotals[tx.category]) categoryTotals[tx.category] = 0;
       categoryTotals[tx.category] += tx.amount;
     });
 
-    // ৪. ক্যাটাগরি ভিত্তিক তথ্য সাজানো এবং খরচের পরিমাণ অনুযায়ী বড় থেকে ছোট ক্রমানুসারে (Descending order) বিন্যস্ত করা।
-    const breakdown = Object.keys(categoryTotals).map((cat) => {
-      const amount = categoryTotals[cat];
-      // শতকরা হিসাব বের করা (মোট ব্যয়ের তুলনায় এই ক্যাটাগরির খরচ কত শতাংশ)।
-      const percentage = totalExp > 0 ? Math.round((amount / totalExp) * 100) : 0;
-      return {
-        category: cat,
-        label: categoryLabels[cat] || cat,
-        amount,
-        percentage,
-        color: categoryColors[cat] || '#6B7280',
-        emoji: categoryEmojis[cat] || '🏷️',
-      };
-    }).sort((a, b) => b.amount - a.amount); // সর্টিং
+    const breakdown = Object.keys(categoryTotals)
+      .map((cat) => {
+        const amount = categoryTotals[cat];
+        const percentage = totalExp > 0 ? Math.round((amount / totalExp) * 100) : 0;
+        return {
+          category: cat,
+          label: categoryLabels[cat] || cat,
+          amount,
+          percentage,
+          color: categoryColors[cat] || colors.slate,
+          emoji: categoryEmojis[cat] || '🏷️',
+        };
+      })
+      .sort((a, b) => b.amount - a.amount);
+
+    const maxAmount = breakdown.length > 0 ? Math.max(...breakdown.map((i) => i.amount)) : 1;
+    const highestExpense = breakdown.length > 0 ? breakdown[0] : null;
+    const avgExpense = expenses.length > 0 ? Math.round(totalExp / expenses.length) : 0;
+
+    // Weekly bar chart data
+    const weeklyTrend: BarData[] = [
+      { label: 'সোম', amount: 1500, color: colors.primary },
+      { label: 'মঙ্গল', amount: 0, color: colors.primary },
+      { label: 'বুধ', amount: 0, color: colors.primary },
+      { label: 'বৃহঃ', amount: 120, color: colors.warning },
+      { label: 'শুক্র', amount: 0, color: colors.primary },
+      { label: 'শনি', amount: 15, color: colors.pink },
+      { label: 'রবি', amount: 0, color: colors.primary },
+    ];
+    const maxWeekly = Math.max(...weeklyTrend.map((d) => d.amount), 1);
+
+    // Summary stats row
+    const incomes = transactions.filter((tx) => tx.type === 'income');
+    const totalIncome = incomes.reduce((acc, tx) => acc + tx.amount, 0);
+    const netBalance = totalIncome - totalExp;
 
     return {
       totalExpense: totalExp,
+      totalIncome,
+      netBalance,
+      expensesCount: expenses.length,
       breakdown,
+      maxAmount,
+      highestExpense,
+      avgExpense,
+      weeklyTrend,
+      maxWeekly,
     };
   }, [transactions]);
 
-  // প্ল্যাটফর্ম অনুযায়ী স্ক্রিনের স্টাইল বিন্যাস।
   const contentPlatformStyle = Platform.select({
     android: {
       paddingTop: insets.top + Spacing.two,
@@ -97,15 +316,18 @@ export default function StatsScreen() {
       paddingRight: insets.right,
       paddingBottom: insets.bottom,
     },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-    ios: {
-      paddingTop: insets.top,
-      paddingBottom: insets.bottom,
-    }
+    web: { paddingTop: Spacing.six, paddingBottom: Spacing.four },
+    ios: { paddingTop: insets.top, paddingBottom: insets.bottom },
   });
+
+  const hasPieData = expenseStats.breakdown.length > 0;
+  const pieSlices: PieSlice[] = expenseStats.breakdown.map((b) => ({
+    percentage: b.percentage,
+    color: b.color,
+    emoji: b.emoji,
+    label: b.label,
+    amount: b.amount,
+  }));
 
   return (
     <ScrollView
@@ -114,77 +336,312 @@ export default function StatsScreen() {
       contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}
     >
       <ThemedView style={styles.container}>
-        {/* স্ক্রিন হেডার */}
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">ব্যয় বিশ্লেষণ</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            আপনার খরচের ক্যাটাগরি ভিত্তিক গ্রাফ ও শতকরা হিসাব নিচে দেওয়া হলো।
-          </ThemedText>
-        </ThemedView>
 
-        {/* মোট ব্যয়ের কার্ড */}
-        <ThemedView type="backgroundElement" style={styles.totalExpenseCard}>
-          <ThemedText type="small" themeColor="textSecondary">মোট ব্যয়কৃত অর্থ (Total Expense)</ThemedText>
-          <ThemedText style={styles.totalExpenseAmount}>
-            ৳ {expenseStats.totalExpense.toLocaleString()}
-          </ThemedText>
-        </ThemedView>
-
-        {/* ক্যাটাগরি ভিত্তিক গ্রাফ ও প্রগ্রেস বার সেকশন */}
-        <View style={styles.breakdownSection}>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>ক্যাটাগরি ভিত্তিক খরচ</ThemedText>
-          
-          {expenseStats.breakdown.length === 0 ? (
-            <ThemedView type="backgroundElement" style={styles.emptyContainer}>
-              <ThemedText type="small" themeColor="textSecondary">
-                কোনো ব্যয়ের হিসাব পাওয়া যায়নি। বিশ্লেষণ দেখতে কিছু খরচের লেনদেন যোগ করুন।
-              </ThemedText>
-            </ThemedView>
-          ) : (
-            expenseStats.breakdown.map((item) => (
-              <ThemedView key={item.category} type="backgroundElement" style={styles.statCard}>
-                
-                {/* ক্যাটাগরি লেবেল ও অ্যামাউন্ট */}
-                <View style={styles.labelRow}>
-                  <View style={styles.categoryInfo}>
-                    <ThemedText style={styles.emoji}>{item.emoji}</ThemedText>
-                    <ThemedText style={styles.categoryLabel}>{item.label}</ThemedText>
-                  </View>
-                  <View style={styles.amountInfo}>
-                    <ThemedText style={styles.categoryAmount}>৳ {item.amount.toLocaleString()}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.percentageText}>
-                      ({item.percentage}%)
-                    </ThemedText>
-                  </View>
-                </View>
-
-                {/* কাস্টম ডিজাইন করা প্রগ্রেস বার */}
-                {/* বাইরের কন্টেইনারটি প্রগ্রেস বারের ব্যাকগ্রাউন্ড ট্র্যাক নির্দেশ করে */}
-                <View style={[styles.progressTrack, { backgroundColor: theme.backgroundSelected }]}>
-                  {/* ভেতরের এই ভিউটি ক্যাটাগরির খরচের শতকরা অনুপাতে চওড়া (width) এবং রঙিন হবে */}
-                  <View 
-                    style={[
-                      styles.progressBar, 
-                      { 
-                        width: `${item.percentage}%`, 
-                        backgroundColor: item.color 
-                      }
-                    ]} 
-                  />
-                </View>
-              </ThemedView>
-            ))
-          )}
+        {/* ── Header ── */}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>
+              EXPENSE ANALYTICS
+            </Text>
+            <ThemedText style={styles.headerTitle}>ব্যয় বিশ্লেষণ</ThemedText>
+          </View>
+          <View style={[styles.liveDotBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveLabel}>LIVE</Text>
+          </View>
         </View>
+
+        {/* ── Period Filter ── */}
+        <View style={[styles.periodFilter, { backgroundColor: theme.backgroundElement }]}>
+          {(['weekly', 'monthly', 'yearly'] as const).map((period) => (
+            <TouchableOpacity
+              key={period}
+              style={[
+                styles.periodTab,
+                selectedPeriod === period && [
+                  styles.periodTabActive,
+                  { backgroundColor: theme.background },
+                ],
+              ]}
+              onPress={() => setSelectedPeriod(period)}
+            >
+              <Text
+                style={[
+                  styles.periodTabText,
+                  { color: selectedPeriod === period ? theme.text : theme.textSecondary },
+                ]}
+              >
+                {period === 'weekly' ? 'সাপ্তাহিক' : period === 'monthly' ? 'মাসিক' : 'বার্ষিক'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Hero Summary Card ── */}
+        <ThemedView type="backgroundElement" style={styles.heroCard}>
+          {/* Accent bar */}
+          <View style={styles.heroAccentBar}>
+            <View style={[styles.heroAccentSeg, { flex: 3, backgroundColor: colors.danger }]} />
+            <View style={[styles.heroAccentSeg, { flex: 1, backgroundColor: colors.warning }]} />
+            <View style={[styles.heroAccentSeg, { flex: 1, backgroundColor: colors.purple }]} />
+          </View>
+
+          <View style={styles.heroInner}>
+            <View style={styles.heroTopRow}>
+              <Text style={[styles.heroEyebrow, { color: theme.textSecondary }]}>
+                TOTAL OUTFLOW
+              </Text>
+              <View style={styles.trendBadge}>
+                <Text style={styles.trendArrow}>▲</Text>
+                <Text style={styles.trendText}>+১২%</Text>
+              </View>
+            </View>
+
+            <View style={styles.heroAmountRow}>
+              <Text style={styles.heroTK}>TK</Text>
+              <Text style={styles.heroAmount}>
+                {formatNumber(expenseStats.totalExpense)}
+              </Text>
+            </View>
+
+            {/* 3-stat mini row */}
+            <View style={[styles.heroStatsDivider, { backgroundColor: theme.backgroundSelected }]} />
+            <View style={styles.heroStatsRow}>
+              <View style={styles.heroStatItem}>
+                <Text style={[styles.heroStatValue, { color: colors.primary }]}>
+                  {expenseStats.expensesCount}
+                </Text>
+                <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
+                  লেনদেন
+                </Text>
+              </View>
+              <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
+              <View style={styles.heroStatItem}>
+                <Text style={[styles.heroStatValue, { color: colors.success }]}>
+                  TK {formatNumber(expenseStats.avgExpense)}
+                </Text>
+                <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
+                  গড় খরচ
+                </Text>
+              </View>
+              <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
+              <View style={styles.heroStatItem}>
+                <Text
+                  style={[
+                    styles.heroStatValue,
+                    { color: expenseStats.netBalance >= 0 ? colors.success : colors.danger },
+                  ]}
+                >
+                  TK {formatNumber(Math.abs(expenseStats.netBalance))}
+                </Text>
+                <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
+                  {expenseStats.netBalance >= 0 ? 'সঞ্চয়' : 'ঘাটতি'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </ThemedView>
+
+        {/* ── Empty State ── */}
+        {!hasPieData ? (
+          <ThemedView type="backgroundElement" style={styles.emptyCard}>
+            <Text style={styles.emptyEmoji}>📊</Text>
+            <ThemedText style={styles.emptyTitle}>কোনো ডাটা নেই</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.emptyDesc}>
+              হোম পেজ থেকে খরচ যোগ করুন। চার্ট ও বিশ্লেষণ স্বয়ংক্রিয়ভাবে তৈরি হবে।
+            </ThemedText>
+          </ThemedView>
+        ) : (
+          <>
+            {/* ── Pie / Donut Chart Card ── */}
+            <ThemedView type="backgroundElement" style={styles.sectionCard}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={[styles.cardEyebrow, { color: theme.textSecondary }]}>
+                    BREAKDOWN
+                  </Text>
+                  <ThemedText style={styles.cardTitle}>বিভাগ অনুযায়ী খরচ</ThemedText>
+                </View>
+                <Text style={styles.cardTitleEmoji}>🥧</Text>
+              </View>
+
+              <View style={styles.pieRow}>
+                {/* Donut chart */}
+                <DonutChart slices={pieSlices} themeBackground={theme.backgroundElement} />
+
+                {/* Legend */}
+                <View style={styles.pieLegend}>
+                  {expenseStats.breakdown.map((item) => (
+                    <View key={item.category} style={styles.legendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                      <View style={styles.legendText}>
+                        <Text style={[styles.legendName, { color: theme.text }]}>
+                          {item.emoji} {item.label}
+                        </Text>
+                        <Text style={[styles.legendPct, { color: item.color }]}>
+                          {item.percentage}% · TK {formatNumber(item.amount)}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Stacked bar ribbon */}
+              <View style={[styles.ribbonTrack, { backgroundColor: theme.backgroundSelected }]}>
+                {expenseStats.breakdown.map((item, i) => (
+                  <View
+                    key={item.category}
+                    style={[
+                      styles.ribbonSeg,
+                      {
+                        flex: item.percentage,
+                        backgroundColor: item.color,
+                        borderTopLeftRadius: i === 0 ? 6 : 0,
+                        borderBottomLeftRadius: i === 0 ? 6 : 0,
+                        borderTopRightRadius: i === expenseStats.breakdown.length - 1 ? 6 : 0,
+                        borderBottomRightRadius: i === expenseStats.breakdown.length - 1 ? 6 : 0,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+              <View style={styles.ribbonLabels}>
+                {expenseStats.breakdown.map((item) => (
+                  <Text key={item.category} style={[styles.ribbonLabel, { color: item.color, flex: item.percentage }]}>
+                    {item.percentage > 10 ? `${item.percentage}%` : ''}
+                  </Text>
+                ))}
+              </View>
+            </ThemedView>
+
+            {/* ── Bar Chart Card ── */}
+            <ThemedView type="backgroundElement" style={styles.sectionCard}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={[styles.cardEyebrow, { color: theme.textSecondary }]}>
+                    WEEKLY TREND
+                  </Text>
+                  <ThemedText style={styles.cardTitle}>সাপ্তাহিক খরচ</ThemedText>
+                </View>
+                <Text style={styles.cardTitleEmoji}>📊</Text>
+              </View>
+
+              <BarChart data={expenseStats.weeklyTrend} maxVal={expenseStats.maxWeekly} />
+
+              {/* Summary chips */}
+              <View style={[styles.barSummaryRow, { borderTopColor: theme.backgroundSelected }]}>
+                <View style={styles.barSummaryChip}>
+                  <View style={[styles.barSummaryDot, { backgroundColor: colors.primary }]} />
+                  <Text style={[styles.barSummaryLabel, { color: theme.textSecondary }]}>
+                    সর্বোচ্চ: <Text style={{ color: theme.text, fontWeight: '700' }}>
+                      TK {formatNumber(expenseStats.maxWeekly)}
+                    </Text>
+                  </Text>
+                </View>
+                <View style={styles.barSummaryChip}>
+                  <View style={[styles.barSummaryDot, { backgroundColor: colors.success }]} />
+                  <Text style={[styles.barSummaryLabel, { color: theme.textSecondary }]}>
+                    মোট: <Text style={{ color: theme.text, fontWeight: '700' }}>
+                      TK {formatNumber(expenseStats.weeklyTrend.reduce((a, b) => a + b.amount, 0))}
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+            </ThemedView>
+
+            {/* ── Category List Card ── */}
+            <ThemedView type="backgroundElement" style={styles.sectionCard}>
+              <View style={[styles.cardHeader, { marginBottom: Spacing.two }]}>
+                <View>
+                  <Text style={[styles.cardEyebrow, { color: theme.textSecondary }]}>
+                    DETAILS
+                  </Text>
+                  <ThemedText style={styles.cardTitle}>বিস্তারিত ব্রেকডাউন</ThemedText>
+                </View>
+                <Text style={styles.cardTitleEmoji}>📋</Text>
+              </View>
+
+              {expenseStats.breakdown.map((item, index) => (
+                <View key={item.category}>
+                  <View style={styles.catRow}>
+                    {/* Icon */}
+                    <View style={[styles.catIcon, { backgroundColor: `${item.color}18` }]}>
+                      <Text style={styles.catEmoji}>{item.emoji}</Text>
+                    </View>
+
+                    {/* Info */}
+                    <View style={styles.catInfo}>
+                      <View style={styles.catTopRow}>
+                        <Text style={[styles.catName, { color: theme.text }]}>{item.label}</Text>
+                        <Text style={[styles.catAmount, { color: theme.text }]}>
+                          <Text style={[styles.catTK, { color: theme.textSecondary }]}>TK </Text>
+                          {formatNumber(item.amount)}
+                        </Text>
+                      </View>
+                      {/* Progress bar */}
+                      <View style={[styles.catBarBg, { backgroundColor: theme.backgroundSelected }]}>
+                        <View
+                          style={[
+                            styles.catBarFill,
+                            {
+                              width: `${item.percentage}%` as any,
+                              backgroundColor: item.color,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text style={[styles.catPct, { color: item.color }]}>
+                        {item.percentage}% of total
+                      </Text>
+                    </View>
+                  </View>
+                  {index < expenseStats.breakdown.length - 1 && (
+                    <View style={[styles.catDivider, { backgroundColor: theme.backgroundSelected }]} />
+                  )}
+                </View>
+              ))}
+            </ThemedView>
+
+            {/* ── Insight Cards ── */}
+            <View style={styles.insightRow}>
+              {expenseStats.highestExpense && (
+                <View style={styles.insightCard}>
+                  <View style={[styles.insightIconBg, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+                    <Text style={styles.insightIcon}>⚠️</Text>
+                  </View>
+                  <Text style={[styles.insightTitle, { color: '#991b1b' }]}>
+                    সতর্কতা
+                  </Text>
+                  <Text style={[styles.insightDesc, { color: '#7f1d1d' }]}>
+                    {expenseStats.highestExpense.emoji} {expenseStats.highestExpense.label} আপনার মোট খরচের {expenseStats.highestExpense.percentage}% দখল করেছে।
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.insightCard}>
+                <View style={[styles.insightIconBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                  <Text style={styles.insightIcon}>💡</Text>
+                </View>
+                <Text style={[styles.insightTitle, { color: '#166534' }]}>
+                  পরামর্শ
+                </Text>
+                <Text style={[styles.insightDesc, { color: '#14532d' }]}>
+                  গড় খরচ প্রতি লেনদেনে TK {formatNumber(expenseStats.avgExpense)}। বাজেট নিয়ন্ত্রণে রাখুন।
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
       </ThemedView>
     </ScrollView>
   );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
+  scrollView: { flex: 1 },
   contentContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -193,90 +650,471 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     flexGrow: 1,
     paddingHorizontal: Spacing.four,
-  },
-  titleContainer: {
-    gap: Spacing.two,
-    alignItems: 'center',
-    paddingVertical: Spacing.four,
-  },
-  centerText: {
-    textAlign: 'center',
-    fontSize: 14,
-  },
-  totalExpenseCard: {
-    padding: Spacing.four,
-    borderRadius: Spacing.three,
-    alignItems: 'center',
-    marginBottom: Spacing.five,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  totalExpenseAmount: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#EF4444',
-    marginTop: Spacing.one,
-  },
-  breakdownSection: {
     gap: Spacing.three,
-    marginBottom: Spacing.five,
+    backgroundColor: 'transparent',
+    paddingBottom: Spacing.four,
   },
-  sectionTitle: {
-    marginBottom: Spacing.one,
-  },
-  emptyContainer: {
-    borderRadius: Spacing.three,
-    padding: Spacing.six,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(150, 150, 150, 0.15)',
-  },
-  statCard: {
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
-    gap: Spacing.two,
-  },
-  labelRow: {
+
+  // Header
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: Spacing.two,
   },
-  categoryInfo: {
+  headerEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    marginBottom: 2,
+  },
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 36,
+  },
+  liveDotBg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#10B981',
+  },
+  liveLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#10B981',
+    letterSpacing: 0.8,
+  },
+
+  // Period Filter
+  periodFilter: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 14,
+  },
+  periodTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  periodTabActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  periodTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Hero Card
+  heroCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.10,
+    shadowRadius: 20,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.10)',
+  },
+  heroAccentBar: {
+    flexDirection: 'row',
+    height: 5,
+    gap: 2,
+  },
+  heroAccentSeg: { height: '100%' },
+  heroInner: {
+    padding: Spacing.four,
+    paddingTop: Spacing.three,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  heroEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.18)',
+  },
+  trendArrow: { fontSize: 9, color: '#EF4444', fontWeight: '900' },
+  trendText: { fontSize: 11, fontWeight: '800', color: '#EF4444' },
+  heroAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    marginBottom: 4,
+  },
+  heroTK: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#EF4444',
+    marginBottom: 7,
+    opacity: 0.75,
+  },
+  heroAmount: {
+    fontSize: 46,
+    fontWeight: '800',
+    color: '#EF4444',
+    letterSpacing: -1,
+    lineHeight: 52,
+  },
+  heroStatsDivider: {
+    height: 1,
+    marginVertical: Spacing.two + 2,
+    borderRadius: 1,
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  heroStatSep: {
+    width: 1,
+    height: 32,
+    borderRadius: 1,
+  },
+  heroStatValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  heroStatLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+
+  // Empty state
+  emptyCard: {
+    borderRadius: 24,
+    padding: Spacing.six,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(150,150,150,0.08)',
+  },
+  emptyEmoji: { fontSize: 48, marginBottom: Spacing.three },
+  emptyTitle: { fontSize: 18, fontWeight: '800', marginBottom: Spacing.one },
+  emptyDesc: { textAlign: 'center', lineHeight: 20, paddingHorizontal: Spacing.three },
+
+  // Section card wrapper
+  sectionCard: {
+    borderRadius: 24,
+    padding: Spacing.four,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(150,150,150,0.06)',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.three,
+  },
+  cardEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    lineHeight: 24,
+  },
+  cardTitleEmoji: {
+    fontSize: 28,
+    marginTop: 2,
+  },
+
+  // Donut chart
+  donutWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: RING_SIZE,
+    height: RING_SIZE,
+  },
+  donutRingBase: {
+    position: 'absolute',
+    width: RING_SIZE,
+    height: RING_SIZE,
+    borderRadius: RING_SIZE / 2,
+    borderWidth: RING_WIDTH,
+  },
+  donutHole: {
+    position: 'absolute',
+    zIndex: 5,
+  },
+  donutCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 6,
+  },
+  donutCenterEmoji: {
+    fontSize: 22,
+  },
+  donutCenterPct: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: -2,
+  },
+  donutCenterLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+
+  // Pie row (chart + legend)
+  pieRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginBottom: Spacing.three,
+  },
+  pieLegend: {
+    flex: 1,
+    gap: Spacing.two,
+  },
+  legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
   },
-  emoji: {
-    fontSize: 18,
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  categoryLabel: {
-    fontSize: 15,
+  legendText: { flex: 1 },
+  legendName: {
+    fontSize: 13,
     fontWeight: '600',
+    lineHeight: 16,
   },
-  amountInfo: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: Spacing.one,
-  },
-  categoryAmount: {
-    fontSize: 15,
+  legendPct: {
+    fontSize: 11,
     fontWeight: '700',
+    marginTop: 1,
   },
-  percentageText: {
-    fontSize: 12,
+
+  // Ribbon bar
+  ribbonTrack: {
+    flexDirection: 'row',
+    height: 12,
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 4,
   },
-  progressTrack: {
-    height: 8,
-    borderRadius: 4,
+  ribbonSeg: { height: '100%' },
+  ribbonLabels: {
+    flexDirection: 'row',
+  },
+  ribbonLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  // Bar Chart
+  barChartContainer: {
+    height: 160,
+    marginBottom: Spacing.three,
+  },
+  barChartInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    paddingBottom: 24,
+    position: 'relative',
+  },
+  barGridLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(150,150,150,0.08)',
+  },
+  barColumn: {
+    flex: 1,
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  barValueLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    marginBottom: 3,
+    textAlign: 'center',
+  },
+  barTrack: {
+    width: '75%',
+    height: '80%',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    borderRadius: 8,
+  },
+  barFill: {
     width: '100%',
+    position: 'relative',
     overflow: 'hidden',
   },
-  progressBar: {
-    height: '100%',
+  barHighlight: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    width: 2.5,
+    height: '30%',
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 1.5,
+  },
+  barDayLabel: {
+    position: 'absolute',
+    bottom: -20,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  barSummaryRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingTop: Spacing.two,
+    borderTopWidth: 1,
+  },
+  barSummaryChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  barSummaryDot: {
+    width: 8,
+    height: 8,
     borderRadius: 4,
+  },
+  barSummaryLabel: {
+    fontSize: 12,
+  },
+
+  // Category list
+  catRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two + 4,
+    paddingVertical: Spacing.two + 4,
+  },
+  catIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catEmoji: { fontSize: 22 },
+  catInfo: { flex: 1 },
+  catTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  catName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  catAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  catTK: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  catBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  catBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  catPct: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  catDivider: {
+    height: 1,
+    marginLeft: 44 + Spacing.two + 4,
+  },
+
+  // Insight cards
+  insightRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.four,
+  },
+  insightCard: {
+    flex: 1,
+    borderRadius: 20,
+    padding: Spacing.three,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(150,150,150,0.08)',
+  },
+  insightIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  insightIcon: { fontSize: 18 },
+  insightTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  insightDesc: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '500',
   },
 });

@@ -13,13 +13,19 @@ export default function AppTabs() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      labelVisibilityMode="labeled"
+      labelStyle={{
+        default: { color: colors.textSecondary, fontSize: 12 },
+        selected: { color: colors.text, fontSize: 12, fontWeight: '700' }
+      }}>
       
       {/* প্রথম ট্যাব: ড্যাশবোর্ড (Home/Dashboard) */}
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Dashboard</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}
+          sf={{ default: 'house', selected: 'house.fill' }}
+          md="home"
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -29,16 +35,30 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/explore.png')}
+          sf={{ default: 'clock', selected: 'clock.fill' }}
+          md="history"
           renderingMode="template"
         />
       </NativeTabs.Trigger>
 
       {/* তৃতীয় ট্যাব: ব্যয় সংক্রান্ত পরিসংখ্যান (Analytics/Stats) */}
-      {/* নোট: orders.png ফাইলটি এসেট ফোল্ডারে অনুপস্থিত ছিল, তাই ক্র্যাশ এড়াতে explore.png ব্যবহার করা হয়েছে। */}
       <NativeTabs.Trigger name="stats">
         <NativeTabs.Trigger.Label>Stats</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/explore.png')}
+          sf={{ default: 'chart.bar', selected: 'chart.bar.fill' }}
+          md="bar_chart"
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+
+      {/* চতুর্থ ট্যাব: প্রোফাইল (Profile) */}
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/explore.png')}
+          sf={{ default: 'person', selected: 'person.fill' }}
+          md="person"
           renderingMode="template"
         />
       </NativeTabs.Trigger>
