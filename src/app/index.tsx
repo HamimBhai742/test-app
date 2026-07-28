@@ -20,6 +20,8 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 // ট্রানজেকশন সম্পর্কিত স্টেট ও টাইপ ইমপোর্ট করা হচ্ছে।
 import { useTransactions, Transaction } from '@/context/TransactionContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/constants/translations';
 import { useTheme } from '@/hooks/use-theme';
 
 const formatNumber = (num: number) => {
@@ -43,28 +45,32 @@ export default function HomeScreen() {
   const [category, setCategory] = useState<Transaction['category']>('Food');
 
   // ক্যাটাগরির বাংলা নাম ডিকশনারি (ব্যবহারকারীকে সুন্দরভাবে দেখানোর জন্য)।
+  const { language } = useLanguage();
+  const t = translations[language];
+
+  // ক্যাটাগরির বাংলা নাম ডিকশনারি (ব্যবহারকারীকে সুন্দরভাবে দেখানোর জন্য)।
   const categoryLabels: Record<Transaction['category'], string> = {
-    Food: 'খাবার',
-    Shopping: 'কেনাকাটা',
-    Utilities: 'ইউটিলিটি বিল',
-    Rent: 'বাসা ভাড়া',
-    Entertainment: 'বিনোদন',
-    Salary: 'বেতন',
-    Others: 'অন্যান্য',
+    Food: t.catFood,
+    Shopping: t.catShopping,
+    Utilities: t.catUtilities,
+    Rent: t.catRent,
+    Entertainment: t.catEntertainment,
+    Salary: t.catSalary,
+    Others: t.catOthers,
   };
 
   // ফর্ম সাবমিট করার হ্যান্ডলার ফাংশন।
   const handleAddTransaction = () => {
     // শিরোনাম ফাকা আছে কিনা যাচাই করা হচ্ছে।
     if (!title.trim()) {
-      alert('অনুগ্রহ করে একটি শিরোনাম বা বিবরণ লিখুন।');
+      alert(t.errDesc);
       return;
     }
 
     // ইনপুট দেওয়া টাকা সংখ্যা কিনা এবং শুন্যের চেয়ে বড় কিনা তা চেক করা হচ্ছে।
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      alert('অনুগ্রহ করে সঠিক টাকার পরিমাণ লিখুন।');
+      alert(t.errAmt);
       return;
     }
 
@@ -99,8 +105,8 @@ export default function HomeScreen() {
           {/* হেডার সেকশন */}
           <ThemedView style={styles.header}>
             <ThemedView>
-              <ThemedText type="small" themeColor="textSecondary">Daily Expense Tracker</ThemedText>
-              <ThemedText type="subtitle" style={styles.headerTitle}>হিসাব কিতাব</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{t.dailyTracker}</ThemedText>
+              <ThemedText type="subtitle" style={styles.headerTitle}>{t.appTitle}</ThemedText>
             </ThemedView>
             {/* নতুন লেনদেন যোগ করার কুইক বাটন */}
             <TouchableOpacity
@@ -114,7 +120,7 @@ export default function HomeScreen() {
           {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
           <ThemedView type="backgroundElement" style={styles.balanceCard}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
-              মোট ব্যালেন্স (Total Balance)
+              {t.totalBal}
             </ThemedText>
             <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
               <Text style={{ fontSize: 18, fontWeight: '500' }}>TK </Text>{formatNumber(totalBalance)}
@@ -127,7 +133,7 @@ export default function HomeScreen() {
               <View style={styles.statColumn}>
                 <View style={styles.statDotContainer}>
                   <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">মোট আয়</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">{t.totalInc}</ThemedText>
                 </View>
                 <ThemedText style={styles.statAmountGreen}>
                   <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalIncome)}
@@ -137,7 +143,7 @@ export default function HomeScreen() {
               <View style={styles.statColumn}>
                 <View style={styles.statDotContainer}>
                   <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">মোট ব্যয়</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">{t.totalExp}</ThemedText>
                 </View>
                 <ThemedText style={styles.statAmountRed}>
                   <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalExpenses)}
@@ -152,27 +158,27 @@ export default function HomeScreen() {
               style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
               onPress={() => { setType('income'); setModalVisible(true); }}
             >
-              <ThemedText style={styles.quickButtonText}>💰 আয় যোগ করুন</ThemedText>
+              <ThemedText style={styles.quickButtonText}>{t.addIncome}</ThemedText>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
               onPress={() => { setType('expense'); setModalVisible(true); }}
             >
-              <ThemedText style={styles.quickButtonText}>💸 খরচ যোগ করুন</ThemedText>
+              <ThemedText style={styles.quickButtonText}>{t.addExpense}</ThemedText>
             </TouchableOpacity>
           </View>
 
           {/* সাম্প্রতিক লেনদেনের তালিকা (Recent Transactions) */}
           <View style={styles.recentSection}>
             <View style={styles.recentHeader}>
-              <ThemedText type="smallBold">সাম্প্রতিক লেনদেন সমূহ</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">সর্বশেষ ৫টি</ThemedText>
+              <ThemedText type="smallBold">{t.recentTx}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{t.last5}</ThemedText>
             </View>
 
             {recentTransactions.length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.emptyContainer}>
-                <ThemedText type="small" themeColor="textSecondary">এখনো কোনো লেনদেন যুক্ত করা হয়নি।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{t.noTxYet}</ThemedText>
               </ThemedView>
             ) : (
               recentTransactions.map((tx) => (
@@ -227,9 +233,9 @@ export default function HomeScreen() {
               <ThemedView type="backgroundElement" style={styles.modalView}>
                 {/* মডাল হেডার */}
                 <View style={styles.modalHeader}>
-                  <ThemedText type="smallBold" style={{ fontSize: 18 }}>নতুন লেনদেন যুক্ত করুন</ThemedText>
+                  <ThemedText type="smallBold" style={{ fontSize: 18 }}>{t.addNewTx}</ThemedText>
                   <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                    <ThemedText type="smallBold" themeColor="textSecondary">বন্ধ করুন</ThemedText>
+                    <ThemedText type="smallBold" themeColor="textSecondary">{t.close}</ThemedText>
                   </TouchableOpacity>
                 </View>
 
@@ -245,7 +251,7 @@ export default function HomeScreen() {
                     <ThemedText style={[
                       styles.typeSelectorText,
                       type === 'expense' && { color: '#FFFFFF' }
-                    ]}>💸 ব্যয় (Expense)</ThemedText>
+                    ]}>{t.expenseTab}</ThemedText>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -258,16 +264,16 @@ export default function HomeScreen() {
                     <ThemedText style={[
                       styles.typeSelectorText,
                       type === 'income' && { color: '#FFFFFF' }
-                    ]}>💰 আয় (Income)</ThemedText>
+                    ]}>{t.incomeTab}</ThemedText>
                   </TouchableOpacity>
                 </View>
 
                 {/* শিরোনাম ইনপুট */}
                 <View style={styles.inputContainer}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>বিবরণ বা শিরোনাম</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.descLabel}</ThemedText>
                   <TextInput
                     style={[styles.textInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
-                    placeholder="যেমন: দুপুরের খাবার, টিউশনি বেতন ইত্যাদি"
+                    placeholder={t.descPlaceholder}
                     placeholderTextColor={theme.textSecondary}
                     value={title}
                     onChangeText={setTitle}
@@ -276,7 +282,7 @@ export default function HomeScreen() {
 
                 {/* টাকার পরিমাণ ইনপুট */}
                 <View style={styles.inputContainer}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>টাকার পরিমাণ (৳)</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.amountLabel}</ThemedText>
                   <TextInput
                     style={[styles.textInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
                     placeholder="0.00"
@@ -289,7 +295,7 @@ export default function HomeScreen() {
 
                 {/* ক্যাটাগরি সিলেকশন */}
                 <View style={styles.inputContainer}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>ক্যাটাগরি নির্বাচন করুন</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.catLabel}</ThemedText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
                     {(Object.keys(categoryLabels) as Array<Transaction['category']>).map((cat) => {
                       const isSelected = category === cat;
@@ -320,7 +326,7 @@ export default function HomeScreen() {
                   style={[styles.submitButton, { backgroundColor: type === 'income' ? '#10B981' : '#EF4444' }]}
                   onPress={handleAddTransaction}
                 >
-                  <ThemedText style={styles.submitButtonText}>সংরক্ষণ করুন (Save)</ThemedText>
+                  <ThemedText style={styles.submitButtonText}>{t.saveBtn}</ThemedText>
                 </TouchableOpacity>
               </ThemedView>
             </KeyboardAvoidingView>

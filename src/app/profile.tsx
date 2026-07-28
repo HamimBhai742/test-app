@@ -19,6 +19,8 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/context/AuthContext';
 import { useTransactions } from '@/context/TransactionContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/constants/translations';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -27,7 +29,8 @@ export default function ProfileScreen() {
   // Custom Auth State to support mock login/signup
   const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction } = useTransactions();
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [language, setLanguage] = useState<'bn' | 'en'>('bn');
+  const { language, setLanguage } = useLanguage();
+  const t = translations[language];
 
   // Input states
   const [email, setEmail] = useState('');
@@ -39,124 +42,47 @@ export default function ProfileScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [focusedInput, setFocusedInput] = useState<'name' | 'email' | 'password' | 'confirm' | null>(null);
   const [authError, setAuthError] = useState('');
+  const [errors, setErrors] = useState<{name?: string, email?: string, password?: string, confirm?: string}>({});
 
   // Custom mock login handler
   const handleEmailAuth = async () => {
     setAuthError('');
-    if (!email.trim() || !password.trim()) {
-      setAuthError(language === 'bn' ? 'দয়া করে সবগুলো ঘর পূরণ করুন।' : 'Please fill in all fields.');
-      return;
+    const newErrors: typeof errors = {};
+
+    if (authMode === 'signup' && !fullName.trim()) {
+      newErrors.name = language === 'bn' ? 'নাম আবশ্যক' : 'Name is required';
+    }
+
+    if (!email.trim()) {
+      newErrors.email = language === 'bn' ? 'ইমেইল আবশ্যক' : 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = language === 'bn' ? 'সঠিক ইমেইল লিখুন' : 'Invalid email address';
+    }
+
+    if (!password.trim()) {
+      newErrors.password = language === 'bn' ? 'পাসওয়ার্ড আবশ্যক' : 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = language === 'bn' ? 'কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Must be at least 6 characters';
     }
 
     if (authMode === 'signup') {
-      if (!fullName.trim()) {
-        setAuthError(language === 'bn' ? 'দয়া করে আপনার নাম লিখুন।' : 'Please enter your full name.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setAuthError(language === 'bn' ? 'পাসওয়ার্ড দুটি মেলেনি।' : 'Passwords do not match.');
-        return;
-      }
-      if (password.length < 6) {
-        setAuthError(language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters.');
-        return;
+      if (!confirmPassword.trim()) {
+        newErrors.confirm = language === 'bn' ? 'পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm password is required';
+      } else if (password !== confirmPassword) {
+        newErrors.confirm = language === 'bn' ? 'পাসওয়ার্ড দুটি মেলেনি' : 'Passwords do not match';
       }
     }
 
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+
     // Simulate login
-    // We update the user state in AuthContext using the loginWithGoogle mock method 
-    // or by custom setting. Since we want to set custom name, let's mock it!
-    // In our AuthContext we have loginWithGoogle, we can use that to login 
-    // and then mock custom info if needed. For maximum code safety without modifying AuthContext again,
-    // we can trigger the loading indicator and then simulate setting user by calling a custom action 
-    // or utilizing AuthContext. We can just use the loginWithGoogle but customize it or set a local simulated state.
-    // Wait! Let's check how AuthContext.tsx was implemented:
-    // It exports `loginWithGoogle` which sets user to "Hamim Ahmed".
-    // We can just call loginWithGoogle, which is perfect and handles the state,
-    // or we can update AuthContext to support email login.
-    // Let's modify AuthContext.tsx later if needed, but for now we can just trigger loginWithGoogle 
-    // to simulate the loading and log them in! If they sign up, they still log in.
-    // Let's make it feel extremely realistic!
     await loginWithGoogle();
   };
 
-  // Translations dictionary
-  const t = {
-    bn: {
-      profile: 'প্রোফাইল',
-      welcome: 'হিসাব কিতাব-এ স্বাগতম',
-      subtitle: 'আপনার ব্যালেন্স এবং খরচের হিসাব সুরক্ষিত রাখতে এবং সব ডিভাইসে সিঙ্ক করতে সাইন ইন বা সাইন আপ করুন।',
-      loginBtn: 'লগইন করুন',
-      signupBtn: 'অ্যাকাউন্ট তৈরি করুন',
-      googleBtn: 'গুগল দিয়ে সাইন ইন করুন',
-      orText: 'অথবা ইমেইল দিয়ে',
-      emailLabel: 'ইমেইল এড্রেস',
-      passwordLabel: 'পাসওয়ার্ড',
-      nameLabel: 'আপনার পুরো নাম',
-      confirmPasswordLabel: 'পাসওয়ার্ড নিশ্চিত করুন',
-      noAccount: 'কোনো অ্যাকাউন্ট নেই? ',
-      hasAccount: 'ইতিমধ্যে অ্যাকাউন্ট আছে? ',
-      loginTab: 'লগইন',
-      signupTab: 'সাইন আপ',
-      logoutBtn: 'লগ আউট করুন',
-      totalTx: 'মোট লেনদেন',
-      totalBal: 'মোট ব্যালেন্স',
-      totalInc: 'মোট আয়',
-      totalExp: 'মোট ব্যয়',
-      proBadge: 'সুপার ইউজার',
-      statsHeader: 'হিসাবের লাইভ পরিসংখ্যান',
-      settingsHeader: 'অ্যাপ সেটিংস ও অ্যাকশন',
-      exportData: 'হিসাব ডাটা এক্সপোর্ট (JSON)',
-      helpSupport: 'যোগাযোগ ও সাপোর্ট',
-      resetData: 'সকল ট্রানজেকশন মুছে ফেলুন',
-      resetConfirmTitle: 'আপনি কি নিশ্চিত?',
-      resetConfirmMsg: 'এটি আপনার সকল খরচের হিসাব চিরতরে মুছে ফেলবে। এই কাজ আর ফেরত আনা যাবে না।',
-      resetSuccess: 'সকল ট্রানজেকশন সফলভাবে মুছে ফেলা হয়েছে।',
-      exportSuccess: 'আপনার হিসাব সফলভাবে রপ্তানি করা হয়েছে!',
-      languageText: 'ভাষা পরিবর্তন (Language)',
-      currentLang: 'বাংলা',
-      supportMsg: 'যেকোনো সমস্যার জন্য মেইল করুন: support@hisabkitab.com',
-      deviceSync: 'রিয়েল-টাইম ডাটা সিঙ্ক হচ্ছে',
-      forgotPassword: 'পাসওয়ার্ড ভুলে গেছেন?',
-    },
-    en: {
-      profile: 'Profile',
-      welcome: 'Welcome to Hisab Kitab',
-      subtitle: 'Sign in or sign up to secure your transaction logs and sync history across all devices.',
-      loginBtn: 'Sign In',
-      signupBtn: 'Create Account',
-      googleBtn: 'Continue with Google',
-      orText: 'or use email address',
-      emailLabel: 'Email Address',
-      passwordLabel: 'Password',
-      nameLabel: 'Full Name',
-      confirmPasswordLabel: 'Confirm Password',
-      noAccount: "Don't have an account? ",
-      hasAccount: 'Already have an account? ',
-      loginTab: 'Sign In',
-      signupTab: 'Sign Up',
-      logoutBtn: 'Log Out',
-      totalTx: 'Total Transactions',
-      totalBal: 'Total Balance',
-      totalInc: 'Total Income',
-      totalExp: 'Total Expenses',
-      proBadge: 'Pro Member',
-      statsHeader: 'Live Statistics Summary',
-      settingsHeader: 'App Settings & Utilities',
-      exportData: 'Export Transactions (JSON)',
-      helpSupport: 'Help & Support',
-      resetData: 'Delete All Transactions',
-      resetConfirmTitle: 'Are you sure?',
-      resetConfirmMsg: 'This will permanently delete all your transaction records. This action cannot be undone.',
-      resetSuccess: 'All transactions have been deleted successfully.',
-      exportSuccess: 'Transactions successfully exported!',
-      languageText: 'Change Language',
-      currentLang: 'English',
-      supportMsg: 'For any issues, email us at: support@hisabkitab.com',
-      deviceSync: 'Real-time database sync is active',
-      forgotPassword: 'Forgot Password?',
-    },
-  }[language];
 
   const handleExportData = () => {
     const dataStr = JSON.stringify(transactions, null, 2);
@@ -244,7 +170,7 @@ export default function ProfileScreen() {
                         styles.tabItem,
                         authMode === 'login' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
                       ]}
-                      onPress={() => { setAuthMode('login'); setAuthError(''); }}
+                      onPress={() => { setAuthMode('login'); setAuthError(''); setErrors({}); }}
                     >
                       <ThemedText type="smallBold" style={{ color: authMode === 'login' ? theme.text : theme.textSecondary }}>
                         {t.loginTab}
@@ -255,7 +181,7 @@ export default function ProfileScreen() {
                         styles.tabItem,
                         authMode === 'signup' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
                       ]}
-                      onPress={() => { setAuthMode('signup'); setAuthError(''); }}
+                      onPress={() => { setAuthMode('signup'); setAuthError(''); setErrors({}); }}
                     >
                       <ThemedText type="smallBold" style={{ color: authMode === 'signup' ? theme.text : theme.textSecondary }}>
                         {t.signupTab}
@@ -277,7 +203,7 @@ export default function ProfileScreen() {
                   <View style={styles.formContainer}>
                     {authMode === 'signup' && (
                       <View style={styles.inputWrapper}>
-                        <ThemedText type="smallBold" style={styles.inputLabel}>
+                        <ThemedText type="smallBold" style={[styles.inputLabel, errors.name && { color: '#EF4444' }]}>
                           {t.nameLabel}
                         </ThemedText>
                         <TextInput
@@ -286,21 +212,27 @@ export default function ProfileScreen() {
                             {
                               color: theme.text,
                               backgroundColor: theme.background,
-                              borderColor: focusedInput === 'name' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              borderColor: errors.name ? '#EF4444' : focusedInput === 'name' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
                             },
                           ]}
                           placeholder="Ex: Hamim Ahmed"
                           placeholderTextColor={theme.textSecondary}
                           value={fullName}
-                          onChangeText={setFullName}
+                          onChangeText={(text) => {
+                            setFullName(text);
+                            if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                          }}
                           onFocus={() => setFocusedInput('name')}
                           onBlur={() => setFocusedInput(null)}
                         />
+                        {errors.name && (
+                          <ThemedText style={styles.inlineErrorText}>{errors.name}</ThemedText>
+                        )}
                       </View>
                     )}
 
                     <View style={styles.inputWrapper}>
-                      <ThemedText type="smallBold" style={styles.inputLabel}>
+                      <ThemedText type="smallBold" style={[styles.inputLabel, errors.email && { color: '#EF4444' }]}>
                         {t.emailLabel}
                       </ThemedText>
                       <TextInput
@@ -309,7 +241,7 @@ export default function ProfileScreen() {
                           {
                             color: theme.text,
                             backgroundColor: theme.background,
-                            borderColor: focusedInput === 'email' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                            borderColor: errors.email ? '#EF4444' : focusedInput === 'email' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
                           },
                         ]}
                         placeholder="example@mail.com"
@@ -317,15 +249,21 @@ export default function ProfileScreen() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         value={email}
-                        onChangeText={setEmail}
+                        onChangeText={(text) => {
+                          setEmail(text);
+                          if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                        }}
                         onFocus={() => setFocusedInput('email')}
                         onBlur={() => setFocusedInput(null)}
                       />
+                      {errors.email && (
+                        <ThemedText style={styles.inlineErrorText}>{errors.email}</ThemedText>
+                      )}
                     </View>
 
                     <View style={styles.inputWrapper}>
                       <View style={styles.passwordLabelRow}>
-                        <ThemedText type="smallBold" style={styles.inputLabel}>
+                        <ThemedText type="smallBold" style={[styles.inputLabel, errors.password && { color: '#EF4444' }]}>
                           {t.passwordLabel}
                         </ThemedText>
                         {authMode === 'login' && (
@@ -344,14 +282,17 @@ export default function ProfileScreen() {
                               flex: 1,
                               color: theme.text,
                               backgroundColor: theme.background,
-                              borderColor: focusedInput === 'password' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              borderColor: errors.password ? '#EF4444' : focusedInput === 'password' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
                             },
                           ]}
                           placeholder="••••••••"
                           placeholderTextColor={theme.textSecondary}
                           secureTextEntry={!showPassword}
                           value={password}
-                          onChangeText={setPassword}
+                          onChangeText={(text) => {
+                            setPassword(text);
+                            if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                          }}
                           onFocus={() => setFocusedInput('password')}
                           onBlur={() => setFocusedInput(null)}
                         />
@@ -362,11 +303,14 @@ export default function ProfileScreen() {
                           <ThemedText style={{ fontSize: 16 }}>{showPassword ? '👁️' : '🙈'}</ThemedText>
                         </TouchableOpacity>
                       </View>
+                      {errors.password && (
+                        <ThemedText style={styles.inlineErrorText}>{errors.password}</ThemedText>
+                      )}
                     </View>
 
                     {authMode === 'signup' && (
                       <View style={styles.inputWrapper}>
-                        <ThemedText type="smallBold" style={styles.inputLabel}>
+                        <ThemedText type="smallBold" style={[styles.inputLabel, errors.confirm && { color: '#EF4444' }]}>
                           {t.confirmPasswordLabel}
                         </ThemedText>
                         <TextInput
@@ -375,17 +319,23 @@ export default function ProfileScreen() {
                             {
                               color: theme.text,
                               backgroundColor: theme.background,
-                              borderColor: focusedInput === 'confirm' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              borderColor: errors.confirm ? '#EF4444' : focusedInput === 'confirm' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
                             },
                           ]}
                           placeholder="••••••••"
                           placeholderTextColor={theme.textSecondary}
                           secureTextEntry={true}
                           value={confirmPassword}
-                          onChangeText={setConfirmPassword}
+                          onChangeText={(text) => {
+                            setConfirmPassword(text);
+                            if (errors.confirm) setErrors((prev) => ({ ...prev, confirm: undefined }));
+                          }}
                           onFocus={() => setFocusedInput('confirm')}
                           onBlur={() => setFocusedInput(null)}
                         />
+                        {errors.confirm && (
+                          <ThemedText style={styles.inlineErrorText}>{errors.confirm}</ThemedText>
+                        )}
                       </View>
                     )}
 
@@ -736,6 +686,13 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 13,
     marginBottom: Spacing.one,
+  },
+  inlineErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+    fontWeight: '500',
   },
   passwordLabelRow: {
     flexDirection: 'row',

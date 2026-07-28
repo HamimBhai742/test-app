@@ -52,7 +52,18 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      {/* চতুর্থ ট্যাব: প্রোফাইল (Profile) */}
+      {/* চতুর্থ ট্যাব: মাসিক রিপোর্ট (Monthly Report) */}
+      <NativeTabs.Trigger name="report">
+        <NativeTabs.Trigger.Label>Report</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/explore.png')}
+          sf={{ default: 'calendar', selected: 'calendar.badge.checkmark' }}
+          md="calendar_month"
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+
+      {/* পঞ্চম ট্যাব: প্রোফাইল (Profile) */}
       <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon

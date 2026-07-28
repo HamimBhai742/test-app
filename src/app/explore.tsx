@@ -19,6 +19,8 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTransactions } from '@/context/TransactionContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/constants/translations';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -69,7 +71,21 @@ function BudgetEditModal({
   onClose: () => void;
 }) {
   const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
   const [input, setInput] = useState(currentBudget.toString());
+
+  const getCategoryLabel = (key: CategoryKey) => {
+    switch (key) {
+      case 'Food': return t.catFood;
+      case 'Shopping': return t.catShopping;
+      case 'Utilities': return t.catUtilities;
+      case 'Rent': return t.catRent;
+      case 'Entertainment': return t.catEntertainment;
+      case 'Others': return t.catOthers;
+      default: return '';
+    }
+  };
 
   React.useEffect(() => {
     if (visible) setInput(currentBudget.toString());
@@ -104,10 +120,10 @@ function BudgetEditModal({
               <Text style={styles.modalIcon}>{category.emoji}</Text>
             </View>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              {category.label}
+              {getCategoryLabel(category.key)}
             </Text>
             <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
-              মাসিক বাজেট সীমা নির্ধারণ করুন
+              {t.setBudgetLimit}
             </Text>
 
             {/* Input */}
@@ -145,7 +161,7 @@ function BudgetEditModal({
               style={[styles.modalSaveBtn, { backgroundColor: category.color }]}
               onPress={handleSave}
             >
-              <Text style={styles.modalSaveBtnText}>সংরক্ষণ করুন</Text>
+              <Text style={styles.modalSaveBtnText}>{t.save}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -168,12 +184,26 @@ function BudgetCard({
   onEdit: () => void;
 }) {
   const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
   const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
   const remaining = budget - spent;
   const isOver = spent > budget;
   const isNear = !isOver && pct >= 80;
 
   const statusColor = isOver ? '#EF4444' : isNear ? '#F59E0B' : category.color;
+
+  const getCategoryLabel = (key: CategoryKey) => {
+    switch (key) {
+      case 'Food': return t.catFood;
+      case 'Shopping': return t.catShopping;
+      case 'Utilities': return t.catUtilities;
+      case 'Rent': return t.catRent;
+      case 'Entertainment': return t.catEntertainment;
+      case 'Others': return t.catOthers;
+      default: return '';
+    }
+  };
 
   return (
     <TouchableOpacity onPress={onEdit} activeOpacity={0.85}>
@@ -199,16 +229,16 @@ function BudgetCard({
           <View style={styles.budgetInfo}>
             <View style={styles.budgetTopRow}>
               <Text style={[styles.budgetLabel, { color: theme.text }]}>
-                {category.label}
+                {getCategoryLabel(category.key)}
               </Text>
               {isOver && (
                 <View style={styles.overBadge}>
-                  <Text style={styles.overBadgeText}>অতিরিক্ত!</Text>
+                  <Text style={styles.overBadgeText}>{t.overBadge}</Text>
                 </View>
               )}
               {isNear && !isOver && (
                 <View style={styles.nearBadge}>
-                  <Text style={styles.nearBadgeText}>সীমার কাছে</Text>
+                  <Text style={styles.nearBadgeText}>{t.nearLimitBadge}</Text>
                 </View>
               )}
             </View>
@@ -230,12 +260,12 @@ function BudgetCard({
             <View style={styles.budgetAmounts}>
               <Text style={[styles.spentText, { color: statusColor }]}>
                 <Text style={styles.tkSmall}>TK </Text>
-                {formatNum(spent)} ব্যয়
+                {formatNum(spent)} {t.spentWord}
               </Text>
               <Text style={[styles.remainText, { color: theme.textSecondary }]}>
                 {isOver
-                  ? `TK ${formatNum(Math.abs(remaining))} বেশি`
-                  : `TK ${formatNum(remaining)} বাকি`}
+                  ? `TK ${formatNum(Math.abs(remaining))} ${t.overWord}`
+                  : `TK ${formatNum(remaining)} ${t.leftWord}`}
               </Text>
             </View>
           </View>
@@ -247,7 +277,7 @@ function BudgetCard({
             TK {formatNum(budget)}
           </Text>
           <Text style={[styles.budgetEditHint, { color: theme.textSecondary }]}>
-            ট্যাপ করুন
+            {t.tapToEditCue}
           </Text>
         </View>
       </View>
@@ -264,6 +294,8 @@ export default function BudgetScreen() {
     bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
   };
   const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
   const { transactions } = useTransactions();
 
   const [budgets, setBudgets] = useState<BudgetMap>(DEFAULT_BUDGETS);
@@ -340,9 +372,9 @@ export default function BudgetScreen() {
         <View style={styles.headerRow}>
           <View>
             <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>
-              MONTHLY BUDGET
+              {t.monthlyBudgetEyebrow}
             </Text>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>বাজেট পরিকল্পনা</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>{t.budgetPlannerTitle}</Text>
           </View>
           <View style={[styles.headerBadge, { backgroundColor: `${summaryStatusColor}15` }]}>
             <Text style={[styles.headerBadgeIcon]}>
@@ -363,7 +395,7 @@ export default function BudgetScreen() {
             <View style={styles.heroTopRow}>
               <View>
                 <Text style={[styles.heroEyebrow, { color: theme.textSecondary }]}>
-                  মোট মাসিক বাজেট
+                  {t.totalMonthlyBudget}
                 </Text>
                 <View style={styles.heroAmountRow}>
                   <Text style={[styles.heroTK, { color: theme.text }]}>TK</Text>
@@ -407,14 +439,14 @@ export default function BudgetScreen() {
                 <Text style={[styles.heroStatVal, { color: '#EF4444' }]}>
                   TK {formatNum(summary.totalSpent)}
                 </Text>
-                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>ব্যয় হয়েছে</Text>
+                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.spentLabel}</Text>
               </View>
               <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
               <View style={styles.heroStatItem}>
                 <Text style={[styles.heroStatVal, { color: '#10B981' }]}>
                   TK {formatNum(Math.max(summary.totalBudget - summary.totalSpent, 0))}
                 </Text>
-                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>অবশিষ্ট</Text>
+                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.leftLabel}</Text>
               </View>
               <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
               <View style={styles.heroStatItem}>
@@ -424,9 +456,9 @@ export default function BudgetScreen() {
                     { color: summary.overBudgetCount > 0 ? '#EF4444' : '#10B981' },
                   ]}
                 >
-                  {summary.overBudgetCount}টি
+                  {summary.overBudgetCount}
                 </Text>
-                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>অতিরিক্ত</Text>
+                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.overBudgetLabel}</Text>
               </View>
             </View>
           </View>
@@ -437,7 +469,7 @@ export default function BudgetScreen() {
           <View style={styles.alertBanner}>
             <Text style={styles.alertBannerIcon}>🔔</Text>
             <Text style={styles.alertBannerText}>
-              {summary.overBudgetCount}টি ক্যাটাগরিতে বাজেট সীমা অতিক্রম করেছে। বাজেট পর্যালোচনা করুন।
+              {summary.overBudgetCount}{t.overBudgetAlert}
             </Text>
           </View>
         )}
@@ -445,10 +477,10 @@ export default function BudgetScreen() {
         {/* ── Section heading ── */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            ক্যাটাগরি বাজেট
+            {t.catBudgetTitle}
           </Text>
           <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-            ট্যাপ করে সম্পাদনা করুন
+            {t.tapToEditSubtitle}
           </Text>
         </View>
 
@@ -469,9 +501,9 @@ export default function BudgetScreen() {
         <ThemedView type="backgroundElement" style={styles.tipCard}>
           <Text style={styles.tipIcon}>💡</Text>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.tipTitle, { color: theme.text }]}>বাজেট টিপস</Text>
+            <Text style={[styles.tipTitle, { color: theme.text }]}>{t.budgetTipsTitle}</Text>
             <Text style={[styles.tipDesc, { color: theme.textSecondary }]}>
-              প্রতিটি ক্যাটাগরিতে আপনার মাসিক বাজেট সীমা সেট করুন। আয়ের ৫০% প্রয়োজনীয় খরচ, ৩০% ব্যক্তিগত খরচ এবং ২০% সঞ্চয়ের জন্য রাখুন।
+              {t.budgetTipsDesc}
             </Text>
           </View>
         </ThemedView>

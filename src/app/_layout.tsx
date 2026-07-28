@@ -6,8 +6,8 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 // ট্রানজেকশন স্টেটকে অ্যাপের সর্বত্র ব্যবহার উপযোগী করার জন্য TransactionProvider ইমপোর্ট করা হচ্ছে।
 import { TransactionProvider } from '@/context/TransactionContext';
-// ইউজার অথেনটিকেশন স্টেট সর্বত্র ব্যবহার উপযোগী করার জন্য AuthProvider ইমপোর্ট করা হচ্ছে।
 import { AuthProvider } from '@/context/AuthContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -16,14 +16,14 @@ export default function TabLayout() {
   return (
     // ThemeProvider এর মাধ্যমে অ্যাপের লাইট/ডার্ক মোড সেটআপ করা হচ্ছে।
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      {/* TransactionProvider দিয়ে অ্যাপের মূল কন্টেন্টকে র‍্যাপ (wrap) করা হয়েছে 
-          যাতে যেকোনো স্ক্রিন বা ট্যাব থেকে খরচের হিসাব অ্যাক্সেস করা যায়। */}
-      <TransactionProvider>
-        <AuthProvider>
-          <AnimatedSplashOverlay />
-          <AppTabs />
-        </AuthProvider>
-      </TransactionProvider>
+      <LanguageProvider>
+        <TransactionProvider>
+          <AuthProvider>
+            <AnimatedSplashOverlay />
+            <AppTabs />
+          </AuthProvider>
+        </TransactionProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

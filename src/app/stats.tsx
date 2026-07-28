@@ -14,6 +14,8 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTransactions } from '@/context/TransactionContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/constants/translations';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -52,6 +54,8 @@ function DonutChart({
   slices: PieSlice[];
   themeBackground: string;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language];
   const topSlice = slices[0];
   const holeSize = RING_SIZE - RING_WIDTH * 2 - 8;
 
@@ -119,7 +123,7 @@ function DonutChart({
               <Text style={[styles.donutCenterPct, { color: topSlice.color }]}>
                 {topSlice.percentage}%
               </Text>
-              <Text style={styles.donutCenterLabel}>সর্বোচ্চ</Text>
+              <Text style={styles.donutCenterLabel}>{t.maxWord}</Text>
             </>
           )}
         </View>
@@ -208,6 +212,8 @@ export default function StatsScreen() {
   };
   const theme = useTheme();
   const { transactions } = useTransactions();
+  const { language } = useLanguage();
+  const t = translations[language];
   const [selectedPeriod, setSelectedPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
 
   const colors = {
@@ -223,12 +229,12 @@ export default function StatsScreen() {
   };
 
   const categoryLabels: Record<string, string> = {
-    Food: 'খাবার দাবার',
-    Shopping: 'কেনাকাটা',
-    Utilities: 'ইউটিলিটি',
-    Rent: 'বাসা ভাড়া',
-    Entertainment: 'বিনোদন',
-    Others: 'অন্যান্য',
+    Food: t.catFood,
+    Shopping: t.catShopping,
+    Utilities: t.catUtilities,
+    Rent: t.catRent,
+    Entertainment: t.catEntertainment,
+    Others: t.catOthers,
   };
 
   const categoryColors: Record<string, string> = {
@@ -280,13 +286,13 @@ export default function StatsScreen() {
 
     // Weekly bar chart data
     const weeklyTrend: BarData[] = [
-      { label: 'সোম', amount: 1500, color: colors.primary },
-      { label: 'মঙ্গল', amount: 0, color: colors.primary },
-      { label: 'বুধ', amount: 0, color: colors.primary },
-      { label: 'বৃহঃ', amount: 120, color: colors.warning },
-      { label: 'শুক্র', amount: 0, color: colors.primary },
-      { label: 'শনি', amount: 15, color: colors.pink },
-      { label: 'রবি', amount: 0, color: colors.primary },
+      { label: t.weekDays[0], amount: 1500, color: colors.primary },
+      { label: t.weekDays[1], amount: 0, color: colors.primary },
+      { label: t.weekDays[2], amount: 0, color: colors.primary },
+      { label: t.weekDays[3], amount: 120, color: colors.warning },
+      { label: t.weekDays[4], amount: 0, color: colors.primary },
+      { label: t.weekDays[5], amount: 15, color: colors.pink },
+      { label: t.weekDays[6], amount: 0, color: colors.primary },
     ];
     const maxWeekly = Math.max(...weeklyTrend.map((d) => d.amount), 1);
 
@@ -341,13 +347,13 @@ export default function StatsScreen() {
         <View style={styles.headerRow}>
           <View>
             <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>
-              EXPENSE ANALYTICS
+              {t.expenseAnalyticsEyebrow}
             </Text>
-            <ThemedText style={styles.headerTitle}>ব্যয় বিশ্লেষণ</ThemedText>
+            <ThemedText style={styles.headerTitle}>{t.expenseAnalyticsTitle}</ThemedText>
           </View>
           <View style={[styles.liveDotBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveLabel}>LIVE</Text>
+            <Text style={styles.liveLabel}>{t.live}</Text>
           </View>
         </View>
 
@@ -371,7 +377,7 @@ export default function StatsScreen() {
                   { color: selectedPeriod === period ? theme.text : theme.textSecondary },
                 ]}
               >
-                {period === 'weekly' ? 'সাপ্তাহিক' : period === 'monthly' ? 'মাসিক' : 'বার্ষিক'}
+                {period === 'weekly' ? t.weekly : period === 'monthly' ? t.monthly : t.yearly}
               </Text>
             </TouchableOpacity>
           ))}
@@ -389,7 +395,7 @@ export default function StatsScreen() {
           <View style={styles.heroInner}>
             <View style={styles.heroTopRow}>
               <Text style={[styles.heroEyebrow, { color: theme.textSecondary }]}>
-                TOTAL OUTFLOW
+                {t.totalOutflow}
               </Text>
               <View style={styles.trendBadge}>
                 <Text style={styles.trendArrow}>▲</Text>
@@ -412,7 +418,7 @@ export default function StatsScreen() {
                   {expenseStats.expensesCount}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
-                  লেনদেন
+                  {t.txWord}
                 </Text>
               </View>
               <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
@@ -421,7 +427,7 @@ export default function StatsScreen() {
                   TK {formatNumber(expenseStats.avgExpense)}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
-                  গড় খরচ
+                  {t.avgExpense}
                 </Text>
               </View>
               <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
@@ -435,7 +441,7 @@ export default function StatsScreen() {
                   TK {formatNumber(Math.abs(expenseStats.netBalance))}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
-                  {expenseStats.netBalance >= 0 ? 'সঞ্চয়' : 'ঘাটতি'}
+                  {expenseStats.netBalance >= 0 ? t.savingsWord : t.deficitWord}
                 </Text>
               </View>
             </View>
@@ -446,9 +452,9 @@ export default function StatsScreen() {
         {!hasPieData ? (
           <ThemedView type="backgroundElement" style={styles.emptyCard}>
             <Text style={styles.emptyEmoji}>📊</Text>
-            <ThemedText style={styles.emptyTitle}>কোনো ডাটা নেই</ThemedText>
+            <ThemedText style={styles.emptyTitle}>{t.noDataTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyDesc}>
-              হোম পেজ থেকে খরচ যোগ করুন। চার্ট ও বিশ্লেষণ স্বয়ংক্রিয়ভাবে তৈরি হবে।
+              {t.noDataDesc}
             </ThemedText>
           </ThemedView>
         ) : (
@@ -458,9 +464,9 @@ export default function StatsScreen() {
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={[styles.cardEyebrow, { color: theme.textSecondary }]}>
-                    BREAKDOWN
+                    {t.breakdownEyebrow}
                   </Text>
-                  <ThemedText style={styles.cardTitle}>বিভাগ অনুযায়ী খরচ</ThemedText>
+                  <ThemedText style={styles.cardTitle}>{t.expenseByCategory}</ThemedText>
                 </View>
                 <Text style={styles.cardTitleEmoji}>🥧</Text>
               </View>
@@ -520,9 +526,9 @@ export default function StatsScreen() {
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={[styles.cardEyebrow, { color: theme.textSecondary }]}>
-                    WEEKLY TREND
+                    {t.weeklyTrendEyebrow}
                   </Text>
-                  <ThemedText style={styles.cardTitle}>সাপ্তাহিক খরচ</ThemedText>
+                  <ThemedText style={styles.cardTitle}>{t.weeklyExpenseTitle}</ThemedText>
                 </View>
                 <Text style={styles.cardTitleEmoji}>📊</Text>
               </View>
@@ -534,7 +540,7 @@ export default function StatsScreen() {
                 <View style={styles.barSummaryChip}>
                   <View style={[styles.barSummaryDot, { backgroundColor: colors.primary }]} />
                   <Text style={[styles.barSummaryLabel, { color: theme.textSecondary }]}>
-                    সর্বোচ্চ: <Text style={{ color: theme.text, fontWeight: '700' }}>
+                    {t.maxPrefix} <Text style={{ color: theme.text, fontWeight: '700' }}>
                       TK {formatNumber(expenseStats.maxWeekly)}
                     </Text>
                   </Text>
@@ -542,7 +548,7 @@ export default function StatsScreen() {
                 <View style={styles.barSummaryChip}>
                   <View style={[styles.barSummaryDot, { backgroundColor: colors.success }]} />
                   <Text style={[styles.barSummaryLabel, { color: theme.textSecondary }]}>
-                    মোট: <Text style={{ color: theme.text, fontWeight: '700' }}>
+                    {t.totalPrefix} <Text style={{ color: theme.text, fontWeight: '700' }}>
                       TK {formatNumber(expenseStats.weeklyTrend.reduce((a, b) => a + b.amount, 0))}
                     </Text>
                   </Text>
@@ -555,9 +561,9 @@ export default function StatsScreen() {
               <View style={[styles.cardHeader, { marginBottom: Spacing.two }]}>
                 <View>
                   <Text style={[styles.cardEyebrow, { color: theme.textSecondary }]}>
-                    DETAILS
+                    {t.detailsEyebrow}
                   </Text>
-                  <ThemedText style={styles.cardTitle}>বিস্তারিত ব্রেকডাউন</ThemedText>
+                  <ThemedText style={styles.cardTitle}>{t.detailedBreakdown}</ThemedText>
                 </View>
                 <Text style={styles.cardTitleEmoji}>📋</Text>
               </View>
@@ -592,7 +598,7 @@ export default function StatsScreen() {
                         />
                       </View>
                       <Text style={[styles.catPct, { color: item.color }]}>
-                        {item.percentage}% of total
+                        {item.percentage}% {t.ofTotal}
                       </Text>
                     </View>
                   </View>
@@ -611,10 +617,10 @@ export default function StatsScreen() {
                     <Text style={styles.insightIcon}>⚠️</Text>
                   </View>
                   <Text style={[styles.insightTitle, { color: '#991b1b' }]}>
-                    সতর্কতা
+                    {t.warningTitle}
                   </Text>
                   <Text style={[styles.insightDesc, { color: '#7f1d1d' }]}>
-                    {expenseStats.highestExpense.emoji} {expenseStats.highestExpense.label} আপনার মোট খরচের {expenseStats.highestExpense.percentage}% দখল করেছে।
+                    {expenseStats.highestExpense.emoji} {expenseStats.highestExpense.label} {t.warningDesc1} {expenseStats.highestExpense.percentage}% {t.warningDesc2}
                   </Text>
                 </View>
               )}
@@ -624,10 +630,10 @@ export default function StatsScreen() {
                   <Text style={styles.insightIcon}>💡</Text>
                 </View>
                 <Text style={[styles.insightTitle, { color: '#166534' }]}>
-                  পরামর্শ
+                  {t.tipTitle}
                 </Text>
                 <Text style={[styles.insightDesc, { color: '#14532d' }]}>
-                  গড় খরচ প্রতি লেনদেনে TK {formatNumber(expenseStats.avgExpense)}। বাজেট নিয়ন্ত্রণে রাখুন।
+                  {t.tipDesc1}{formatNumber(expenseStats.avgExpense)}{t.tipDesc2}
                 </Text>
               </View>
             </View>
