@@ -10,6 +10,7 @@ import {
   Platform,
   TextInput,
   KeyboardAvoidingView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,9 +25,9 @@ import { translations } from '@/constants/translations';
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { user, isLoading, loginWithGoogle, logout } = useAuth();
+  const { user, isLoading, login, register, loginWithGoogle, logout } = useAuth();
   
-  // Custom Auth State to support mock login/signup
+  // Custom Auth State to support login/signup
   const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction } = useTransactions();
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const { language, setLanguage } = useLanguage();
@@ -38,38 +39,64 @@ export default function ProfileScreen() {
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // UI Toggle States
+  // UI Toggle & Feedback States
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedInput, setFocusedInput] = useState<'name' | 'email' | 'password' | 'confirm' | null>(null);
   const [authError, setAuthError] = useState('');
+  const [authSuccessMsg, setAuthSuccessMsg] = useState('');
   const [errors, setErrors] = useState<{name?: string, email?: string, password?: string, confirm?: string}>({});
 
-  // Custom mock login handler
+  // Forgot Password Modal State
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Password strength helper for sign up
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, label: '', color: 'transparent' };
+    let score = 0;
+    if (pass.length >= 6) score++;
+    if (pass.length >= 8 && /[A-Z]/.test(pass) && /[0-9]/.test(pass)) score++;
+    if (pass.length >= 10 && /[^A-Za-z0-9]/.test(pass)) score++;
+
+    if (score === 1) return { score: 1, label: t.passWeak, color: '#EF4444' };
+    if (score === 2) return { score: 2, label: t.passMedium, color: '#F59E0B' };
+    return { score: 3, label: t.passStrong, color: '#10B981' };
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+
+  // Email authentication (Sign In & Sign Up) handler
   const handleEmailAuth = async () => {
     setAuthError('');
+    setAuthSuccessMsg('');
     const newErrors: typeof errors = {};
 
-    if (authMode === 'signup' && !fullName.trim()) {
-      newErrors.name = language === 'bn' ? 'নাম আবশ্যক' : 'Name is required';
+    if (authMode === 'signup') {
+      if (!fullName.trim() || fullName.trim().length < 2) {
+        newErrors.name = t.valNameRequired;
+      }
     }
 
     if (!email.trim()) {
-      newErrors.email = language === 'bn' ? 'ইমেইল আবশ্যক' : 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = language === 'bn' ? 'সঠিক ইমেইল লিখুন' : 'Invalid email address';
+      newErrors.email = t.valEmailRequired;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      newErrors.email = t.valEmailInvalid;
     }
 
     if (!password.trim()) {
-      newErrors.password = language === 'bn' ? 'পাসওয়ার্ড আবশ্যক' : 'Password is required';
+      newErrors.password = t.valPasswordRequired;
     } else if (password.length < 6) {
-      newErrors.password = language === 'bn' ? 'কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Must be at least 6 characters';
+      newErrors.password = t.valPasswordMin;
     }
 
     if (authMode === 'signup') {
       if (!confirmPassword.trim()) {
-        newErrors.confirm = language === 'bn' ? 'পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm password is required';
+        newErrors.confirm = t.valConfirmRequired;
       } else if (password !== confirmPassword) {
-        newErrors.confirm = language === 'bn' ? 'পাসওয়ার্ড দুটি মেলেনি' : 'Passwords do not match';
+        newErrors.confirm = t.valConfirmMatch;
       }
     }
 
@@ -79,10 +106,67 @@ export default function ProfileScreen() {
     }
     setErrors({});
 
-    // Simulate login
-    await loginWithGoogle();
+    if (authMode === 'login') {
+      const res = await login(email.trim(), password);
+      if (!res.success) {
+        if (res.message === 'NETWORK_ERROR') {
+          setAuthError(t.errNetworkFail);
+        } else if (res.message?.includes('already exists')) {
+          setAuthError(t.errUserExists);
+        } else if (res.message?.includes('does not exist')) {
+          setAuthError(t.errUserNotFound);
+        } else if (res.message?.includes('Invalid credentials')) {
+          setAuthError(t.errInvalidCreds);
+        } else if (res.message?.includes('blocked') || res.message?.includes('inactive')) {
+          setAuthError(t.errAccountBlocked);
+        } else if (res.message?.includes('Password is not set')) {
+          setAuthError(t.errGooglePassNotSet);
+        } else {
+          setAuthError(res.message || (language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed'));
+        }
+      }
+    } else {
+      const res = await register(fullName.trim(), email.trim(), password);
+      if (res.success) {
+        setAuthSuccessMsg(t.authSuccessRegister);
+        setAuthMode('login');
+        setPassword('');
+        setConfirmPassword('');
+      } else {
+        if (res.message === 'NETWORK_ERROR') {
+          setAuthError(t.errNetworkFail);
+        } else if (res.message?.includes('already exists')) {
+          setAuthError(t.errUserExists);
+        } else {
+          setAuthError(res.message || (language === 'bn' ? 'সাইন আপ ব্যর্থ হয়েছে' : 'Registration failed'));
+        }
+      }
+    }
   };
 
+  // Google Login Handler
+  const handleGoogleAuth = async () => {
+    setAuthError('');
+    setAuthSuccessMsg('');
+    const res = await loginWithGoogle();
+    if (!res.success) {
+      setAuthError(t.errGoogleFailed);
+    }
+  };
+
+  // Reset password simulation
+  const handleSendReset = async () => {
+    if (!forgotEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+      setForgotMsg(t.valEmailInvalid);
+      return;
+    }
+    setForgotLoading(true);
+    setForgotMsg('');
+    setTimeout(() => {
+      setForgotLoading(false);
+      setForgotMsg(t.resetLinkSent);
+    }, 1000);
+  };
 
   const handleExportData = () => {
     const dataStr = JSON.stringify(transactions, null, 2);
@@ -170,7 +254,7 @@ export default function ProfileScreen() {
                         styles.tabItem,
                         authMode === 'login' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
                       ]}
-                      onPress={() => { setAuthMode('login'); setAuthError(''); setErrors({}); }}
+                      onPress={() => { setAuthMode('login'); setAuthError(''); setAuthSuccessMsg(''); setErrors({}); }}
                     >
                       <ThemedText type="smallBold" style={{ color: authMode === 'login' ? theme.text : theme.textSecondary }}>
                         {t.loginTab}
@@ -181,7 +265,7 @@ export default function ProfileScreen() {
                         styles.tabItem,
                         authMode === 'signup' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
                       ]}
-                      onPress={() => { setAuthMode('signup'); setAuthError(''); setErrors({}); }}
+                      onPress={() => { setAuthMode('signup'); setAuthError(''); setAuthSuccessMsg(''); setErrors({}); }}
                     >
                       <ThemedText type="smallBold" style={{ color: authMode === 'signup' ? theme.text : theme.textSecondary }}>
                         {t.signupTab}
@@ -193,6 +277,14 @@ export default function ProfileScreen() {
                     {t.subtitle}
                   </ThemedText>
 
+                  {/* Success Banner */}
+                  {authSuccessMsg ? (
+                    <View style={styles.successContainer}>
+                      <ThemedText type="smallBold" style={styles.successText}>✅ {authSuccessMsg}</ThemedText>
+                    </View>
+                  ) : null}
+
+                  {/* Error Banner */}
                   {authError ? (
                     <View style={styles.errorContainer}>
                       <ThemedText type="code" style={styles.errorText}>⚠️ {authError}</ThemedText>
@@ -226,7 +318,7 @@ export default function ProfileScreen() {
                           onBlur={() => setFocusedInput(null)}
                         />
                         {errors.name && (
-                          <ThemedText style={styles.inlineErrorText}>{errors.name}</ThemedText>
+                          <ThemedText style={styles.inlineErrorText}>⚠️ {errors.name}</ThemedText>
                         )}
                       </View>
                     )}
@@ -257,7 +349,7 @@ export default function ProfileScreen() {
                         onBlur={() => setFocusedInput(null)}
                       />
                       {errors.email && (
-                        <ThemedText style={styles.inlineErrorText}>{errors.email}</ThemedText>
+                        <ThemedText style={styles.inlineErrorText}>⚠️ {errors.email}</ThemedText>
                       )}
                     </View>
 
@@ -267,7 +359,7 @@ export default function ProfileScreen() {
                           {t.passwordLabel}
                         </ThemedText>
                         {authMode === 'login' && (
-                          <TouchableOpacity>
+                          <TouchableOpacity onPress={() => { setForgotEmail(email); setForgotMsg(''); setShowForgotModal(true); }}>
                             <ThemedText type="code" style={styles.forgotText}>
                               {t.forgotPassword}
                             </ThemedText>
@@ -303,8 +395,23 @@ export default function ProfileScreen() {
                           <ThemedText style={{ fontSize: 16 }}>{showPassword ? '👁️' : '🙈'}</ThemedText>
                         </TouchableOpacity>
                       </View>
+
+                      {/* Password Strength Meter (Sign Up Only) */}
+                      {authMode === 'signup' && password.length > 0 && (
+                        <View style={styles.strengthContainer}>
+                          <View style={styles.strengthBarsRow}>
+                            <View style={[styles.strengthBar, { backgroundColor: passwordStrength.score >= 1 ? passwordStrength.color : '#E5E7EB' }]} />
+                            <View style={[styles.strengthBar, { backgroundColor: passwordStrength.score >= 2 ? passwordStrength.color : '#E5E7EB' }]} />
+                            <View style={[styles.strengthBar, { backgroundColor: passwordStrength.score >= 3 ? passwordStrength.color : '#E5E7EB' }]} />
+                          </View>
+                          <ThemedText type="code" style={{ fontSize: 11, color: passwordStrength.color, fontWeight: 'bold' }}>
+                            {t.passStrengthLabel} {passwordStrength.label}
+                          </ThemedText>
+                        </View>
+                      )}
+
                       {errors.password && (
-                        <ThemedText style={styles.inlineErrorText}>{errors.password}</ThemedText>
+                        <ThemedText style={styles.inlineErrorText}>⚠️ {errors.password}</ThemedText>
                       )}
                     </View>
 
@@ -313,28 +420,37 @@ export default function ProfileScreen() {
                         <ThemedText type="smallBold" style={[styles.inputLabel, errors.confirm && { color: '#EF4444' }]}>
                           {t.confirmPasswordLabel}
                         </ThemedText>
-                        <TextInput
-                          style={[
-                            styles.inputField,
-                            {
-                              color: theme.text,
-                              backgroundColor: theme.background,
-                              borderColor: errors.confirm ? '#EF4444' : focusedInput === 'confirm' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
-                            },
-                          ]}
-                          placeholder="••••••••"
-                          placeholderTextColor={theme.textSecondary}
-                          secureTextEntry={true}
-                          value={confirmPassword}
-                          onChangeText={(text) => {
-                            setConfirmPassword(text);
-                            if (errors.confirm) setErrors((prev) => ({ ...prev, confirm: undefined }));
-                          }}
-                          onFocus={() => setFocusedInput('confirm')}
-                          onBlur={() => setFocusedInput(null)}
-                        />
+                        <View style={styles.passwordContainer}>
+                          <TextInput
+                            style={[
+                              styles.inputField,
+                              {
+                                flex: 1,
+                                color: theme.text,
+                                backgroundColor: theme.background,
+                                borderColor: errors.confirm ? '#EF4444' : focusedInput === 'confirm' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              },
+                            ]}
+                            placeholder="••••••••"
+                            placeholderTextColor={theme.textSecondary}
+                            secureTextEntry={!showConfirmPassword}
+                            value={confirmPassword}
+                            onChangeText={(text) => {
+                              setConfirmPassword(text);
+                              if (errors.confirm) setErrors((prev) => ({ ...prev, confirm: undefined }));
+                            }}
+                            onFocus={() => setFocusedInput('confirm')}
+                            onBlur={() => setFocusedInput(null)}
+                          />
+                          <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                          >
+                            <ThemedText style={{ fontSize: 16 }}>{showConfirmPassword ? '👁️' : '🙈'}</ThemedText>
+                          </TouchableOpacity>
+                        </View>
                         {errors.confirm && (
-                          <ThemedText style={styles.inlineErrorText}>{errors.confirm}</ThemedText>
+                          <ThemedText style={styles.inlineErrorText}>⚠️ {errors.confirm}</ThemedText>
                         )}
                       </View>
                     )}
@@ -373,7 +489,7 @@ export default function ProfileScreen() {
                         borderColor: theme.background === '#ffffff' ? '#e2e8f0' : '#2e3035',
                       },
                     ]}
-                    onPress={loginWithGoogle}
+                    onPress={handleGoogleAuth}
                     disabled={isLoading}
                     activeOpacity={0.8}
                   >
@@ -407,6 +523,67 @@ export default function ProfileScreen() {
             </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
+
+        {/* Forgot Password Modal */}
+        <Modal
+          visible={showForgotModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowForgotModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { backgroundColor: theme.backgroundElement }]}>
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle">{t.resetPassTitle}</ThemedText>
+                <TouchableOpacity onPress={() => setShowForgotModal(false)}>
+                  <ThemedText style={{ fontSize: 18, color: theme.textSecondary }}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: Spacing.three, marginTop: Spacing.one }}>
+                {t.resetPassInstruction}
+              </ThemedText>
+
+              {forgotMsg ? (
+                <View style={[styles.successContainer, { marginBottom: Spacing.three }]}>
+                  <ThemedText type="smallBold" style={styles.successText}>{forgotMsg}</ThemedText>
+                </View>
+              ) : null}
+
+              <TextInput
+                style={[
+                  styles.inputField,
+                  {
+                    color: theme.text,
+                    backgroundColor: theme.background,
+                    borderColor: 'rgba(0,0,0,0.1)',
+                    marginBottom: Spacing.three,
+                  },
+                ]}
+                placeholder="example@mail.com"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={forgotEmail}
+                onChangeText={setForgotEmail}
+              />
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#3b82f6', marginTop: 0 }]}
+                onPress={handleSendReset}
+                disabled={forgotLoading}
+              >
+                {forgotLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                    {t.sendResetLink}
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ThemedView>
     );
   }
@@ -663,6 +840,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: Spacing.three,
   },
+  successContainer: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+    borderWidth: 1,
+    padding: Spacing.two,
+    borderRadius: Spacing.two,
+    width: '100%',
+    marginBottom: Spacing.three,
+  },
+  successText: {
+    color: '#15803d',
+    fontSize: 13,
+  },
   errorContainer: {
     backgroundColor: '#fffbeb',
     borderColor: '#fef3c7',
@@ -675,6 +865,43 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#d97706',
     fontSize: 12,
+  },
+  strengthContainer: {
+    marginTop: 6,
+  },
+  strengthBarsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 4,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.three,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: Spacing.four,
+    padding: Spacing.four,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
   },
   formContainer: {
     width: '100%',
