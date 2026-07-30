@@ -47,7 +47,7 @@ export const translations = {
     valConfirmMatch: 'পাসওয়ার্ড দুটি মেলেনি, আবার নিশ্চিত করুন',
     
     // Auth Responses & Messages
-    authSuccessRegister: 'অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! অনুগ্রহ করে সাইন ইন করুন।',
+    authSuccessRegister: 'অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! অনুগ্রহ করে ওটিপি ভেরিফাই করুন।',
     authSuccessLogin: 'সফলভাবে লগইন হয়েছে!',
     errUserExists: 'এই ইমেইল দিয়ে ইতোমধ্যে একটি অ্যাকাউন্ট রয়েছে। অনুগ্রহ করে সাইন ইন করুন।',
     errUserNotFound: 'এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। সঠিক ইমেইল লিখুন বা সাইন আপ করুন।',
@@ -56,6 +56,19 @@ export const translations = {
     errGooglePassNotSet: 'এই অ্যাকাউন্টে পাসওয়ার্ড সেট করা নেই। গুগল দিয়ে লগইন করুন।',
     errNetworkFail: 'সার্ভারে সংযোগ করা যাচ্ছে না। ব্যাকএন্ড ও নেটওয়ার্ক পরীক্ষা করুন।',
     errGoogleFailed: 'গুগল সাইন ইন সম্পন্ন করা সম্ভব হয়নি। আবার চেষ্টা করুন।',
+    
+    // OTP Translations
+    otpTitle: 'ইমেইল ভেরিফিকেশন (OTP)',
+    otpSubtitle: 'আমরা আপনার ইমেইলে একটি ৬ ডিজিটের ওটিপি পাঠিয়েছি:',
+    otpDemoBadge: '🔑 আপনার ওটিপি কোড:',
+    verifyOtpBtn: 'কোড ভেরিফাই ও প্রবেশ করুন',
+    resendOtpBtn: 'পুনরায় ওটিপি পাঠান',
+    resendInPrefix: 'পুনরায় ওটিপি পাঠাতে অপেক্ষা করুন:',
+    otpSuccess: 'ওটিপি ভেরিফিকেশন সফল হয়েছে!',
+    otpInvalid: 'ওটিপি কোড ভুল বা মেয়াদোত্তীর্ণ হয়েছে। সঠিক কোড দিন।',
+    otpResent: 'নতুন ওটিপি আপনার ইমেইলে পাঠানো হয়েছে!',
+    changeEmailBtn: '← ইমেইল পরিবর্তন করুন',
+    valOtpRequired: '৬ ডিজিটের ওটিপি কোড দিন',
     
     // Password strength
     passWeak: 'দুর্বল',
@@ -255,7 +268,7 @@ export const translations = {
     valConfirmMatch: 'Passwords do not match. Please verify.',
     
     // Auth Responses & Messages
-    authSuccessRegister: 'Account created successfully! Please sign in.',
+    authSuccessRegister: 'Account created successfully! Please verify your OTP code.',
     authSuccessLogin: 'Logged in successfully!',
     errUserExists: 'An account with this email already exists. Please sign in.',
     errUserNotFound: 'No account found with this email address.',
@@ -264,6 +277,19 @@ export const translations = {
     errGooglePassNotSet: 'Password is not set for this account. Please use Google Sign In.',
     errNetworkFail: 'Unable to reach backend server. Please check your connection.',
     errGoogleFailed: 'Google sign in failed. Please try again.',
+    
+    // OTP Translations
+    otpTitle: 'Email Verification (OTP)',
+    otpSubtitle: 'We have sent a 6-digit OTP code to:',
+    otpDemoBadge: '🔑 Your OTP Code:',
+    verifyOtpBtn: 'Verify OTP & Continue',
+    resendOtpBtn: 'Resend OTP',
+    resendInPrefix: 'Resend OTP available in:',
+    otpSuccess: 'OTP verified successfully!',
+    otpInvalid: 'Invalid or expired OTP code. Please try again.',
+    otpResent: 'New OTP code sent to your email!',
+    changeEmailBtn: '← Change Email',
+    valOtpRequired: 'Please enter 6-digit OTP code',
     
     // Password strength
     passWeak: 'Weak',

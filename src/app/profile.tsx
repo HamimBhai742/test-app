@@ -25,11 +25,12 @@ import { translations } from '@/constants/translations';
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { user, isLoading, login, register, loginWithGoogle, logout } = useAuth();
+  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, logout } = useAuth();
   
-  // Custom Auth State to support login/signup
+  // Custom Auth State to support login/signup & OTP
   const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction } = useTransactions();
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authStep, setAuthStep] = useState<'auth' | 'otp'>('auth');
   const { language, setLanguage } = useLanguage();
   const t = translations[language];
 
@@ -38,6 +39,11 @@ export default function ProfileScreen() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // OTP States
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
 
   // UI Toggle & Feedback States
   const [showPassword, setShowPassword] = useState(false);
@@ -52,6 +58,17 @@ export default function ProfileScreen() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Resend Timer countdown
+  React.useEffect(() => {
+    let interval: any;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   // Password strength helper for sign up
   const getPasswordStrength = (pass: string) => {
@@ -127,11 +144,13 @@ export default function ProfileScreen() {
       }
     } else {
       const res = await register(fullName.trim(), email.trim(), password);
-      if (res.success) {
-        setAuthSuccessMsg(t.authSuccessRegister);
-        setAuthMode('login');
-        setPassword('');
-        setConfirmPassword('');
+      if (res.success && res.requireOtp) {
+        setPendingEmail(res.email || email.trim());
+        setAuthStep('otp');
+        setResendTimer(30);
+        setOtpInput('');
+        setAuthError('');
+        setAuthSuccessMsg('');
       } else {
         if (res.message === 'NETWORK_ERROR') {
           setAuthError(t.errNetworkFail);
@@ -141,6 +160,40 @@ export default function ProfileScreen() {
           setAuthError(res.message || (language === 'bn' ? 'সাইন আপ ব্যর্থ হয়েছে' : 'Registration failed'));
         }
       }
+    }
+  };
+
+  // OTP Verification Handler
+  const handleVerifyOtp = async () => {
+    if (!otpInput.trim() || otpInput.trim().length !== 6) {
+      setAuthError(t.valOtpRequired);
+      return;
+    }
+    setAuthError('');
+    setAuthSuccessMsg('');
+    const res = await verifyOtp(pendingEmail, otpInput.trim());
+    if (!res.success) {
+      if (res.message === 'NETWORK_ERROR') {
+        setAuthError(t.errNetworkFail);
+      } else if (res.message?.includes('Invalid OTP') || res.message?.includes('expired')) {
+        setAuthError(t.otpInvalid);
+      } else {
+        setAuthError(res.message || t.otpInvalid);
+      }
+    }
+  };
+
+  // Resend OTP Handler
+  const handleResendOtp = async () => {
+    if (resendTimer > 0) return;
+    setAuthError('');
+    setAuthSuccessMsg('');
+    const res = await resendOtp(pendingEmail);
+    if (res.success) {
+      setResendTimer(30);
+      setAuthSuccessMsg(t.otpResent);
+    } else {
+      setAuthError(res.message || 'Resend failed');
     }
   };
 
@@ -246,155 +299,249 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Main Auth Form Card */}
-                <View style={[styles.loginCard, { backgroundColor: theme.backgroundElement }]}>
-                  {/* Segment Tab Switcher */}
-                  <View style={[styles.tabBar, { backgroundColor: theme.backgroundSelected }]}>
+                {authStep === 'otp' ? (
+                  <View style={[styles.loginCard, { backgroundColor: theme.backgroundElement }]}>
                     <TouchableOpacity
-                      style={[
-                        styles.tabItem,
-                        authMode === 'login' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-                      ]}
-                      onPress={() => { setAuthMode('login'); setAuthError(''); setAuthSuccessMsg(''); setErrors({}); }}
+                      style={styles.otpBackBtn}
+                      onPress={() => { setAuthStep('auth'); setAuthError(''); setAuthSuccessMsg(''); }}
                     >
-                      <ThemedText type="smallBold" style={{ color: authMode === 'login' ? theme.text : theme.textSecondary }}>
-                        {t.loginTab}
+                      <ThemedText style={{ color: '#3b82f6', fontSize: 13, fontWeight: 'bold' }}>
+                        {t.changeEmailBtn}
                       </ThemedText>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.tabItem,
-                        authMode === 'signup' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-                      ]}
-                      onPress={() => { setAuthMode('signup'); setAuthError(''); setAuthSuccessMsg(''); setErrors({}); }}
-                    >
-                      <ThemedText type="smallBold" style={{ color: authMode === 'signup' ? theme.text : theme.textSecondary }}>
-                        {t.signupTab}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  </View>
 
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.formSubtitle}>
-                    {t.subtitle}
-                  </ThemedText>
+                    <ThemedText type="subtitle" style={[styles.brandName, { marginTop: Spacing.two }]}>
+                      {t.otpTitle}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.formSubtitle}>
+                      {t.otpSubtitle}{'\n'}
+                      <ThemedText type="smallBold" style={{ color: theme.text }}>{pendingEmail}</ThemedText>
+                    </ThemedText>
 
-                  {/* Success Banner */}
-                  {authSuccessMsg ? (
-                    <View style={styles.successContainer}>
-                      <ThemedText type="smallBold" style={styles.successText}>✅ {authSuccessMsg}</ThemedText>
-                    </View>
-                  ) : null}
+                    {/* Success Banner */}
+                    {authSuccessMsg ? (
+                      <View style={styles.successContainer}>
+                        <ThemedText type="smallBold" style={styles.successText}>✅ {authSuccessMsg}</ThemedText>
+                      </View>
+                    ) : null}
 
-                  {/* Error Banner */}
-                  {authError ? (
-                    <View style={styles.errorContainer}>
-                      <ThemedText type="code" style={styles.errorText}>⚠️ {authError}</ThemedText>
-                    </View>
-                  ) : null}
+                    {/* Error Banner */}
+                    {authError ? (
+                      <View style={styles.errorContainer}>
+                        <ThemedText type="code" style={styles.errorText}>⚠️ {authError}</ThemedText>
+                      </View>
+                    ) : null}
 
-                  {/* Form Fields */}
-                  <View style={styles.formContainer}>
-                    {authMode === 'signup' && (
+                    {/* Form Fields */}
+                    <View style={styles.formContainer}>
                       <View style={styles.inputWrapper}>
-                        <ThemedText type="smallBold" style={[styles.inputLabel, errors.name && { color: '#EF4444' }]}>
-                          {t.nameLabel}
-                        </ThemedText>
                         <TextInput
                           style={[
                             styles.inputField,
                             {
                               color: theme.text,
                               backgroundColor: theme.background,
-                              borderColor: errors.name ? '#EF4444' : focusedInput === 'name' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              borderColor: authError ? '#EF4444' : '#3b82f6',
+                              textAlign: 'center',
+                              fontSize: 22,
+                              letterSpacing: 8,
+                              fontWeight: 'bold',
                             },
                           ]}
-                          placeholder="Ex: Hamim Ahmed"
+                          placeholder="123456"
                           placeholderTextColor={theme.textSecondary}
-                          value={fullName}
+                          keyboardType="number-pad"
+                          maxLength={6}
+                          value={otpInput}
                           onChangeText={(text) => {
-                            setFullName(text);
-                            if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                            setOtpInput(text);
+                            if (authError) setAuthError('');
                           }}
-                          onFocus={() => setFocusedInput('name')}
-                          onBlur={() => setFocusedInput(null)}
                         />
-                        {errors.name && (
-                          <ThemedText style={styles.inlineErrorText}>⚠️ {errors.name}</ThemedText>
-                        )}
                       </View>
-                    )}
 
-                    <View style={styles.inputWrapper}>
-                      <ThemedText type="smallBold" style={[styles.inputLabel, errors.email && { color: '#EF4444' }]}>
-                        {t.emailLabel}
-                      </ThemedText>
-                      <TextInput
-                        style={[
-                          styles.inputField,
-                          {
-                            color: theme.text,
-                            backgroundColor: theme.background,
-                            borderColor: errors.email ? '#EF4444' : focusedInput === 'email' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
-                          },
-                        ]}
-                        placeholder="example@mail.com"
-                        placeholderTextColor={theme.textSecondary}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={(text) => {
-                          setEmail(text);
-                          if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
-                        }}
-                        onFocus={() => setFocusedInput('email')}
-                        onBlur={() => setFocusedInput(null)}
-                      />
-                      {errors.email && (
-                        <ThemedText style={styles.inlineErrorText}>⚠️ {errors.email}</ThemedText>
-                      )}
-                    </View>
+                      {/* Verify Button */}
+                      <TouchableOpacity
+                        style={[styles.primaryButton, { backgroundColor: '#3b82f6' }]}
+                        onPress={handleVerifyOtp}
+                        disabled={isLoading}
+                        activeOpacity={0.9}
+                      >
+                        {isLoading ? (
+                          <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                          <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                            {t.verifyOtpBtn}
+                          </ThemedText>
+                        )}
+                      </TouchableOpacity>
 
-                    <View style={styles.inputWrapper}>
-                      <View style={styles.passwordLabelRow}>
-                        <ThemedText type="smallBold" style={[styles.inputLabel, errors.password && { color: '#EF4444' }]}>
-                          {t.passwordLabel}
-                        </ThemedText>
-                        {authMode === 'login' && (
-                          <TouchableOpacity onPress={() => { setForgotEmail(email); setForgotMsg(''); setShowForgotModal(true); }}>
-                            <ThemedText type="code" style={styles.forgotText}>
-                              {t.forgotPassword}
+                      {/* Resend Section */}
+                      <View style={styles.resendSection}>
+                        {resendTimer > 0 ? (
+                          <ThemedText type="small" themeColor="textSecondary">
+                            {t.resendInPrefix} <ThemedText type="smallBold" style={{ color: '#3b82f6' }}>{resendTimer}s</ThemedText>
+                          </ThemedText>
+                        ) : (
+                          <TouchableOpacity onPress={handleResendOtp}>
+                            <ThemedText type="smallBold" style={{ color: '#3b82f6' }}>
+                              🔄 {t.resendOtpBtn}
                             </ThemedText>
                           </TouchableOpacity>
                         )}
                       </View>
-                      <View style={styles.passwordContainer}>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={[styles.loginCard, { backgroundColor: theme.backgroundElement }]}>
+                    {/* Segment Tab Switcher */}
+                    <View style={[styles.tabBar, { backgroundColor: theme.backgroundSelected }]}>
+                      <TouchableOpacity
+                        style={[
+                          styles.tabItem,
+                          authMode === 'login' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+                        ]}
+                        onPress={() => { setAuthMode('login'); setAuthError(''); setAuthSuccessMsg(''); setErrors({}); }}
+                      >
+                        <ThemedText type="smallBold" style={{ color: authMode === 'login' ? theme.text : theme.textSecondary }}>
+                          {t.loginTab}
+                        </ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.tabItem,
+                          authMode === 'signup' && { backgroundColor: theme.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+                        ]}
+                        onPress={() => { setAuthMode('signup'); setAuthError(''); setAuthSuccessMsg(''); setErrors({}); }}
+                      >
+                        <ThemedText type="smallBold" style={{ color: authMode === 'signup' ? theme.text : theme.textSecondary }}>
+                          {t.signupTab}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </View>
+
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.formSubtitle}>
+                      {t.subtitle}
+                    </ThemedText>
+
+                    {/* Success Banner */}
+                    {authSuccessMsg ? (
+                      <View style={styles.successContainer}>
+                        <ThemedText type="smallBold" style={styles.successText}>✅ {authSuccessMsg}</ThemedText>
+                      </View>
+                    ) : null}
+
+                    {/* Error Banner */}
+                    {authError ? (
+                      <View style={styles.errorContainer}>
+                        <ThemedText type="code" style={styles.errorText}>⚠️ {authError}</ThemedText>
+                      </View>
+                    ) : null}
+
+                    {/* Form Fields */}
+                    <View style={styles.formContainer}>
+                      {authMode === 'signup' && (
+                        <View style={styles.inputWrapper}>
+                          <ThemedText type="smallBold" style={[styles.inputLabel, errors.name && { color: '#EF4444' }]}>
+                            {t.nameLabel}
+                          </ThemedText>
+                          <TextInput
+                            style={[
+                              styles.inputField,
+                              {
+                                color: theme.text,
+                                backgroundColor: theme.background,
+                                borderColor: errors.name ? '#EF4444' : focusedInput === 'name' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              },
+                            ]}
+                            placeholder="Ex: Hamim Ahmed"
+                            placeholderTextColor={theme.textSecondary}
+                            value={fullName}
+                            onChangeText={(text) => {
+                              setFullName(text);
+                              if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                            }}
+                            onFocus={() => setFocusedInput('name')}
+                            onBlur={() => setFocusedInput(null)}
+                          />
+                          {errors.name && (
+                            <ThemedText style={styles.inlineErrorText}>⚠️ {errors.name}</ThemedText>
+                          )}
+                        </View>
+                      )}
+
+                      <View style={styles.inputWrapper}>
+                        <ThemedText type="smallBold" style={[styles.inputLabel, errors.email && { color: '#EF4444' }]}>
+                          {t.emailLabel}
+                        </ThemedText>
                         <TextInput
                           style={[
                             styles.inputField,
                             {
-                              flex: 1,
                               color: theme.text,
                               backgroundColor: theme.background,
-                              borderColor: errors.password ? '#EF4444' : focusedInput === 'password' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              borderColor: errors.email ? '#EF4444' : focusedInput === 'email' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
                             },
                           ]}
-                          placeholder="••••••••"
+                          placeholder="example@mail.com"
                           placeholderTextColor={theme.textSecondary}
-                          secureTextEntry={!showPassword}
-                          value={password}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          value={email}
                           onChangeText={(text) => {
-                            setPassword(text);
-                            if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                            setEmail(text);
+                            if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                           }}
-                          onFocus={() => setFocusedInput('password')}
+                          onFocus={() => setFocusedInput('email')}
                           onBlur={() => setFocusedInput(null)}
                         />
-                        <TouchableOpacity
-                          style={styles.eyeButton}
-                          onPress={() => setShowPassword(!showPassword)}
-                        >
-                          <ThemedText style={{ fontSize: 16 }}>{showPassword ? '👁️' : '🙈'}</ThemedText>
-                        </TouchableOpacity>
+                        {errors.email && (
+                          <ThemedText style={styles.inlineErrorText}>⚠️ {errors.email}</ThemedText>
+                        )}
                       </View>
+
+                      <View style={styles.inputWrapper}>
+                        <View style={styles.passwordLabelRow}>
+                          <ThemedText type="smallBold" style={[styles.inputLabel, errors.password && { color: '#EF4444' }]}>
+                            {t.passwordLabel}
+                          </ThemedText>
+                          {authMode === 'login' && (
+                            <TouchableOpacity onPress={() => { setForgotEmail(email); setForgotMsg(''); setShowForgotModal(true); }}>
+                              <ThemedText type="code" style={styles.forgotText}>
+                                {t.forgotPassword}
+                              </ThemedText>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <View style={styles.passwordContainer}>
+                          <TextInput
+                            style={[
+                              styles.inputField,
+                              {
+                                flex: 1,
+                                color: theme.text,
+                                backgroundColor: theme.background,
+                                borderColor: errors.password ? '#EF4444' : focusedInput === 'password' ? '#3b82f6' : 'rgba(0,0,0,0.05)',
+                              },
+                            ]}
+                            placeholder="••••••••"
+                            placeholderTextColor={theme.textSecondary}
+                            secureTextEntry={!showPassword}
+                            value={password}
+                            onChangeText={(text) => {
+                              setPassword(text);
+                              if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                            }}
+                            onFocus={() => setFocusedInput('password')}
+                            onBlur={() => setFocusedInput(null)}
+                          />
+                          <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowPassword(!showPassword)}
+                          >
+                            <ThemedText style={{ fontSize: 16 }}>{showPassword ? '👁️' : '🙈'}</ThemedText>
+                          </TouchableOpacity>
+                        </View>
 
                       {/* Password Strength Meter (Sign Up Only) */}
                       {authMode === 'signup' && password.length > 0 && (
@@ -511,6 +658,7 @@ export default function ProfileScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
+                )}
 
                 {/* Language Switch */}
                 <TouchableOpacity
@@ -833,6 +981,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
+  },
+  otpBackBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: Spacing.two,
+  },
+  demoOtpBadge: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+    borderWidth: 1,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.two,
+    width: '100%',
+    marginBottom: Spacing.three,
+    alignItems: 'center',
+  },
+  resendSection: {
+    alignItems: 'center',
+    marginTop: Spacing.three,
   },
   formSubtitle: {
     fontSize: 13,

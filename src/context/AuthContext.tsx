@@ -17,12 +17,19 @@ interface AuthResponse {
   user?: User;
 }
 
+export interface RegisterResponse extends AuthResponse {
+  requireOtp?: boolean;
+  email?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<AuthResponse>;
-  register: (name: string, email: string, password: string) => Promise<AuthResponse>;
+  register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
+  verifyOtp: (email: string, otp: string) => Promise<AuthResponse>;
+  resendOtp: (email: string) => Promise<{ success: boolean; message?: string }>;
   loginWithGoogle: (idToken?: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
 }
@@ -132,8 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sign Up Handler
-  const register = async (name: string, email: string, password: string): Promise<AuthResponse> => {
+  // Sign Up Handler (Requires OTP Verification)
+  const register = async (name: string, email: string, password: string): Promise<RegisterResponse> => {
     setIsLoading(true);
     try {
       const response = await fetch(`${getApiBaseUrl()}/auth/register`, {
@@ -145,7 +152,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        return { success: true, message: data.message };
+        return {
+          success: true,
+          requireOtp: true,
+          email: email,
+          message: data.message,
+        };
       } else {
         return { success: false, message: data.message || 'Registration failed' };
       }
@@ -157,6 +169,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Verify OTP Handler
+  const verifyOtp = async (email: string, otp: string): Promise<AuthResponse> => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const userData: User = {
+          id: data.data.user.id,
+          name: data.data.user.name,
+          email: data.data.user.email,
+          role: data.data.user.role,
+          provider: data.data.user.provider || 'local',
+          photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+        };
+        saveSession(userData, data.data.accessToken);
+        return { success: true, message: data.message, user: userData };
+      } else {
+        return { success: false, message: data.message || 'OTP verification failed' };
+      }
+    } catch (error: any) {
+      console.error('Verify OTP Error:', error);
+      return { success: false, message: 'NETWORK_ERROR' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Resend OTP Handler
+  const resendOtp = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'Failed to resend OTP' };
+      }
+    } catch (error: any) {
+      console.error('Resend OTP Error:', error);
+      return { success: false, message: 'NETWORK_ERROR' };
     }
   };
 
@@ -229,6 +297,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         register,
+        verifyOtp,
+        resendOtp,
         loginWithGoogle,
         logout,
       }}
