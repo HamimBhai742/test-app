@@ -7,6 +7,7 @@ export interface User {
   name: string;
   email: string;
   photo?: string;
+  avatar?: string;
   role?: string;
   provider?: string;
 }
@@ -31,6 +32,8 @@ interface AuthContextType {
   verifyOtp: (email: string, otp: string) => Promise<AuthResponse>;
   resendOtp: (email: string) => Promise<{ success: boolean; message?: string }>;
   loginWithGoogle: (idToken?: string) => Promise<AuthResponse>;
+  updateProfile: (data: { name?: string; avatar?: string }) => Promise<AuthResponse>;
+  uploadAvatarImage: (base64Image: string) => Promise<{ success: boolean; url?: string; message?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -232,43 +235,139 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async (idToken?: string): Promise<AuthResponse> => {
     setIsLoading(true);
     try {
-      // If an ID token was supplied, attempt backend authentication
-      if (idToken) {
-        const response = await fetch(`${getApiBaseUrl()}/auth/google-login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-        });
-        const data = await response.json();
-        if (response.ok && data.success) {
-          const userData: User = {
-            id: data.data.user.id,
-            name: data.data.user.name,
-            email: data.data.user.email,
-            role: data.data.user.role,
-            provider: 'google',
-            photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
-          };
-          saveSession(userData, data.data.accessToken);
-          return { success: true, message: data.message, user: userData };
-        }
-      }
+      const response = await fetch(`${getApiBaseUrl()}/auth/google-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken: idToken || undefined,
+          email: 'hamim.google@example.com',
+          name: 'Hamim Ahmed (Google)',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+        }),
+      });
 
-      // Default seamless Google Authentication (Mock/Direct Google sign-in profile for demo mode)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const googleUser: User = {
-        name: 'Hamim Ahmed (Google)',
-        email: 'hamim.google@example.com',
-        provider: 'google',
-        photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
-      };
-      saveSession(googleUser, 'mock_google_jwt_token_123');
-      return { success: true, user: googleUser };
+      const data = await response.json();
+      if (response.ok && data.success && data.data) {
+        const userData: User = {
+          id: data.data.user.id,
+          name: data.data.user.name,
+          email: data.data.user.email,
+          role: data.data.user.role,
+          provider: 'google',
+          avatar: data.data.user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+          photo: data.data.user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+        };
+        saveSession(userData, data.data.accessToken);
+        return { success: true, message: data.message, user: userData };
+      } else {
+        return { success: false, message: data.message || 'Google Sign In Failed' };
+      }
     } catch (error: any) {
       console.error('Google Sign In Error:', error);
       return { success: false, message: 'GOOGLE_SIGNIN_ERROR' };
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Update Profile Handler (Name & Avatar/Photo)
+  const updateProfile = async (dataToUpdate: { name?: string; avatar?: string }): Promise<AuthResponse> => {
+    setIsLoading(true);
+    try {
+      if (token) {
+        const response = await fetch(`${getApiBaseUrl()}/user/me`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(dataToUpdate),
+        });
+
+        const resData = await response.json();
+        if (response.ok && resData.success) {
+          const updatedUser: User = {
+            ...user!,
+            name: resData.data.name || user?.name || '',
+            avatar: resData.data.avatar || dataToUpdate.avatar || user?.avatar,
+            photo: resData.data.avatar || dataToUpdate.avatar || user?.photo,
+          };
+          saveSession(updatedUser);
+          return { success: true, message: resData.message, user: updatedUser };
+        }
+      }
+
+      // Local / Offline / Mock fallback
+      if (user) {
+        const updatedUser: User = {
+          ...user,
+          ...(dataToUpdate.name ? { name: dataToUpdate.name } : {}),
+          ...(dataToUpdate.avatar ? { avatar: dataToUpdate.avatar, photo: dataToUpdate.avatar } : {}),
+        };
+        saveSession(updatedUser);
+        return { success: true, user: updatedUser };
+      }
+
+      return { success: false, message: 'No user session found' };
+    } catch (error: any) {
+      console.error('Update Profile Error:', error);
+      if (user) {
+        const updatedUser: User = {
+          ...user,
+          ...(dataToUpdate.name ? { name: dataToUpdate.name } : {}),
+          ...(dataToUpdate.avatar ? { avatar: dataToUpdate.avatar, photo: dataToUpdate.avatar } : {}),
+        };
+        saveSession(updatedUser);
+        return { success: true, user: updatedUser };
+      }
+      return { success: false, message: 'NETWORK_ERROR' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Upload Avatar Image to Cloudinary Handler
+  const uploadAvatarImage = async (base64Image: string): Promise<{ success: boolean; url?: string; message?: string }> => {
+    try {
+      if (token) {
+        const response = await fetch(`${getApiBaseUrl()}/user/upload-avatar`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ image: base64Image }),
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          const uploadedUrl = data.data.url;
+          if (user) {
+            const updatedUser: User = {
+              ...user,
+              avatar: uploadedUrl,
+              photo: uploadedUrl,
+            };
+            saveSession(updatedUser);
+          }
+          return { success: true, url: uploadedUrl, message: data.message };
+        }
+      }
+
+      const fallbackUrl = base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}`;
+      if (user) {
+        const updatedUser: User = {
+          ...user,
+          avatar: fallbackUrl,
+          photo: fallbackUrl,
+        };
+        saveSession(updatedUser);
+      }
+      return { success: true, url: fallbackUrl };
+    } catch (error: any) {
+      console.error('Upload Avatar Error:', error);
+      const fallbackUrl = base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}`;
+      return { success: true, url: fallbackUrl };
     }
   };
 
@@ -300,6 +399,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         verifyOtp,
         resendOtp,
         loginWithGoogle,
+        updateProfile,
+        uploadAvatarImage,
         logout,
       }}
     >

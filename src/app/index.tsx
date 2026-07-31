@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Text,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +24,7 @@ import { useTransactions, Transaction } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useTheme } from '@/hooks/use-theme';
+import { useThemeMode } from '@/context/ThemeContext';
 
 const formatNumber = (num: number) => {
   const parts = num.toString().split('.');
@@ -32,8 +34,9 @@ const formatNumber = (num: number) => {
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const { themeMode, setThemeMode } = useThemeMode();
   // useTransactions কাস্টম হুক ব্যবহার করে ব্যালেন্স, মোট আয়, মোট ব্যয় এবং ট্রানজেকশন ডেটা আনা হচ্ছে।
-  const { transactions, totalBalance, totalIncome, totalExpenses, addTransaction } = useTransactions();
+  const { transactions, totalBalance, totalIncome, totalExpenses, addTransaction, deleteTransaction } = useTransactions();
 
   // নতুন লেনদেন যোগ করার পপ-আপ (Modal) দেখানোর জন্য স্টেট।
   const [modalVisible, setModalVisible] = useState(false);
@@ -91,6 +94,27 @@ export default function HomeScreen() {
     setModalVisible(false); // পপ-আপ বা মডাল বন্ধ করা হচ্ছে।
   };
 
+  const handleDeleteTransaction = (id: string, itemTitle: string) => {
+    if (Platform.OS === 'web') {
+      if (confirm(`আপনি কি "${itemTitle}" লেনদেনটি মুছে ফেলতে চান?`)) {
+        deleteTransaction(id);
+      }
+    } else {
+      Alert.alert(
+        'লেনদেন মুছে ফেলুন',
+        `আপনি কি "${itemTitle}" লেনদেনটি মুছে ফেলতে চান?`,
+        [
+          { text: 'বাতিল', style: 'cancel' },
+          {
+            text: 'মুছে ফেলুন',
+            style: 'destructive',
+            onPress: () => deleteTransaction(id),
+          },
+        ]
+      );
+    }
+  };
+
   // সাম্প্রতিক ৫টি লেনদেন ফিল্টার করে বের করা হচ্ছে।
   const recentTransactions = transactions.slice(0, 5);
 
@@ -108,13 +132,30 @@ export default function HomeScreen() {
               <ThemedText type="small" themeColor="textSecondary">{t.dailyTracker}</ThemedText>
               <ThemedText type="subtitle" style={styles.headerTitle}>{t.appTitle}</ThemedText>
             </ThemedView>
-            {/* নতুন লেনদেন যোগ করার কুইক বাটন */}
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: theme.text }]}
-              onPress={() => setModalVisible(true)}
-            >
-              <ThemedText style={{ color: theme.background, fontWeight: '700', fontSize: 20 }}>+</ThemedText>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {/* ডার্ক/লাইট থিম টগল বাটন */}
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
+                onPress={() => {
+                  setThemeMode((prev) => {
+                    if (prev === 'light') return 'dark';
+                    if (prev === 'dark') return 'system';
+                    return 'light';
+                  });
+                }}
+              >
+                <ThemedText style={{ fontSize: 16 }}>
+                  {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
+                </ThemedText>
+              </TouchableOpacity>
+              {/* নতুন লেনদেন যোগ করার কুইক বাটন */}
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.text }]}
+                onPress={() => setModalVisible(true)}
+              >
+                <ThemedText style={{ color: theme.background, fontWeight: '700', fontSize: 20 }}>+</ThemedText>
+              </TouchableOpacity>
+            </View>
           </ThemedView>
 
           {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
@@ -202,13 +243,23 @@ export default function HomeScreen() {
                     </ThemedText>
                   </View>
 
-                  <View style={styles.txAmountContainer}>
-                    <ThemedText style={[
-                      styles.txAmount,
-                      { color: tx.type === 'income' ? '#10B981' : '#EF4444' }
-                    ]}>
-                      {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(tx.amount)}
-                    </ThemedText>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={styles.txAmountContainer}>
+                      <ThemedText style={[
+                        styles.txAmount,
+                        { color: tx.type === 'income' ? '#10B981' : '#EF4444' }
+                      ]}>
+                        {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(tx.amount)}
+                      </ThemedText>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() => handleDeleteTransaction(tx.id, tx.title)}
+                      style={{ padding: 6, opacity: 0.8 }}
+                      activeOpacity={0.6}
+                    >
+                      <ThemedText style={{ fontSize: 16 }}>🗑️</ThemedText>
+                    </TouchableOpacity>
                   </View>
                 </ThemedView>
               ))

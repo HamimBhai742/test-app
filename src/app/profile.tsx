@@ -18,17 +18,20 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useThemeMode } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, logout } = useAuth();
+  const { themeMode, setThemeMode } = useThemeMode();
+  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout } = useAuth();
   
   // Custom Auth State to support login/signup & OTP
-  const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction } = useTransactions();
+  const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction, deleteAllTransactions } = useTransactions();
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authStep, setAuthStep] = useState<'auth' | 'otp'>('auth');
   const { language, setLanguage } = useLanguage();
@@ -58,6 +61,101 @@ export default function ProfileScreen() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Edit Profile States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [isUploadingCloudinary, setIsUploadingCloudinary] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  // Floating Toast Notification State
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
+    visible: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => {
+      setToast({ visible: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
+  const PRESET_AVATARS = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=256&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=256&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=256&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=256&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=256&auto=format&fit=crop',
+  ];
+
+  // Device Image Gallery Picker & Cloudinary Uploader
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        setEditError('ছবি সিলেক্ট করতে ফাইল/গ্যালারির পারমিশন প্রয়োজন');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const base64Data = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+
+        setEditAvatar(asset.uri); // Optimistic immediate preview
+        setIsUploadingCloudinary(true);
+        setEditError('');
+
+        const uploadRes = await uploadAvatarImage(base64Data);
+        setIsUploadingCloudinary(false);
+
+        if (uploadRes.success && uploadRes.url) {
+          setEditAvatar(uploadRes.url);
+          showToast(t.uploadSuccess, 'success');
+        } else {
+          setEditError('Cloudinary-তে ছবি সেভ করা সম্ভব হয়নি। আবার চেষ্টা করুন।');
+        }
+      }
+    } catch (e: any) {
+      console.error('Image picker error:', e);
+      setIsUploadingCloudinary(false);
+      setEditError('গ্যালারি থেকে ছবি আপলোড করতে সমস্যা হয়েছে');
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      setEditError(t.valNameRequired);
+      return;
+    }
+    setEditLoading(true);
+    setEditError('');
+    const res = await updateProfile({
+      name: editName.trim(),
+      avatar: editAvatar.trim(),
+    });
+    setEditLoading(false);
+    if (res.success) {
+      setShowEditModal(false);
+      showToast(t.profileUpdateSuccess, 'success');
+    } else {
+      setEditError(res.message || t.profileUpdateError);
+    }
+  };
 
   // Resend Timer countdown
   React.useEffect(() => {
@@ -238,8 +336,8 @@ export default function ProfileScreen() {
   };
 
   const handleResetData = () => {
-    const confirmAction = () => {
-      transactions.forEach((tx) => deleteTransaction(tx.id));
+    const confirmAction = async () => {
+      await deleteAllTransactions();
       if (Platform.OS === 'web') {
         alert(t.resetSuccess);
       } else {
@@ -268,6 +366,23 @@ export default function ProfileScreen() {
       alert(t.supportMsg);
     } else {
       Alert.alert(t.helpSupport, t.supportMsg);
+    }
+  };
+
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (confirm(t.logoutConfirmMsg)) {
+        logout();
+      }
+    } else {
+      Alert.alert(
+        t.logoutConfirmTitle,
+        t.logoutConfirmMsg,
+        [
+          { text: t.cancelBtn, style: 'cancel' },
+          { text: t.confirmLogoutBtn, style: 'destructive', onPress: logout },
+        ]
+      );
     }
   };
 
@@ -748,8 +863,8 @@ export default function ProfileScreen() {
           <View style={styles.profileHeader}>
             <View style={[styles.glowingBackground, { backgroundColor: theme.backgroundElement }]} />
             <View style={styles.avatarWrapper}>
-              {user.photo ? (
-                <Image source={{ uri: user.photo }} style={styles.avatarImage} />
+              {(user.avatar || user.photo) ? (
+                <Image source={{ uri: user.avatar || user.photo }} style={styles.avatarImage} />
               ) : (
                 <View style={[styles.avatarFallback, { backgroundColor: theme.backgroundElement }]}>
                   <ThemedText type="subtitle" style={{ color: theme.text }}>
@@ -768,6 +883,24 @@ export default function ProfileScreen() {
             <ThemedText type="small" themeColor="textSecondary" style={styles.userEmail}>
               {user.email}
             </ThemedText>
+
+            {/* Edit Profile Button */}
+            <TouchableOpacity
+              style={[
+                styles.editProfileBtnRow,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }
+              ]}
+              onPress={() => {
+                setEditName(user.name);
+                setEditAvatar(user.avatar || user.photo || '');
+                setEditError('');
+                setShowEditModal(true);
+              }}
+            >
+              <ThemedText type="smallBold" style={{ color: theme.text }}>
+                {t.editProfileBtn}
+              </ThemedText>
+            </TouchableOpacity>
           </View>
 
           {/* Statistics Grid */}
@@ -850,6 +983,30 @@ export default function ProfileScreen() {
 
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
 
+            {/* Theme Mode Switch */}
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => {
+                setThemeMode((prev) => {
+                  if (prev === 'light') return 'dark';
+                  if (prev === 'dark') return 'system';
+                  return 'light';
+                });
+              }}
+            >
+              <ThemedText style={styles.actionIcon}>
+                {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
+              </ThemedText>
+              <View style={styles.actionTextContainer}>
+                <ThemedText type="small">{t.themeText}</ThemedText>
+                <ThemedText type="code" themeColor="textSecondary" style={styles.actionValue}>
+                  {themeMode === 'dark' ? t.themeDark : themeMode === 'light' ? t.themeLight : t.themeSystem}
+                </ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
             {/* Export Transactions */}
             <TouchableOpacity style={styles.actionRow} onPress={handleExportData}>
               <ThemedText style={styles.actionIcon}>📤</ThemedText>
@@ -892,7 +1049,7 @@ export default function ProfileScreen() {
           {/* Logout Button */}
           <TouchableOpacity
             style={[styles.logoutButton, { backgroundColor: '#fee2e2' }]}
-            onPress={logout}
+            onPress={handleLogout}
             disabled={isLoading}
             activeOpacity={0.8}
           >
@@ -907,6 +1064,190 @@ export default function ProfileScreen() {
 
           <View style={{ height: BottomTabInset + 40 }} />
         </ScrollView>
+
+        {/* Edit Profile Modal */}
+        <Modal
+          visible={showEditModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle">{t.editProfileTitle}</ThemedText>
+                <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                  <ThemedText style={{ fontSize: 20, color: theme.textSecondary }}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {editError ? (
+                <View style={[styles.feedbackBanner, { backgroundColor: '#fee2e2', borderColor: '#fca5a5', borderWidth: 1 }]}>
+                  <ThemedText style={{ color: '#dc2626', fontSize: 13, fontWeight: '500' }}>⚠️ {editError}</ThemedText>
+                </View>
+              ) : null}
+
+              {/* Avatar Preview & Selection */}
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 12, marginBottom: 8 }}>
+                {t.changeAvatarLabel}
+              </ThemedText>
+
+              {/* Clickable Interactive Avatar Picker Circle */}
+              <TouchableOpacity
+                onPress={handlePickImage}
+                disabled={isUploadingCloudinary}
+                style={{ alignSelf: 'center', marginBottom: 12, position: 'relative' }}
+              >
+                <Image
+                  source={{ uri: editAvatar || user.avatar || user.photo || PRESET_AVATARS[0] }}
+                  style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 3.5, borderColor: '#3B82F6' }}
+                />
+                {isUploadingCloudinary ? (
+                  <View style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    borderRadius: 42,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  </View>
+                ) : (
+                  <View style={{
+                    position: 'absolute',
+                    bottom: 0, right: -2,
+                    backgroundColor: '#3B82F6',
+                    width: 28, height: 28, borderRadius: 14,
+                    justifyContent: 'center', alignItems: 'center',
+                    borderWidth: 2, borderColor: '#ffffff',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3
+                  }}>
+                    <ThemedText style={{ fontSize: 13, color: '#ffffff' }}>📷</ThemedText>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Choose from Device Gallery Button */}
+              <TouchableOpacity
+                onPress={handlePickImage}
+                disabled={isUploadingCloudinary}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  marginBottom: 14,
+                  alignSelf: 'center'
+                }}
+              >
+                {isUploadingCloudinary ? (
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                ) : (
+                  <ThemedText style={{ fontSize: 14 }}>📷</ThemedText>
+                )}
+                <ThemedText type="smallBold" style={{ color: theme.text }}>
+                  {isUploadingCloudinary ? t.uploadingImage : t.selectImageBtn}
+                </ThemedText>
+              </TouchableOpacity>
+
+              {/* Preset Avatars Grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
+                {PRESET_AVATARS.map((url, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => setEditAvatar(url)}
+                    style={{
+                      borderWidth: editAvatar === url ? 3 : 1,
+                      borderColor: editAvatar === url ? '#3B82F6' : theme.backgroundSelected,
+                      borderRadius: 24,
+                      padding: 2,
+                    }}
+                  >
+                    <Image source={{ uri: url }} style={{ width: 38, height: 38, borderRadius: 19 }} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Custom Image URL */}
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: 4 }}>
+                ইমেজ ইউআরএল (Image URL):
+              </ThemedText>
+              <TextInput
+                style={[
+                  styles.inputField,
+                  { backgroundColor: theme.backgroundElement, color: theme.text, borderColor: theme.backgroundSelected },
+                ]}
+                placeholder="https://example.com/avatar.jpg"
+                placeholderTextColor={theme.textSecondary}
+                value={editAvatar}
+                onChangeText={setEditAvatar}
+                autoCapitalize="none"
+              />
+
+              {/* Name Input */}
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 10, marginBottom: 4 }}>
+                {t.nameLabel}
+              </ThemedText>
+              <TextInput
+                style={[
+                  styles.inputField,
+                  { backgroundColor: theme.backgroundElement, color: theme.text, borderColor: theme.backgroundSelected },
+                ]}
+                placeholder={t.nameLabel}
+                placeholderTextColor={theme.textSecondary}
+                value={editName}
+                onChangeText={setEditName}
+              />
+
+              {/* Premium Redesigned Save Button */}
+              <TouchableOpacity
+                style={[
+                  styles.saveProfileButton,
+                  { opacity: editLoading || isUploadingCloudinary ? 0.75 : 1 }
+                ]}
+                onPress={handleSaveProfile}
+                disabled={editLoading || isUploadingCloudinary}
+                activeOpacity={0.85}
+              >
+                {editLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <ThemedText style={{ fontSize: 18, color: '#ffffff' }}>✓</ThemedText>
+                    <ThemedText style={styles.saveProfileButtonText}>
+                      {t.saveProfileBtn}
+                    </ThemedText>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Floating Modern Toast Feedback Notification */}
+        {toast.visible && (
+          <View style={[
+            styles.toastContainer,
+            { backgroundColor: toast.type === 'error' ? '#EF4444' : '#059669' }
+          ]}>
+            <ThemedText style={styles.toastIcon}>
+              {toast.type === 'error' ? '⚠️' : '✨'}
+            </ThemedText>
+            <ThemedText style={styles.toastText}>
+              {toast.message}
+            </ThemedText>
+          </View>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -1069,6 +1410,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.two,
+  },
+  feedbackBanner: {
+    padding: Spacing.two,
+    borderRadius: Spacing.two,
+    marginVertical: Spacing.one,
+    width: '100%',
   },
   formContainer: {
     width: '100%',
@@ -1247,6 +1594,18 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 14,
   },
+  editProfileBtnRow: {
+    marginTop: Spacing.three,
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1345,5 +1704,53 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 1,
+  },
+  saveProfileButton: {
+    width: '100%',
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#2563EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: Spacing.four,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  saveProfileButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 25,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+    gap: 10,
+    maxWidth: '90%',
+  },
+  toastIcon: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  toastText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

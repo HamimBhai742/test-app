@@ -1,5 +1,5 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { Colors } from '@/constants/theme';
 
@@ -7,7 +7,7 @@ import { Colors } from '@/constants/theme';
 // NativeTabs আমাদের ডিভাইসের নেটিভ বটম ট্যাব বার ব্যবহার করার সুযোগ দেয়।
 export default function AppTabs() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = Colors[scheme ?? 'light'];
 
   return (
     <NativeTabs

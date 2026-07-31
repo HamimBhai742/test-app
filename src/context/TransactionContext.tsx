@@ -1,103 +1,206 @@
-import React, { useSyncExternalStore, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// ট্রানজেকশনের ডেটা টাইপ বা স্ট্রাকচার সংজ্ঞায়িত করা হয়েছে TypeScript-এর মাধ্যমে।
-// এটি নিশ্চিত করে যে প্রতিটি ট্রানজেকশনে সঠিক ধরণের ডেটা (যেমন: id, title, amount ইত্যাদি) থাকছে।
 export interface Transaction {
   id: string;
   title: string;
   amount: number;
-  type: 'income' | 'expense'; // 'income' মানে আয় এবং 'expense' মানে ব্যয়
+  type: 'income' | 'expense';
   category: 'Food' | 'Shopping' | 'Utilities' | 'Rent' | 'Entertainment' | 'Salary' | 'Others';
-  date: string; // YYYY-MM-DD ফরম্যাটে তারিখ রাখার জন্য
+  date: string;
 }
 
 interface TransactionContextType {
   transactions: Transaction[];
+  isLoading: boolean;
   totalBalance: number;
   totalIncome: number;
   totalExpenses: number;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  deleteTransaction: (id: string) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  deleteAllTransactions: () => Promise<void>;
+  refreshTransactions: () => Promise<void>;
 }
 
-// ─── External Store for Transactions ─────────────────────────────────────────
+// Get Base API URL based on platform & Expo host IP
+const getApiBaseUrl = () => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:5001/api/v1';
+  }
+  try {
+    const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return `http://${ip}:5001/api/v1`;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not determine host IP, using default fallback:', e);
+  }
 
-let globalTransactions: Transaction[] = [
-  // ── জুলাই ২০২৬ ──
-  { id: '1',  title: 'Salary (বেতন)',                amount: 50000, type: 'income',  category: 'Salary',        date: '2026-07-01' },
-  { id: '2',  title: 'Monthly Rent (বাসা ভাড়া)',    amount: 12000, type: 'expense', category: 'Rent',          date: '2026-07-01' },
-  { id: '3',  title: 'Groceries (বাজার করা)',        amount: 3200,  type: 'expense', category: 'Food',          date: '2026-07-10' },
-  { id: '4',  title: 'Freelance Design (ফ্রিল্যান্স)', amount: 8500, type: 'income', category: 'Others',       date: '2026-07-15' },
-  { id: '5',  title: 'Netflix (নেটফ্লিক্স)',         amount: 400,   type: 'expense', category: 'Entertainment', date: '2026-07-20' },
-  { id: '6',  title: 'Electric Bill (বিদ্যুৎ বিল)', amount: 1100,  type: 'expense', category: 'Utilities',     date: '2026-07-22' },
-  { id: '7',  title: 'Clothes Shopping (কেনাকাটা)',  amount: 2500,  type: 'expense', category: 'Shopping',      date: '2026-07-25' },
-
-  // ── জুন ২০২৬ ──
-  { id: '8',  title: 'Salary (বেতন)',                amount: 50000, type: 'income',  category: 'Salary',        date: '2026-06-01' },
-  { id: '9',  title: 'Monthly Rent (বাসা ভাড়া)',    amount: 12000, type: 'expense', category: 'Rent',          date: '2026-06-01' },
-  { id: '10', title: 'Dinner Party (ডিনার পার্টি)', amount: 4500,  type: 'expense', category: 'Food',          date: '2026-06-12' },
-  { id: '11', title: 'Tuition Income (টিউশনি)',      amount: 6000,  type: 'income',  category: 'Others',        date: '2026-06-15' },
-  { id: '12', title: 'Internet Bill (ইন্টারনেট)',    amount: 700,   type: 'expense', category: 'Utilities',     date: '2026-06-18' },
-  { id: '13', title: 'Movie Tickets (সিনেমা)',        amount: 600,   type: 'expense', category: 'Entertainment', date: '2026-06-28' },
-
-  // ── মে ২০২৬ ──
-  { id: '14', title: 'Salary (বেতন)',                amount: 50000, type: 'income',  category: 'Salary',        date: '2026-05-01' },
-  { id: '15', title: 'Monthly Rent (বাসা ভাড়া)',    amount: 12000, type: 'expense', category: 'Rent',          date: '2026-05-01' },
-  { id: '16', title: 'Eid Shopping (ঈদ কেনাকাটা)',   amount: 9000,  type: 'expense', category: 'Shopping',      date: '2026-05-05' },
-  { id: '17', title: 'Bonus (বোনাস)',                 amount: 15000, type: 'income',  category: 'Salary',        date: '2026-05-10' },
-  { id: '18', title: 'Restaurant (রেস্তোরাঁ)',       amount: 3500,  type: 'expense', category: 'Food',          date: '2026-05-20' },
-  { id: '19', title: 'Gas Bill (গ্যাস বিল)',          amount: 900,   type: 'expense', category: 'Utilities',     date: '2026-05-25' },
-
-  // ── এপ্রিল ২০২৬ ──
-  { id: '20', title: 'Salary (বেতন)',                amount: 50000, type: 'income',  category: 'Salary',        date: '2026-04-01' },
-  { id: '21', title: 'Monthly Rent (বাসা ভাড়া)',    amount: 12000, type: 'expense', category: 'Rent',          date: '2026-04-01' },
-  { id: '22', title: 'Daily Food (দৈনন্দিন খাবার)', amount: 5200,  type: 'expense', category: 'Food',          date: '2026-04-15' },
-  { id: '23', title: 'Mobile Recharge (মোবাইল)',     amount: 500,   type: 'expense', category: 'Utilities',     date: '2026-04-20' },
-  { id: '24', title: 'Side Income (পার্ট টাইম)',     amount: 4000,  type: 'income',  category: 'Others',        date: '2026-04-25' },
-  { id: '25', title: 'Gadget Purchase (গ্যাজেট)',    amount: 8500,  type: 'expense', category: 'Shopping',      date: '2026-04-28' },
-];
-
-const txListeners = new Set<() => void>();
-
-const subscribeTx = (listener: () => void) => {
-  txListeners.add(listener);
-  return () => txListeners.delete(listener);
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5001/api/v1';
+  }
+  return 'http://localhost:5001/api/v1';
 };
 
-const getSnapshotTx = () => globalTransactions;
+const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
-const addTxGlobal = (newTx: Omit<Transaction, 'id'>) => {
-  const transactionWithId: Transaction = {
-    ...newTx,
-    id: Math.random().toString(36).substring(2, 9),
+export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Fetch transactions from Backend API
+  const fetchTransactions = async () => {
+    setIsLoading(true);
+    try {
+      let token = '';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        token = localStorage.getItem('hisab_kitab_auth_token') || '';
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${getApiBaseUrl()}/transactions`, {
+        method: 'GET',
+        headers,
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success && Array.isArray(data.data)) {
+        const mappedTx: Transaction[] = data.data.map((item: any) => ({
+          id: item.id || item._id,
+          title: item.title,
+          amount: Number(item.amount),
+          type: item.type,
+          category: item.category,
+          date: item.date,
+        }));
+        setTransactions(mappedTx);
+      }
+    } catch (error) {
+      console.warn('Backend fetch error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
-  globalTransactions = [transactionWithId, ...globalTransactions];
-  txListeners.forEach(l => l());
-};
 
-const deleteTxGlobal = (id: string) => {
-  globalTransactions = globalTransactions.filter(tx => tx.id !== id);
-  txListeners.forEach(l => l());
-};
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
-// ─── Provider & Hook ─────────────────────────────────────────────────────────
+  // Add Transaction to Backend API & MongoDB
+  const addTransaction = async (newTx: Omit<Transaction, 'id'>) => {
+    const tempId = Math.random().toString(36).substring(2, 9);
+    const optimisticTx: Transaction = { ...newTx, id: tempId };
 
-export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return <>{children}</>;
-};
+    setTransactions((prev) => [optimisticTx, ...prev]);
 
-export const useTransactions = (): TransactionContextType => {
-  const transactions = useSyncExternalStore(subscribeTx, getSnapshotTx);
+    try {
+      let token = '';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        token = localStorage.getItem('hisab_kitab_auth_token') || '';
+      }
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${getApiBaseUrl()}/transactions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(newTx),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success && data.data) {
+        const savedTx: Transaction = {
+          id: data.data.id || data.data._id,
+          title: data.data.title,
+          amount: Number(data.data.amount),
+          type: data.data.type,
+          category: data.data.category,
+          date: data.data.date,
+        };
+        setTransactions((prev) => prev.map((t) => (t.id === tempId ? savedTx : t)));
+      }
+    } catch (error) {
+      console.warn('Error adding transaction to backend:', error);
+    }
+  };
+
+  // Delete Transaction from Backend API & MongoDB
+  const deleteTransaction = async (id: string) => {
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+
+    try {
+      let token = '';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        token = localStorage.getItem('hisab_kitab_auth_token') || '';
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      await fetch(`${getApiBaseUrl()}/transactions/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+    } catch (error) {
+      console.warn('Error deleting transaction from backend:', error);
+    }
+  };
+
+  // Delete All Transactions from Backend API & MongoDB
+  const deleteAllTransactions = async () => {
+    setTransactions([]);
+
+    try {
+      let token = '';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        token = localStorage.getItem('hisab_kitab_auth_token') || '';
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      await fetch(`${getApiBaseUrl()}/transactions/all`, {
+        method: 'DELETE',
+        headers,
+      });
+    } catch (error) {
+      console.warn('Error clearing transactions from backend:', error);
+    }
+  };
+
+  // Calculate totals dynamically using useMemo
   const stats = useMemo(() => {
     let income = 0;
     let expenses = 0;
 
     transactions.forEach((tx) => {
       if (tx.type === 'income') {
-        income += tx.amount;
+        income += Number(tx.amount);
       } else {
-        expenses += tx.amount;
+        expenses += Number(tx.amount);
       }
     });
 
@@ -108,12 +211,29 @@ export const useTransactions = (): TransactionContextType => {
     };
   }, [transactions]);
 
-  return {
-    transactions,
-    addTransaction: addTxGlobal,
-    deleteTransaction: deleteTxGlobal,
-    totalBalance: stats.totalBalance,
-    totalIncome: stats.totalIncome,
-    totalExpenses: stats.totalExpenses,
-  };
+  return (
+    <TransactionContext.Provider
+      value={{
+        transactions,
+        isLoading,
+        totalBalance: stats.totalBalance,
+        totalIncome: stats.totalIncome,
+        totalExpenses: stats.totalExpenses,
+        addTransaction,
+        deleteTransaction,
+        deleteAllTransactions,
+        refreshTransactions: fetchTransactions,
+      }}
+    >
+      {children}
+    </TransactionContext.Provider>
+  );
+};
+
+export const useTransactions = (): TransactionContextType => {
+  const context = useContext(TransactionContext);
+  if (context === undefined) {
+    throw new Error('useTransactions must be used within a TransactionProvider');
+  }
+  return context;
 };
