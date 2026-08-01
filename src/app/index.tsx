@@ -354,10 +354,11 @@ export default function HomeScreen() {
                     placeholderTextColor={theme.textSecondary}
                     value={title}
                     onChangeText={setTitle}
+                    autoFocus
                   />
                 </View>
 
-                {/* টাকার পরিমাণ ইনপুট */}
+                {/* টাকার পরিমাণ ইনপুট & ৩ সেকেন্ড কুইক বাটন */}
                 <View style={styles.inputContainer}>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.amountLabel}</ThemedText>
                   <TextInput
@@ -368,6 +369,25 @@ export default function HomeScreen() {
                     value={amount}
                     onChangeText={setAmount}
                   />
+                  {/* কুইক অ্যামাউন্ট শর্টকাট (৩ সেকেন্ড ইনপুট) */}
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+                    {[100, 200, 500, 1000, 2000].map((preset) => (
+                      <TouchableOpacity
+                        key={preset}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 10,
+                          backgroundColor: theme.backgroundSelected,
+                        }}
+                        onPress={() => setAmount(preset.toString())}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: theme.text }}>
+                          ৳{preset}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
 
                 {/* ক্যাটাগরি সিলেকশন */}

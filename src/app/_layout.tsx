@@ -6,6 +6,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 // ট্রানজেকশন স্টেটকে অ্যাপের সর্বত্র ব্যবহার উপযোগী করার জন্য TransactionProvider ইমপোর্ট করা হচ্ছে।
 import { TransactionProvider } from '@/context/TransactionContext';
+import { DueProvider } from '@/context/DueContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 
@@ -49,9 +50,11 @@ export default function TabLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <LanguageProvider>
         <TransactionProvider>
-          <AuthProvider>
-            <MainContent />
-          </AuthProvider>
+          <DueProvider>
+            <AuthProvider>
+              <MainContent />
+            </AuthProvider>
+          </DueProvider>
         </TransactionProvider>
       </LanguageProvider>
     </ThemeProvider>

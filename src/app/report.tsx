@@ -16,6 +16,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
+import { PDFExportModal } from '@/components/pdf-export-modal';
+import { useAuth } from '@/context/AuthContext';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -280,6 +282,9 @@ export default function ReportScreen() {
   const { language } = useLanguage();
   const t = translations[language];
   const { transactions } = useTransactions();
+  const { user } = useAuth();
+
+  const [pdfModalVisible, setPdfModalVisible] = useState(false);
 
   const colors = {
     success: '#10B981',
@@ -364,6 +369,13 @@ export default function ReportScreen() {
               <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>{t.monthlyReportEyebrow}</Text>
               <ThemedText style={styles.headerTitle}>{t.monthlyReportTitle}</ThemedText>
             </View>
+            <TouchableOpacity
+              style={styles.pdfExportHeaderBtn}
+              onPress={() => setPdfModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.pdfExportHeaderBtnText}>{t.pdfExportBtn}</Text>
+            </TouchableOpacity>
           </View>
           <ThemedView type="backgroundElement" style={styles.emptyCard}>
             <Text style={styles.emptyEmoji}>📅</Text>
@@ -373,6 +385,13 @@ export default function ReportScreen() {
             </ThemedText>
           </ThemedView>
         </ThemedView>
+
+        <PDFExportModal
+          visible={pdfModalVisible}
+          onClose={() => setPdfModalVisible(false)}
+          transactions={transactions}
+          userName={user?.name}
+        />
       </ScrollView>
     );
   }
@@ -392,9 +411,13 @@ export default function ReportScreen() {
             <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>{t.monthlyReportEyebrow}</Text>
             <ThemedText style={styles.headerTitle}>{t.monthlyReportTitle}</ThemedText>
           </View>
-          <View style={[styles.calendarBadge, { backgroundColor: `${colors.primary}15` }]}>
-            <Text style={styles.calendarEmoji}>📅</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.pdfExportHeaderBtn}
+            onPress={() => setPdfModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.pdfExportHeaderBtnText}>{t.pdfExportBtn}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Overall Hero Card ── */}
@@ -596,6 +619,15 @@ export default function ReportScreen() {
                   {t.recordedTxPrefix} <Text style={{ fontWeight: '800' }}>{selected.txCount}</Text>{t.recordedTxSuffix}
                 </Text>
               </View>
+
+              {/* PDF Statement Download Action Button */}
+              <TouchableOpacity
+                style={styles.downloadStatementBtn}
+                onPress={() => setPdfModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.downloadStatementBtnText}>📄 এই মাসের PDF স্টেটমেন্ট ডাউনলোড করুন 🚀</Text>
+              </TouchableOpacity>
             </View>
           </ThemedView>
         )}
@@ -612,6 +644,28 @@ export default function ReportScreen() {
         </ThemedView>
 
       </ThemedView>
+
+      {/* PDF Export Modal */}
+      <PDFExportModal
+        visible={pdfModalVisible}
+        onClose={() => setPdfModalVisible(false)}
+        transactions={transactions}
+        userName={user?.name}
+        currentMonthSummary={
+          selected
+            ? {
+                monthName: selected.label.split(' ')[0],
+                year: selected.year,
+                totalIncome: selected.income,
+                totalExpense: selected.expense,
+                netSavings: selected.net,
+                savingsRate: selected.savingsRate,
+                userName: user?.name,
+                userEmail: user?.email,
+              }
+            : undefined
+        }
+      />
     </ScrollView>
   );
 }
@@ -632,8 +686,40 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: Spacing.two },
   headerEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 2 },
   headerTitle: { fontSize: 30, fontWeight: '800', lineHeight: 36 },
-  calendarBadge: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  calendarEmoji: { fontSize: 24 },
+  pdfExportHeaderBtn: {
+    backgroundColor: '#208AEF',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#208AEF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pdfExportHeaderBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  downloadStatementBtn: {
+    backgroundColor: '#208AEF',
+    paddingVertical: 14,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: '#208AEF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  downloadStatementBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   heroCard: {
     borderRadius: 24, overflow: 'hidden',
     shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.10, shadowRadius: 20, elevation: 4,

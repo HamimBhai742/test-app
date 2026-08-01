@@ -41,6 +41,17 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
+      {/* দেনা-পাওনার খাতা ট্যাব (Debt & Due Ledger) */}
+      <NativeTabs.Trigger name="dues">
+        <NativeTabs.Trigger.Label>Dues</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/explore.png')}
+          sf={{ default: 'hand.raised', selected: 'hand.raised.fill' }}
+          md="handshake"
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+
       {/* তৃতীয় ট্যাব: ব্যয় সংক্রান্ত পরিসংখ্যান (Analytics/Stats) */}
       <NativeTabs.Trigger name="stats">
         <NativeTabs.Trigger.Label>Stats</NativeTabs.Trigger.Label>
