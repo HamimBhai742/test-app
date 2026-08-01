@@ -23,29 +23,59 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+
 const STORAGE_KEY = '@hisabkitab_onboarding_completed';
-let inMemoryOnboardingState = false;
+let memoryOnboardingState: boolean | null = null;
 
 export const getOnboardingCompleted = async (): Promise<boolean> => {
+  if (memoryOnboardingState !== null) return memoryOnboardingState;
   try {
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage.getItem(STORAGE_KEY) === 'true';
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const val = window.localStorage.getItem(STORAGE_KEY);
+        memoryOnboardingState = val === 'true';
+        return memoryOnboardingState;
+      }
+    } else {
+      try {
+        const secureVal = await SecureStore.getItemAsync(STORAGE_KEY);
+        if (secureVal !== null) {
+          memoryOnboardingState = secureVal === 'true';
+          return memoryOnboardingState;
+        }
+      } catch {}
+
+      try {
+        const asyncVal = await AsyncStorage.getItem(STORAGE_KEY);
+        if (asyncVal !== null) {
+          memoryOnboardingState = asyncVal === 'true';
+          return memoryOnboardingState;
+        }
+      } catch {}
     }
-    return inMemoryOnboardingState;
-  } catch {
-    return false;
-  }
+  } catch (e) {}
+  return memoryOnboardingState ?? false;
 };
 
 export const setOnboardingCompleted = async (completed: boolean): Promise<void> => {
+  memoryOnboardingState = completed;
   try {
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(STORAGE_KEY, completed ? 'true' : 'false');
+    const val = completed ? 'true' : 'false';
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(STORAGE_KEY, val);
+      }
+    } else {
+      try {
+        await SecureStore.setItemAsync(STORAGE_KEY, val);
+      } catch {}
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, val);
+      } catch {}
     }
-    inMemoryOnboardingState = completed;
-  } catch (e) {
-    console.warn('Onboarding storage write error:', e);
-  }
+  } catch (e) {}
 };
 
 interface OnboardingProps {

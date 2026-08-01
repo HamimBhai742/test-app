@@ -13,7 +13,7 @@ import { SecurityProvider } from '@/context/SecurityContext';
 import { AppLockScreen } from '@/components/app-lock-screen';
 
 import React, { useState, useEffect } from 'react';
-import { OnboardingScreen, getOnboardingCompleted } from '@/components/onboarding';
+import { OnboardingScreen, getOnboardingCompleted, setOnboardingCompleted } from '@/components/onboarding';
 
 import ProfileScreen from './profile';
 import { useAuth } from '@/context/AuthContext';
@@ -32,12 +32,17 @@ function MainContent() {
     });
   }, []);
 
+  const handleOnboardingComplete = async () => {
+    await setOnboardingCompleted(true);
+    setShowOnboarding(false);
+  };
+
   return (
     <>
       <AnimatedSplashOverlay />
       <AppLockScreen />
       {showOnboarding && (
-        <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+        <OnboardingScreen onComplete={handleOnboardingComplete} />
       )}
       {!showOnboarding && !user ? (
         <ProfileScreen />
