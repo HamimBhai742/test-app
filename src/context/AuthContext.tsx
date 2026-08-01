@@ -31,7 +31,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
   verifyOtp: (email: string, otp: string) => Promise<AuthResponse>;
   resendOtp: (email: string) => Promise<{ success: boolean; message?: string }>;
-  loginWithGoogle: (idToken?: string) => Promise<AuthResponse>;
+  loginWithGoogle: (data?: { idToken?: string; email?: string; name?: string; avatar?: string }) => Promise<AuthResponse>;
   updateProfile: (data: { name?: string; avatar?: string }) => Promise<AuthResponse>;
   uploadAvatarImage: (base64Image: string) => Promise<{ success: boolean; url?: string; message?: string }>;
   logout: () => Promise<void>;
@@ -231,18 +231,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Google Login Handler
-  const loginWithGoogle = async (idToken?: string): Promise<AuthResponse> => {
+  // Google Login Handler (Using real Google OAuth token or Google user profile payload)
+  const loginWithGoogle = async (googleData?: { idToken?: string; email?: string; name?: string; avatar?: string }): Promise<AuthResponse> => {
     setIsLoading(true);
     try {
       const response = await fetch(`${getApiBaseUrl()}/auth/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          idToken: idToken || undefined,
-          email: 'hamim.google@example.com',
-          name: 'Hamim Ahmed (Google)',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
+          idToken: googleData?.idToken || undefined,
+          email: googleData?.email || undefined,
+          name: googleData?.name || undefined,
+          avatar: googleData?.avatar || undefined,
         }),
       });
 
@@ -260,11 +260,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         saveSession(userData, data.data.accessToken);
         return { success: true, message: data.message, user: userData };
       } else {
-        return { success: false, message: data.message || 'Google Sign In Failed' };
+        return { success: false, message: data.message || 'গুগল সাইন-ইন ব্যর্থ হয়েছে (Google Sign In Failed)' };
       }
     } catch (error: any) {
-      console.error('Google Sign In Error:', error);
-      return { success: false, message: 'GOOGLE_SIGNIN_ERROR' };
+      console.error('Google Sign In Network Error:', error);
+      return { success: false, message: 'সার্ভার কানেকশন এরর! ইন্টারনেট বা ব্যাকএন্ড চেক করুন' };
     } finally {
       setIsLoading(false);
     }

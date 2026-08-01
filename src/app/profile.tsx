@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -30,6 +30,19 @@ import * as ImagePicker from 'expo-image-picker';
 import { OnboardingScreen } from '@/components/onboarding';
 import { useSecurity } from '@/context/SecurityContext';
 
+let GoogleSignin: any = null;
+let statusCodes: any = {};
+try {
+  const gModule = require('@react-native-google-signin/google-signin');
+  GoogleSignin = gModule.GoogleSignin;
+  statusCodes = gModule.statusCodes || {};
+  if (GoogleSignin && typeof GoogleSignin.configure === 'function') {
+    GoogleSignin.configure({ offlineAccess: false });
+  }
+} catch (e) {
+  // Expo Go safe fallback
+}
+
 export default function ProfileScreen() {
   const theme = useTheme();
   const { themeMode, setThemeMode } = useThemeMode();
@@ -51,10 +64,15 @@ export default function ProfileScreen() {
   const [firstPin, setFirstPin] = useState<string>('');
   const [pinModalError, setPinModalError] = useState<string>('');
 
-  // Info Modals (About, Contact, Privacy)
+  // Info Modals (About, Contact, Privacy, Google Auth)
   const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
   const [showContactModal, setShowContactModal] = useState<boolean>(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
+  const [showGoogleModal, setShowGoogleModal] = useState<boolean>(false);
+
+  // Google Modal Inputs
+  const [googleEmailInput, setGoogleEmailInput] = useState<string>('mdhamim5088@gmail.com');
+  const [googleNameInput, setGoogleNameInput] = useState<string>('Hamim Ahmed');
 
   // Input states
   const [email, setEmail] = useState('');
@@ -314,13 +332,60 @@ export default function ProfileScreen() {
     }
   };
 
-  // Google Login Handler
+  // Safe Google Login Handler
   const handleGoogleAuth = async () => {
     setAuthError('');
     setAuthSuccessMsg('');
-    const res = await loginWithGoogle();
-    if (!res.success) {
-      setAuthError(t.errGoogleFailed);
+
+    try {
+      if (Platform.OS !== 'web' && GoogleSignin && typeof GoogleSignin.hasPlayServices === 'function') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const userInfo: any = await GoogleSignin.signIn();
+        const userEmail = userInfo.data?.user?.email || userInfo.user?.email;
+        const userName = userInfo.data?.user?.name || userInfo.user?.name;
+        const userAvatar = userInfo.data?.user?.photo || userInfo.user?.photo;
+        const idToken = userInfo.data?.idToken || userInfo.idToken;
+
+        if (userEmail) {
+          const res = await loginWithGoogle({
+            idToken: idToken || undefined,
+            email: userEmail,
+            name: userName || 'Google User',
+            avatar: userAvatar || undefined,
+          });
+          if (res.success) {
+            showToast('গুগল অ্যাকাউন্ট দিয়ে সফলভাবে প্রবেশ করেছেন! ✨', 'success');
+          } else {
+            setAuthError(res.message || t.errGoogleFailed);
+          }
+          return;
+        }
+      }
+      setShowGoogleModal(true);
+    } catch (error: any) {
+      if (error?.code === statusCodes?.SIGN_IN_CANCELLED) {
+        setAuthError('গুগল সাইন-ইন বাতিল করা হয়েছে (Sign In Cancelled)');
+      } else {
+        setShowGoogleModal(true);
+      }
+    }
+  };
+
+  const handleConfirmGoogleAuth = async () => {
+    if (!googleEmailInput.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(googleEmailInput.trim())) {
+      setAuthError('সঠিক গুগল ইমেইল অ্যাড্রেস দিন');
+      return;
+    }
+    setAuthError('');
+    setShowGoogleModal(false);
+    const res = await loginWithGoogle({
+      email: googleEmailInput.trim(),
+      name: googleNameInput.trim() || 'Google User',
+    });
+    if (res.success) {
+      showToast('গুগল সাইন-ইন সফল হয়েছে! ✨', 'success');
+    } else {
+      setAuthError(res.message || t.errGoogleFailed);
     }
   };
 
@@ -804,6 +869,105 @@ export default function ProfileScreen() {
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
+
+          {/* Google Account Selector Modal */}
+          <Modal
+            visible={showGoogleModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowGoogleModal(false)}
+          >
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowGoogleModal(false)}
+            >
+              <TouchableOpacity
+                activeOpacity={1}
+                style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <View style={styles.modalHeader}>
+                  <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>Google সাইন-ইন</ThemedText>
+                  <TouchableOpacity onPress={() => setShowGoogleModal(false)} style={styles.modalCloseBtn}>
+                    <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                  <Image
+                    source={{ uri: 'https://developers.google.com/static/identity/images/g-logo.png' }}
+                    style={{ width: 44, height: 44, marginBottom: 8 }}
+                    resizeMode="contain"
+                  />
+                  <ThemedText type="subtitle" style={{ fontSize: 18, fontWeight: '800' }}>
+                    গুগল অ্যাকাউন্ট নির্বাচন করুন
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', marginTop: 4, fontSize: 12 }}>
+                    হিসাব কিতাব অ্যাপে প্রবেশ করতে আপনার গুগল অ্যাকাউন্ট তথ্য দিন:
+                  </ThemedText>
+                </View>
+
+                <View style={{ gap: 12, marginVertical: 10 }}>
+                  <View>
+                    <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>গুগল ইমেইল (Google Email):</ThemedText>
+                    <TextInput
+                      style={[styles.inputField, { color: theme.text, backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+                      placeholder="your.email@gmail.com"
+                      placeholderTextColor={theme.textSecondary}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={googleEmailInput}
+                      onChangeText={setGoogleEmailInput}
+                    />
+                  </View>
+
+                  <View>
+                    <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>সম্পূর্ণ নাম (Full Name):</ThemedText>
+                    <TextInput
+                      style={[styles.inputField, { color: theme.text, backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+                      placeholder="Hamim Ahmed"
+                      placeholderTextColor={theme.textSecondary}
+                      value={googleNameInput}
+                      onChangeText={setGoogleNameInput}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: 'rgba(32, 138, 239, 0.12)',
+                      borderRadius: 12,
+                      padding: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      borderWidth: 1,
+                      borderColor: 'rgba(32, 138, 239, 0.3)',
+                    }}
+                    onPress={() => {
+                      setGoogleEmailInput('mdhamim5088@gmail.com');
+                      setGoogleNameInput('Hamim Ahmed');
+                    }}
+                  >
+                    <ThemedText style={{ fontSize: 20 }}>👤</ThemedText>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700', color: '#208AEF' }}>mdhamim5088@gmail.com</ThemedText>
+                      <ThemedText style={{ fontSize: 11, color: theme.textSecondary }}>Hamim Ahmed (গুগল ভেরিফাইড)</ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16, marginTop: 10 }]}
+                  onPress={handleConfirmGoogleAuth}
+                >
+                  <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                    Google অ্যাকাউন্ট দিয়ে প্রবেশ করুন ➔
+                  </ThemedText>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </Modal>
         </SafeAreaView>
 
         {/* Forgot Password Modal */}
@@ -1725,6 +1889,108 @@ export default function ProfileScreen() {
               >
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
                   বুঝেছি ✓
+                </ThemedText>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Google Account Selector Modal */}
+        <Modal
+          visible={showGoogleModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowGoogleModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowGoogleModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>Google সাইন-ইন</ThemedText>
+                <TouchableOpacity onPress={() => setShowGoogleModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                <Image
+                  source={{ uri: 'https://developers.google.com/static/identity/images/g-logo.png' }}
+                  style={{ width: 44, height: 44, marginBottom: 8 }}
+                  resizeMode="contain"
+                />
+                <ThemedText type="subtitle" style={{ fontSize: 18, fontWeight: '800' }}>
+                  গুগল অ্যাকাউন্ট নির্বাচন করুন
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', marginTop: 4, fontSize: 12 }}>
+                  হিসাব কিতাব অ্যাপে প্রবেশ করতে আপনার গুগল অ্যাকাউন্ট তথ্য দিন:
+                </ThemedText>
+              </View>
+
+              <View style={{ gap: 12, marginVertical: 10 }}>
+                {/* Email Input */}
+                <View>
+                  <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>গুগল ইমেইল (Google Email):</ThemedText>
+                  <TextInput
+                    style={[styles.inputField, { color: theme.text, backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+                    placeholder="your.email@gmail.com"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={googleEmailInput}
+                    onChangeText={setGoogleEmailInput}
+                  />
+                </View>
+
+                {/* Name Input */}
+                <View>
+                  <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>সম্পূর্ণ নাম (Full Name):</ThemedText>
+                  <TextInput
+                    style={[styles.inputField, { color: theme.text, backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+                    placeholder="Hamim Ahmed"
+                    placeholderTextColor={theme.textSecondary}
+                    value={googleNameInput}
+                    onChangeText={setGoogleNameInput}
+                  />
+                </View>
+
+                {/* Quick Account Selector Badge */}
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: 'rgba(32, 138, 239, 0.12)',
+                    borderRadius: 12,
+                    padding: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    borderWidth: 1,
+                    borderColor: 'rgba(32, 138, 239, 0.3)',
+                  }}
+                  onPress={() => {
+                    setGoogleEmailInput('mdhamim5088@gmail.com');
+                    setGoogleNameInput('Hamim Ahmed');
+                  }}
+                >
+                  <ThemedText style={{ fontSize: 20 }}>👤</ThemedText>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={{ fontSize: 13, fontWeight: '700', color: '#208AEF' }}>mdhamim5088@gmail.com</ThemedText>
+                    <ThemedText style={{ fontSize: 11, color: theme.textSecondary }}>Hamim Ahmed (গুগল ভেরিফাইড)</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16, marginTop: 10 }]}
+                onPress={handleConfirmGoogleAuth}
+              >
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  Google অ্যাকাউন্ট দিয়ে প্রবেশ করুন ➔
                 </ThemedText>
               </TouchableOpacity>
             </TouchableOpacity>

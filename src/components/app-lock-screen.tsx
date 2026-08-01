@@ -28,6 +28,7 @@ export function AppLockScreen() {
   // Recovery Modal states
   const [showRecoveryModal, setShowRecoveryModal] = useState<boolean>(false);
   const [recoveryStep, setRecoveryStep] = useState<'request' | 'verify'>('request');
+  const [recoveryEmailInput, setRecoveryEmailInput] = useState<string>(user?.email || '');
   const [generatedOtp, setGeneratedOtp] = useState<string>('');
   const [inputOtp, setInputOtp] = useState<string>('');
   const [newPinRecovery, setNewPinRecovery] = useState<string>('');
@@ -92,6 +93,10 @@ export function AppLockScreen() {
   };
 
   const handleSendRecoveryOtp = () => {
+    if (!recoveryEmailInput.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryEmailInput.trim())) {
+      setRecoveryError('সঠিক ইমেইল অ্যাড্রেস লিখুন');
+      return;
+    }
     setRecoveryLoading(true);
     setRecoveryError('');
     setRecoverySuccessMsg('');
@@ -102,11 +107,7 @@ export function AppLockScreen() {
       setGeneratedOtp(mockOtp);
       setRecoveryLoading(false);
       setRecoveryStep('verify');
-      setRecoverySuccessMsg(
-        user?.email
-          ? `${user.email} ঠিকানায় ৬ ডিজিটের কোড পাঠানো হয়েছে`
-          : t.otpSendSuccess
-      );
+      setRecoverySuccessMsg(`${recoveryEmailInput.trim()} ঠিকানায় ৬ ডিজিটের কোড পাঠানো হয়েছে`);
     }, 1200);
   };
 
@@ -257,9 +258,17 @@ export function AppLockScreen() {
 
               {recoveryStep === 'request' ? (
                 <View style={styles.recoveryStepBox}>
-                  <Text style={styles.recoveryDesc}>
-                    আপনার অ্যাকাউন্টের রেজিস্টার্ড ইমেইলে ({user?.email || 'Registered Email'}) সিকিউরিটি কোড পাঠিয়ে পিন রিসেট করুন।
-                  </Text>
+                  <Text style={styles.inputLabelText}>আপনার ইমেইল অ্যাড্রেস দিন:</Text>
+                  <TextInput
+                    style={[styles.modalInput, { textAlign: 'left', marginBottom: 16 }]}
+                    placeholder="your.email@gmail.com"
+                    placeholderTextColor="#64748B"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={recoveryEmailInput}
+                    onChangeText={setRecoveryEmailInput}
+                  />
+
                   <TouchableOpacity
                     style={styles.actionBtn}
                     onPress={handleSendRecoveryOtp}
