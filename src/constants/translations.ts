@@ -127,6 +127,14 @@ export const translations = {
     saveBtn: 'সংরক্ষণ করুন (Save)',
     errDesc: 'অনুগ্রহ করে একটি শিরোনাম বা বিবরণ লিখুন।',
     errAmt: 'অনুগ্রহ করে সঠিক টাকার পরিমাণ লিখুন।',
+    addCustomCat: '➕ নতুন ক্যাটাগরি যোগ করুন',
+    customCatPlaceholder: 'যেমন: যাতায়াত, ফ্রিল্যান্সিং, গিফট',
+    customCatAddBtn: 'যুক্ত করুন',
+    errCustomCatEmpty: 'ক্যাটাগরির নাম লিখুন',
+    catTransport: 'যাতায়াত (Transport)',
+    catHealth: 'চিকিৎসা (Health)',
+    catEducation: 'শিক্ষা (Education)',
+    catBills: 'ইউটিলিটি ও বিল (Bills)',
 
     // Budget
     monthlyBudgetEyebrow: 'MONTHLY BUDGET',
@@ -235,7 +243,19 @@ export const translations = {
       'জান', 'ফেব', 'মার্চ', 'এপ্রি', 'মে', 'জুন',
       'জুলা', 'আগ', 'সেপ', 'অক্টো', 'নভে', 'ডিসে',
     ],
-    weekDays: ['সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি', 'রবি']
+    weekDays: ['সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি', 'রবি'],
+
+    // Onboarding
+    onboardingSkip: 'এড়িয়ে যান',
+    onboardingNext: 'পরবর্তী',
+    onboardingGetStarted: 'শুরু করুন',
+    onboardingReplay: 'অনবোর্ডিং তথ্য পুনরায় দেখুন 🚀',
+    onboardingSlide1Title: 'সহজ ও নির্ভুল হিসাব-কিতাব',
+    onboardingSlide1Sub: 'আপনার দৈনন্দিন আয়-ব্যয়ের সঠিক হিসাব রাখুন নিমিষেই। সব হিসাব থাকবে নিজের হাতের মুঠোয়।',
+    onboardingSlide2Title: 'স্মার্ট ক্যাটাগরি ও বাজেট',
+    onboardingSlide2Sub: 'খাবার, শপিং, বাসা ভাড়া কিংবা বেতনের আলাদা হিসাব দেখে খরচের ওপর রাখুন পূর্ণ নিয়ন্ত্রণ।',
+    onboardingSlide3Title: 'লাইভ গ্রাফ ও বিস্তারিত রিপোর্ট',
+    onboardingSlide3Sub: 'সুন্দর ভিজ্যুয়াল চার্ট ও রিপোর্ট দেখে বুঝতে পারবেন আপনার টাকা কোথায় খরচ হচ্ছে।',
   },
   en: {
     // Shared / Profile
@@ -365,6 +385,14 @@ export const translations = {
     saveBtn: 'Save',
     errDesc: 'Please enter a title or description.',
     errAmt: 'Please enter a valid amount.',
+    addCustomCat: '➕ Add Custom Category',
+    customCatPlaceholder: 'e.g., Transport, Freelancing, Gift',
+    customCatAddBtn: 'Add',
+    errCustomCatEmpty: 'Enter category name',
+    catTransport: 'Transport',
+    catHealth: 'Health',
+    catEducation: 'Education',
+    catBills: 'Bills',
 
     // Budget
     monthlyBudgetEyebrow: 'MONTHLY BUDGET',
@@ -473,6 +501,18 @@ export const translations = {
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ],
-    weekDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    weekDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+
+    // Onboarding
+    onboardingSkip: 'Skip',
+    onboardingNext: 'Next',
+    onboardingGetStarted: 'Get Started',
+    onboardingReplay: 'Replay Onboarding Tour 🚀',
+    onboardingSlide1Title: 'Effortless Expense Tracking',
+    onboardingSlide1Sub: 'Track every daily income and expense in seconds. Keep your money flow always visible.',
+    onboardingSlide2Title: 'Smart Budget & Categories',
+    onboardingSlide2Sub: 'Organize spending across Food, Shopping, Rent & Salary with effortless budget control.',
+    onboardingSlide3Title: 'Live Analytics & Reports',
+    onboardingSlide3Sub: 'Visualize spending patterns through monthly interactive graphs and instant report exports.',
   },
 };

@@ -7,7 +7,7 @@ export interface Transaction {
   title: string;
   amount: number;
   type: 'income' | 'expense';
-  category: 'Food' | 'Shopping' | 'Utilities' | 'Rent' | 'Entertainment' | 'Salary' | 'Others';
+  category: string;
   date: string;
 }
 

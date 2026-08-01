@@ -45,21 +45,43 @@ export default function HomeScreen() {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
-  const [category, setCategory] = useState<Transaction['category']>('Food');
+  const [category, setCategory] = useState<string>('Food');
 
-  // ক্যাটাগরির বাংলা নাম ডিকশনারি (ব্যবহারকারীকে সুন্দরভাবে দেখানোর জন্য)।
+  // Custom categories state created by user
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
+  const [newCatName, setNewCatName] = useState<string>('');
+
+  // ক্যাটাগরির ডিকশনারি
   const { language } = useLanguage();
   const t = translations[language];
 
-  // ক্যাটাগরির বাংলা নাম ডিকশনারি (ব্যবহারকারীকে সুন্দরভাবে দেখানোর জন্য)।
-  const categoryLabels: Record<Transaction['category'], string> = {
+  const categoryLabels: Record<string, string> = {
     Food: t.catFood,
     Shopping: t.catShopping,
     Utilities: t.catUtilities,
     Rent: t.catRent,
     Entertainment: t.catEntertainment,
     Salary: t.catSalary,
+    Transport: t.catTransport,
+    Health: t.catHealth,
+    Education: t.catEducation,
+    Bills: t.catBills,
     Others: t.catOthers,
+  };
+
+  const handleAddCustomCategory = () => {
+    if (!newCatName.trim()) {
+      alert(t.errCustomCatEmpty);
+      return;
+    }
+    const catName = newCatName.trim();
+    if (!customCategories.includes(catName)) {
+      setCustomCategories((prev) => [...prev, catName]);
+    }
+    setCategory(catName);
+    setNewCatName('');
+    setShowCustomInput(false);
   };
 
   // ফর্ম সাবমিট করার হ্যান্ডলার ফাংশন।
@@ -232,14 +254,18 @@ export default function HomeScreen() {
                       {tx.category === 'Rent' && '🏠'}
                       {tx.category === 'Entertainment' && '🎬'}
                       {tx.category === 'Salary' && '💼'}
-                      {tx.category === 'Others' && '🏷️'}
+                      {tx.category === 'Transport' && '🚗'}
+                      {tx.category === 'Health' && '🏥'}
+                      {tx.category === 'Education' && '🎓'}
+                      {tx.category === 'Bills' && '🧾'}
+                      {!['Food','Shopping','Utilities','Rent','Entertainment','Salary','Transport','Health','Education','Bills'].includes(tx.category) && '🏷️'}
                     </ThemedText>
                   </View>
                   
                   <View style={styles.txInfo}>
                     <ThemedText style={styles.txTitle}>{tx.title}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {categoryLabels[tx.category]} • {tx.date}
+                      {categoryLabels[tx.category] || tx.category} • {tx.date}
                     </ThemedText>
                   </View>
 
@@ -348,7 +374,8 @@ export default function HomeScreen() {
                 <View style={styles.inputContainer}>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.catLabel}</ThemedText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                    {(Object.keys(categoryLabels) as Array<Transaction['category']>).map((cat) => {
+                    {/* স্ট্যান্ডার্ড ক্যাটাগরিগুলো */}
+                    {Object.keys(categoryLabels).map((cat) => {
                       const isSelected = category === cat;
                       return (
                         <TouchableOpacity
@@ -358,7 +385,7 @@ export default function HomeScreen() {
                             { backgroundColor: theme.backgroundSelected },
                             isSelected && { backgroundColor: theme.text }
                           ]}
-                          onPress={() => setCategory(cat)}
+                          onPress={() => { setCategory(cat); setShowCustomInput(false); }}
                         >
                           <ThemedText style={[
                             styles.categoryChipText,
@@ -369,7 +396,74 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                       );
                     })}
+
+                    {/* ব্যবহারকারীর তৈরি ইউজার কাস্টম ক্যাটাগরিগুলো */}
+                    {customCategories.map((cat) => {
+                      const isSelected = category === cat;
+                      return (
+                        <TouchableOpacity
+                          key={cat}
+                          style={[
+                            styles.categoryChip,
+                            { backgroundColor: theme.backgroundSelected },
+                            isSelected && { backgroundColor: '#3B82F6' }
+                          ]}
+                          onPress={() => { setCategory(cat); setShowCustomInput(false); }}
+                        >
+                          <ThemedText style={[
+                            styles.categoryChipText,
+                            isSelected && { color: '#FFFFFF', fontWeight: '700' }
+                          ]}>
+                            🏷️ {cat}
+                          </ThemedText>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    {/* কাস্টম ক্যাটাগরি যোগ করার বাটন */}
+                    <TouchableOpacity
+                      style={[
+                        styles.categoryChip,
+                        { backgroundColor: 'rgba(59, 130, 246, 0.15)', borderColor: '#3B82F6', borderWidth: 1 }
+                      ]}
+                      onPress={() => setShowCustomInput(!showCustomInput)}
+                    >
+                      <ThemedText style={[styles.categoryChipText, { color: '#3B82F6', fontWeight: '700' }]}>
+                        {t.addCustomCat}
+                      </ThemedText>
+                    </TouchableOpacity>
                   </ScrollView>
+
+                  {/* নতুন কাস্টম ক্যাটাগরি টাইপ করার ইনপুট বক্স */}
+                  {showCustomInput && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          { flex: 1, color: theme.text, borderColor: '#3B82F6', borderWidth: 1.5 }
+                        ]}
+                        placeholder={t.customCatPlaceholder}
+                        placeholderTextColor={theme.textSecondary}
+                        value={newCatName}
+                        onChangeText={setNewCatName}
+                        autoFocus
+                      />
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#3B82F6',
+                          paddingHorizontal: 16,
+                          borderRadius: 12,
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
+                        onPress={handleAddCustomCategory}
+                      >
+                        <ThemedText style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                          {t.customCatAddBtn}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
 
                 {/* সাবমিট বাটন */}

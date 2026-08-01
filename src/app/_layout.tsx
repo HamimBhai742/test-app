@@ -9,7 +9,38 @@ import { TransactionProvider } from '@/context/TransactionContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 
+import React, { useState, useEffect } from 'react';
+import { OnboardingScreen, getOnboardingCompleted } from '@/components/onboarding';
+
+import ProfileScreen from './profile';
+import { useAuth } from '@/context/AuthContext';
+
 SplashScreen.preventAutoHideAsync();
+
+function MainContent() {
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    getOnboardingCompleted().then((completed) => {
+      setShowOnboarding(!completed);
+    });
+  }, []);
+
+  return (
+    <>
+      <AnimatedSplashOverlay />
+      {showOnboarding && (
+        <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+      )}
+      {!showOnboarding && !user ? (
+        <ProfileScreen />
+      ) : (
+        <AppTabs />
+      )}
+    </>
+  );
+}
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -19,8 +50,7 @@ export default function TabLayout() {
       <LanguageProvider>
         <TransactionProvider>
           <AuthProvider>
-            <AnimatedSplashOverlay />
-            <AppTabs />
+            <MainContent />
           </AuthProvider>
         </TransactionProvider>
       </LanguageProvider>

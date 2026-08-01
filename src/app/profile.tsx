@@ -24,6 +24,7 @@ import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import * as ImagePicker from 'expo-image-picker';
+import { OnboardingScreen } from '@/components/onboarding';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction, deleteAllTransactions } = useTransactions();
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authStep, setAuthStep] = useState<'auth' | 'otp'>('auth');
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const { language, setLanguage } = useLanguage();
   const t = translations[language];
 
@@ -1005,6 +1007,14 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
 
+            {/* Replay Onboarding */}
+            <TouchableOpacity style={styles.actionRow} onPress={() => setShowOnboarding(true)}>
+              <ThemedText style={styles.actionIcon}>🚀</ThemedText>
+              <View style={styles.actionTextContainer}>
+                <ThemedText type="small">{t.onboardingReplay}</ThemedText>
+              </View>
+            </TouchableOpacity>
+
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
 
             {/* Export Transactions */}
@@ -1247,6 +1257,10 @@ export default function ProfileScreen() {
               {toast.message}
             </ThemedText>
           </View>
+        )}
+        {/* Onboarding Overlay when replaying from settings */}
+        {showOnboarding && (
+          <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
         )}
       </SafeAreaView>
     </ThemedView>

@@ -33,7 +33,15 @@ export function AnimatedSplashOverlay() {
     },
   });
 
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+  const image = (
+    <View style={styles.splashContent}>
+      <View style={styles.logoBadgeContainer}>
+        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+      </View>
+      <Animated.Text style={styles.splashTitle}>হিসাব কিতাব</Animated.Text>
+      <Animated.Text style={styles.splashSubtitle}>আপনার স্মার্ট ফিনান্সিয়াল ম্যানেজার 💰</Animated.Text>
+    </View>
+  );
 
   return animate ? (
     <Animated.View
@@ -140,9 +148,41 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
+    backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
+  },
+  splashContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoBadgeContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#208AEF',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  splashTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  splashSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#94A3B8',
   },
 });
