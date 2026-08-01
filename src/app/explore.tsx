@@ -32,30 +32,50 @@ const formatNum = (n: number) => {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-type CategoryKey = 'Food' | 'Shopping' | 'Utilities' | 'Rent' | 'Entertainment' | 'Others';
+type CategoryKey = string;
 
-const CATEGORIES: {
-  key: CategoryKey;
+export interface CategoryItem {
+  key: string;
   label: string;
   emoji: string;
   color: string;
   defaultBudget: number;
-}[] = [
-  { key: 'Food',          label: 'খাবার দাবার',     emoji: '🍔', color: '#F59E0B', defaultBudget: 3000 },
-  { key: 'Shopping',      label: 'কেনাকাটা',         emoji: '🛒', color: '#8B5CF6', defaultBudget: 2000 },
-  { key: 'Utilities',     label: 'ইউটিলিটি বিল',    emoji: '⚡', color: '#06B6D4', defaultBudget: 1500 },
-  { key: 'Rent',          label: 'বাসা ভাড়া',        emoji: '🏠', color: '#3B82F6', defaultBudget: 5000 },
-  { key: 'Entertainment', label: 'বিনোদন',            emoji: '🎬', color: '#EC4899', defaultBudget: 500  },
-  { key: 'Others',        label: 'অন্যান্য',           emoji: '🏷️', color: '#64748B', defaultBudget: 1000 },
+}
+
+const DEFAULT_CATEGORIES: CategoryItem[] = [
+  { key: 'Food',          label: 'Food',          emoji: '🍔', color: '#F59E0B', defaultBudget: 3000 },
+  { key: 'Shopping',      label: 'Shopping',      emoji: '🛒', color: '#8B5CF6', defaultBudget: 2000 },
+  { key: 'Utilities',     label: 'Utilities',     emoji: '⚡', color: '#06B6D4', defaultBudget: 1500 },
+  { key: 'Rent',          label: 'Rent',          emoji: '🏠', color: '#3B82F6', defaultBudget: 5000 },
+  { key: 'Entertainment', label: 'Entertainment', emoji: '🎬', color: '#EC4899', defaultBudget: 500  },
+  { key: 'Transport',     label: 'Transport',     emoji: '🚗', color: '#10B981', defaultBudget: 2500 },
+  { key: 'Health',        label: 'Health',        emoji: '🏥', color: '#EF4444', defaultBudget: 2000 },
+  { key: 'Education',     label: 'Education',     emoji: '🎓', color: '#6366F1', defaultBudget: 3000 },
+  { key: 'Bills',         label: 'Bills',         emoji: '🧾', color: '#14B8A6', defaultBudget: 1800 },
+  { key: 'Others',        label: 'Others',        emoji: '🏷️', color: '#64748B', defaultBudget: 1000 },
 ];
 
-type BudgetMap = Record<CategoryKey, number>;
+type BudgetMap = Record<string, number>;
 
 const DEFAULT_BUDGETS: BudgetMap = Object.fromEntries(
-  CATEGORIES.map((c) => [c.key, c.defaultBudget])
-) as BudgetMap;
+  DEFAULT_CATEGORIES.map((c) => [c.key, c.defaultBudget])
+);
 
-// ─── Budget Edit Modal ────────────────────────────────────────────────────────
+function getCategoryLabel(key: string, t: any) {
+  switch (key) {
+    case 'Food': return t.catFood;
+    case 'Shopping': return t.catShopping;
+    case 'Utilities': return t.catUtilities;
+    case 'Rent': return t.catRent;
+    case 'Entertainment': return t.catEntertainment;
+    case 'Transport': return t.catTransport;
+    case 'Health': return t.catHealth;
+    case 'Education': return t.catEducation;
+    case 'Bills': return t.catBills;
+    case 'Others': return t.catOthers;
+    default: return key;
+  }
+}
 
 function BudgetEditModal({
   visible,
@@ -65,7 +85,7 @@ function BudgetEditModal({
   onClose,
 }: {
   visible: boolean;
-  category: (typeof CATEGORIES)[0] | null;
+  category: CategoryItem | null;
   currentBudget: number;
   onSave: (val: number) => void;
   onClose: () => void;
@@ -74,18 +94,6 @@ function BudgetEditModal({
   const { language } = useLanguage();
   const t = translations[language];
   const [input, setInput] = useState(currentBudget.toString());
-
-  const getCategoryLabel = (key: CategoryKey) => {
-    switch (key) {
-      case 'Food': return t.catFood;
-      case 'Shopping': return t.catShopping;
-      case 'Utilities': return t.catUtilities;
-      case 'Rent': return t.catRent;
-      case 'Entertainment': return t.catEntertainment;
-      case 'Others': return t.catOthers;
-      default: return '';
-    }
-  };
 
   React.useEffect(() => {
     if (visible) setInput(currentBudget.toString());
@@ -120,7 +128,7 @@ function BudgetEditModal({
               <Text style={styles.modalIcon}>{category.emoji}</Text>
             </View>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              {getCategoryLabel(category.key)}
+              {getCategoryLabel(category.key, t)}
             </Text>
             <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
               {t.setBudgetLimit}
@@ -170,6 +178,107 @@ function BudgetEditModal({
   );
 }
 
+// ─── Add Category Modal ───────────────────────────────────────────────────────
+
+function AddCategoryModal({
+  visible,
+  onSave,
+  onClose,
+}: {
+  visible: boolean;
+  onSave: (name: string, budget: number, emoji: string) => void;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
+  const [name, setName] = useState('');
+  const [budget, setBudget] = useState('3000');
+  const [selectedEmoji, setSelectedEmoji] = useState('🏷️');
+
+  const emojis = ['🏷️', '🚗', '🏥', '🎓', '🧾', '🎮', '✈️', '🎁', '🐶', '💻'];
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    const bVal = parseFloat(budget);
+    if (isNaN(bVal) || bVal <= 0) return;
+    onSave(name.trim(), bVal, selectedEmoji);
+    setName('');
+    setBudget('3000');
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable
+            style={[styles.modalSheet, { backgroundColor: theme.background }]}
+            onPress={Keyboard.dismiss}
+          >
+            <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
+            <Text style={[styles.modalTitle, { color: theme.text, marginTop: 10 }]}>
+              {t.addCatModalTitle}
+            </Text>
+
+            {/* Emoji picker row */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {emojis.map((em) => (
+                  <TouchableOpacity
+                    key={em}
+                    onPress={() => setSelectedEmoji(em)}
+                    style={{
+                      padding: 8,
+                      borderRadius: 12,
+                      backgroundColor: selectedEmoji === em ? '#3B82F6' : theme.backgroundElement,
+                    }}
+                  >
+                    <Text style={{ fontSize: 20 }}>{em}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Text style={[styles.modalSubtitle, { color: theme.textSecondary, alignSelf: 'flex-start', marginBottom: 4 }]}>
+              {t.catNameLabel}
+            </Text>
+            <TextInput
+              style={[styles.modalInputWrapper, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: '#3B82F6', marginBottom: 12, paddingHorizontal: 14, height: 46 }]}
+              placeholder={t.catNamePlaceholder}
+              placeholderTextColor={theme.textSecondary}
+              value={name}
+              onChangeText={setName}
+            />
+
+            <Text style={[styles.modalSubtitle, { color: theme.textSecondary, alignSelf: 'flex-start', marginBottom: 4 }]}>
+              {t.catBudgetLabel}
+            </Text>
+            <TextInput
+              style={[styles.modalInputWrapper, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: '#3B82F6', marginBottom: 16, paddingHorizontal: 14, height: 46 }]}
+              placeholder="3000"
+              placeholderTextColor={theme.textSecondary}
+              value={budget}
+              onChangeText={setBudget}
+              keyboardType="numeric"
+            />
+
+            <TouchableOpacity
+              style={[styles.modalSaveBtn, { backgroundColor: '#3B82F6' }]}
+              onPress={handleSave}
+            >
+              <Text style={styles.modalSaveBtnText}>{t.saveCatBtn}</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Category Budget Card ─────────────────────────────────────────────────────
 
 function BudgetCard({
@@ -178,7 +287,7 @@ function BudgetCard({
   spent,
   onEdit,
 }: {
-  category: (typeof CATEGORIES)[0];
+  category: CategoryItem;
   budget: number;
   spent: number;
   onEdit: () => void;
@@ -192,18 +301,6 @@ function BudgetCard({
   const isNear = !isOver && pct >= 80;
 
   const statusColor = isOver ? '#EF4444' : isNear ? '#F59E0B' : category.color;
-
-  const getCategoryLabel = (key: CategoryKey) => {
-    switch (key) {
-      case 'Food': return t.catFood;
-      case 'Shopping': return t.catShopping;
-      case 'Utilities': return t.catUtilities;
-      case 'Rent': return t.catRent;
-      case 'Entertainment': return t.catEntertainment;
-      case 'Others': return t.catOthers;
-      default: return '';
-    }
-  };
 
   return (
     <TouchableOpacity onPress={onEdit} activeOpacity={0.85}>
@@ -229,7 +326,7 @@ function BudgetCard({
           <View style={styles.budgetInfo}>
             <View style={styles.budgetTopRow}>
               <Text style={[styles.budgetLabel, { color: theme.text }]}>
-                {getCategoryLabel(category.key)}
+                {getCategoryLabel(category.key, t)}
               </Text>
               {isOver && (
                 <View style={styles.overBadge}>
@@ -298,20 +395,19 @@ export default function BudgetScreen() {
   const t = translations[language];
   const { transactions } = useTransactions();
 
+  const [categoriesList, setCategoriesList] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
   const [budgets, setBudgets] = useState<BudgetMap>(DEFAULT_BUDGETS);
-  const [editingCat, setEditingCat] = useState<(typeof CATEGORIES)[0] | null>(null);
+  const [editingCat, setEditingCat] = useState<CategoryItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [addCatModalVisible, setAddCatModalVisible] = useState(false);
 
   // Calculate actual spending per category from transactions
   const spentByCategory = useMemo(() => {
-    const map: Partial<Record<CategoryKey, number>> = {};
+    const map: Partial<Record<string, number>> = {};
     transactions
       .filter((tx) => tx.type === 'expense')
       .forEach((tx) => {
-        const cat = tx.category as CategoryKey;
-        if (CATEGORIES.find((c) => c.key === cat)) {
-          map[cat] = (map[cat] ?? 0) + tx.amount;
-        }
+        map[tx.category] = (map[tx.category] ?? 0) + tx.amount;
       });
     return map;
   }, [transactions]);
@@ -319,16 +415,16 @@ export default function BudgetScreen() {
   // Summary stats
   const summary = useMemo(() => {
     const totalBudget = Object.values(budgets).reduce((a, b) => a + b, 0);
-    const totalSpent = CATEGORIES.reduce(
+    const totalSpent = categoriesList.reduce(
       (acc, c) => acc + (spentByCategory[c.key] ?? 0),
       0
     );
-    const overBudgetCount = CATEGORIES.filter(
-      (c) => (spentByCategory[c.key] ?? 0) > budgets[c.key]
+    const overBudgetCount = categoriesList.filter(
+      (c) => (spentByCategory[c.key] ?? 0) > (budgets[c.key] ?? 0)
     ).length;
     const totalPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
     return { totalBudget, totalSpent, overBudgetCount, totalPct };
-  }, [budgets, spentByCategory]);
+  }, [budgets, spentByCategory, categoriesList]);
 
   const contentPlatformStyle = Platform.select({
     android: {
@@ -341,7 +437,7 @@ export default function BudgetScreen() {
     ios: { paddingTop: insets.top, paddingBottom: insets.bottom },
   });
 
-  const handleEdit = (cat: (typeof CATEGORIES)[0]) => {
+  const handleEdit = (cat: CategoryItem) => {
     setEditingCat(cat);
     setModalVisible(true);
   };
@@ -350,6 +446,28 @@ export default function BudgetScreen() {
     if (editingCat) {
       setBudgets((prev) => ({ ...prev, [editingCat.key]: val }));
     }
+  };
+
+  const handleAddCategory = (name: string, budgetVal: number, emoji: string) => {
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const newCatItem: CategoryItem = {
+      key: name,
+      label: name,
+      emoji: emoji || '🏷️',
+      color: randomColor,
+      defaultBudget: budgetVal,
+    };
+
+    setCategoriesList((prev) => {
+      if (prev.some((c) => c.key === name)) return prev;
+      return [...prev, newCatItem];
+    });
+
+    setBudgets((prev) => ({
+      ...prev,
+      [name]: budgetVal,
+    }));
   };
 
   const summaryStatusColor =
@@ -376,11 +494,15 @@ export default function BudgetScreen() {
             </Text>
             <Text style={[styles.headerTitle, { color: theme.text }]}>{t.budgetPlannerTitle}</Text>
           </View>
-          <View style={[styles.headerBadge, { backgroundColor: `${summaryStatusColor}15` }]}>
-            <Text style={[styles.headerBadgeIcon]}>
-              {summary.overBudgetCount > 0 ? '⚠️' : summary.totalPct >= 80 ? '🔶' : '✅'}
-            </Text>
-          </View>
+
+          {/* Add Category Icon Button */}
+          <TouchableOpacity
+            style={styles.addCategoryIconBtn}
+            onPress={() => setAddCatModalVisible(true)}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.addCategoryIconText}>➕</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Summary Hero Card ── */}
@@ -441,30 +563,27 @@ export default function BudgetScreen() {
                 </Text>
                 <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.spentLabel}</Text>
               </View>
+
               <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
-              <View style={styles.heroStatItem}>
-                <Text style={[styles.heroStatVal, { color: '#10B981' }]}>
-                  TK {formatNum(Math.max(summary.totalBudget - summary.totalSpent, 0))}
-                </Text>
-                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.leftLabel}</Text>
-              </View>
-              <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
+
               <View style={styles.heroStatItem}>
                 <Text
                   style={[
                     styles.heroStatVal,
-                    { color: summary.overBudgetCount > 0 ? '#EF4444' : '#10B981' },
+                    { color: summary.totalBudget >= summary.totalSpent ? '#10B981' : '#EF4444' },
                   ]}
                 >
-                  {summary.overBudgetCount}
+                  TK {formatNum(Math.abs(summary.totalBudget - summary.totalSpent))}
                 </Text>
-                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.overBudgetLabel}</Text>
+                <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>
+                  {summary.totalBudget >= summary.totalSpent ? t.leftLabel : t.overBudgetLabel}
+                </Text>
               </View>
             </View>
           </View>
         </ThemedView>
 
-        {/* ── Tip card if over budget ── */}
+        {/* ── Alert banner if over budget ── */}
         {summary.overBudgetCount > 0 && (
           <View style={styles.alertBanner}>
             <Text style={styles.alertBannerIcon}>🔔</Text>
@@ -486,11 +605,11 @@ export default function BudgetScreen() {
 
         {/* ── Budget Cards ── */}
         <View style={styles.cardsContainer}>
-          {CATEGORIES.map((cat) => (
+          {categoriesList.map((cat) => (
             <BudgetCard
               key={cat.key}
               category={cat}
-              budget={budgets[cat.key]}
+              budget={budgets[cat.key] ?? 0}
               spent={spentByCategory[cat.key] ?? 0}
               onEdit={() => handleEdit(cat)}
             />
@@ -514,9 +633,16 @@ export default function BudgetScreen() {
       <BudgetEditModal
         visible={modalVisible}
         category={editingCat}
-        currentBudget={editingCat ? budgets[editingCat.key] : 0}
+        currentBudget={editingCat ? (budgets[editingCat.key] ?? 0) : 0}
         onSave={handleSaveBudget}
         onClose={() => setModalVisible(false)}
+      />
+
+      {/* ── Add New Category Modal ── */}
+      <AddCategoryModal
+        visible={addCatModalVisible}
+        onSave={handleAddCategory}
+        onClose={() => setAddCatModalVisible(false)}
       />
     </ScrollView>
   );
@@ -565,6 +691,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerBadgeIcon: { fontSize: 22 },
+  addCategoryIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#208AEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#208AEF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  addCategoryIconText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
 
   // Hero card
   heroCard: {
