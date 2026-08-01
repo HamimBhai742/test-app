@@ -1,19 +1,26 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Platform, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+
+export type AutoLockDelayOption = 'instant' | '30s' | '1m';
 
 interface SecurityContextType {
   isPinSet: boolean;
   isLockEnabled: boolean;
   isBiometricEnabled: boolean;
   isLocked: boolean;
+  autoLockDelay: AutoLockDelayOption;
+  failedAttempts: number;
+  lockoutUntil: number | null;
   setupPin: (newPin: string) => Promise<boolean>;
   verifyPin: (inputPin: string) => boolean;
   toggleLock: (enabled: boolean) => Promise<void>;
   toggleBiometrics: (enabled: boolean) => Promise<void>;
+  updateAutoLockDelay: (option: AutoLockDelayOption) => Promise<void>;
   unlockApp: () => void;
   lockApp: () => void;
+  resetPinByRecovery: (newPin: string) => Promise<boolean>;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -21,6 +28,7 @@ const SecurityContext = createContext<SecurityContextType | undefined>(undefined
 const KEY_PIN = 'hk_security_pin';
 const KEY_LOCK_ENABLED = 'hk_security_lock_enabled';
 const KEY_BIOMETRIC_ENABLED = 'hk_security_biometric_enabled';
+const KEY_AUTO_LOCK_DELAY = 'hk_security_auto_lock_delay';
 
 const memoryStore: Record<string, string> = {};
 
@@ -47,7 +55,7 @@ const setStorageItem = async (key: string, value: string): Promise<void> => {
     await SecureStore.setItemAsync(key, value);
     await AsyncStorage.setItem(key, value);
   } catch (e) {
-    // Fail-safe in-memory storage fallback
+    // Fail-safe memory fallback
   }
 };
 
@@ -57,6 +65,13 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
   const [isLockEnabled, setIsLockEnabled] = useState<boolean>(false);
   const [isBiometricEnabled, setIsBiometricEnabled] = useState<boolean>(false);
   const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [autoLockDelay, setAutoLockDelay] = useState<AutoLockDelayOption>('instant');
+
+  // Cooldown / Lockout States
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+
+  const lastBackgroundTime = useRef<number | null>(null);
 
   // Load initial settings on app start
   useEffect(() => {
@@ -65,6 +80,7 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
         const pin = await getStorageItem(KEY_PIN);
         const lockVal = await getStorageItem(KEY_LOCK_ENABLED);
         const bioVal = await getStorageItem(KEY_BIOMETRIC_ENABLED);
+        const delayVal = await getStorageItem(KEY_AUTO_LOCK_DELAY);
 
         if (pin && pin.length >= 4) {
           setSavedPin(pin);
@@ -78,6 +94,10 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
           setIsBiometricEnabled(bioVal === 'true');
         }
 
+        if (delayVal && (delayVal === 'instant' || delayVal === '30s' || delayVal === '1m')) {
+          setAutoLockDelay(delayVal as AutoLockDelayOption);
+        }
+
         // Lock app on start if security lock is enabled & PIN exists
         if (lockEnabled && pin && pin.length >= 4) {
           setIsLocked(true);
@@ -88,11 +108,23 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
     })();
   }, []);
 
-  // Auto lock when app goes to background and comes back to active
+  // Auto lock with delay timer when app goes to background and comes active
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active' && isLockEnabled && savedPin.length >= 4) {
-        setIsLocked(true);
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        lastBackgroundTime.current = Date.now();
+      } else if (nextAppState === 'active' && isLockEnabled && savedPin.length >= 4) {
+        if (lastBackgroundTime.current) {
+          const diffMs = Date.now() - lastBackgroundTime.current;
+          const delayThresholdMs =
+            autoLockDelay === '30s' ? 30000 : autoLockDelay === '1m' ? 60000 : 0;
+
+          if (diffMs >= delayThresholdMs) {
+            setIsLocked(true);
+          }
+        } else {
+          setIsLocked(true);
+        }
       }
     };
 
@@ -100,7 +132,7 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscription.remove();
     };
-  }, [isLockEnabled, savedPin]);
+  }, [isLockEnabled, savedPin, autoLockDelay]);
 
   const setupPin = async (newPin: string): Promise<boolean> => {
     if (!newPin || newPin.length !== 4) return false;
@@ -111,6 +143,8 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
       setIsPinSet(true);
       setIsLockEnabled(true);
       setIsLocked(true);
+      setFailedAttempts(0);
+      setLockoutUntil(null);
       return true;
     } catch (e) {
       console.warn('Error saving PIN:', e);
@@ -119,11 +153,36 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const verifyPin = (inputPin: string): boolean => {
+    // Check if locked out
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      return false;
+    }
+
     if (inputPin === savedPin) {
       setIsLocked(false);
+      setFailedAttempts(0);
+      setLockoutUntil(null);
       return true;
+    } else {
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+
+      // Lockout for 30 seconds after 3 consecutive wrong attempts
+      if (nextAttempts >= 3) {
+        const lockoutTime = Date.now() + 30000;
+        setLockoutUntil(lockoutTime);
+      }
+      return false;
     }
-    return false;
+  };
+
+  const updateAutoLockDelay = async (option: AutoLockDelayOption) => {
+    try {
+      await setStorageItem(KEY_AUTO_LOCK_DELAY, option);
+      setAutoLockDelay(option);
+    } catch (e) {
+      console.warn('Error updating auto lock delay:', e);
+    }
   };
 
   const toggleLock = async (enabled: boolean) => {
@@ -151,12 +210,18 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
 
   const unlockApp = () => {
     setIsLocked(false);
+    setFailedAttempts(0);
+    setLockoutUntil(null);
   };
 
   const lockApp = () => {
     if (isLockEnabled && isPinSet) {
       setIsLocked(true);
     }
+  };
+
+  const resetPinByRecovery = async (newPin: string): Promise<boolean> => {
+    return await setupPin(newPin);
   };
 
   return (
@@ -166,12 +231,17 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
         isLockEnabled,
         isBiometricEnabled,
         isLocked,
+        autoLockDelay,
+        failedAttempts,
+        lockoutUntil,
         setupPin,
         verifyPin,
         toggleLock,
         toggleBiometrics,
+        updateAutoLockDelay,
         unlockApp,
         lockApp,
+        resetPinByRecovery,
       }}
     >
       {children}

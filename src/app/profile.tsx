@@ -42,11 +42,11 @@ export default function ProfileScreen() {
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const { language, setLanguage } = useLanguage();
   const t = translations[language];
-  const { isPinSet, isLockEnabled, isBiometricEnabled, setupPin, verifyPin, toggleLock, toggleBiometrics, lockApp } = useSecurity();
+  const { isPinSet, isLockEnabled, isBiometricEnabled, setupPin, verifyPin, toggleLock, toggleBiometrics, autoLockDelay, updateAutoLockDelay, lockApp } = useSecurity();
 
   // Security PIN Modal states
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
-  const [pinStep, setPinStep] = useState<'create' | 'confirm' | 'disable'>('create');
+  const [pinStep, setPinStep] = useState<'verify_old' | 'create' | 'confirm' | 'disable'>('create');
   const [pinInputTemp, setPinInputTemp] = useState<string>('');
   const [firstPin, setFirstPin] = useState<string>('');
   const [pinModalError, setPinModalError] = useState<string>('');
@@ -1045,7 +1045,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={styles.actionRow}
                   onPress={() => {
-                    setPinStep('create');
+                    setPinStep('verify_old');
                     setPinInputTemp('');
                     setFirstPin('');
                     setPinModalError('');
@@ -1055,6 +1055,28 @@ export default function ProfileScreen() {
                   <ThemedText style={styles.actionIcon}>🔑</ThemedText>
                   <View style={styles.actionTextContainer}>
                     <ThemedText type="small">{t.changePinBtn}</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Auto-Lock Delay Selector */}
+            {isPinSet && isLockEnabled && (
+              <>
+                <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+                <TouchableOpacity
+                  style={styles.actionRow}
+                  onPress={() => {
+                    const nextDelay = autoLockDelay === 'instant' ? '30s' : autoLockDelay === '30s' ? '1m' : 'instant';
+                    updateAutoLockDelay(nextDelay);
+                  }}
+                >
+                  <ThemedText style={styles.actionIcon}>⏱️</ThemedText>
+                  <View style={styles.actionTextContainer}>
+                    <ThemedText type="small">{t.autoLockDelayLabel}</ThemedText>
+                    <ThemedText type="code" themeColor="textSecondary" style={styles.actionValue}>
+                      {autoLockDelay === 'instant' ? t.delayInstant : autoLockDelay === '30s' ? t.delay30s : t.delay1m}
+                    </ThemedText>
                   </View>
                 </TouchableOpacity>
               </>
@@ -1404,7 +1426,9 @@ export default function ProfileScreen() {
             <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
               <View style={styles.modalHeader}>
                 <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>
-                  {pinStep === 'create'
+                  {pinStep === 'verify_old'
+                    ? t.verifyOldPinPrompt
+                    : pinStep === 'create'
                     ? t.setupPinPrompt
                     : pinStep === 'confirm'
                     ? t.confirmPinPrompt
@@ -1444,12 +1468,25 @@ export default function ProfileScreen() {
                     return;
                   }
 
+                  if (pinStep === 'verify_old') {
+                    const isValid = verifyPin(pinInputTemp);
+                    if (isValid) {
+                      setPinStep('create');
+                      setPinInputTemp('');
+                      setPinModalError('');
+                    } else {
+                      setPinModalError(t.wrongPinError);
+                      setPinInputTemp('');
+                    }
+                    return;
+                  }
+
                   if (pinStep === 'disable') {
                     const isValid = verifyPin(pinInputTemp);
                     if (isValid) {
                       await toggleLock(false);
                       setShowPinModal(false);
-                      setToast({ visible: true, message: t.pinDisabledSuccess, type: 'success' });
+                      showToast(t.pinDisabledSuccess, 'success');
                     } else {
                       setPinModalError(t.wrongPinError);
                       setPinInputTemp('');
@@ -1470,13 +1507,15 @@ export default function ProfileScreen() {
                     const success = await setupPin(firstPin);
                     if (success) {
                       setShowPinModal(false);
-                      setToast({ visible: true, message: t.pinSuccess, type: 'success' });
+                      showToast(t.pinSuccess, 'success');
                     }
                   }
                 }}
               >
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {pinStep === 'create'
+                  {pinStep === 'verify_old'
+                    ? (language === 'bn' ? 'যাচাই করুন ➔' : 'Verify PIN ➔')
+                    : pinStep === 'create'
                     ? (language === 'bn' ? 'পরবর্তীধাপ ➔' : 'Next ➔')
                     : pinStep === 'confirm'
                     ? (language === 'bn' ? 'সেভ করুন ✓' : 'Save PIN ✓')
@@ -1694,17 +1733,21 @@ export default function ProfileScreen() {
 
         {/* Floating Modern Toast Feedback Notification */}
         {toast.visible && (
-          <View style={[
-            styles.toastContainer,
-            { backgroundColor: toast.type === 'error' ? '#EF4444' : '#059669' }
-          ]}>
+          <TouchableOpacity
+            style={[
+              styles.toastContainer,
+              { backgroundColor: toast.type === 'error' ? '#EF4444' : '#059669' }
+            ]}
+            activeOpacity={0.8}
+            onPress={() => setToast({ visible: false, message: '', type: 'success' })}
+          >
             <ThemedText style={styles.toastIcon}>
               {toast.type === 'error' ? '⚠️' : '✨'}
             </ThemedText>
             <ThemedText style={styles.toastText}>
               {toast.message}
             </ThemedText>
-          </View>
+          </TouchableOpacity>
         )}
         {/* Onboarding Overlay when replaying from settings */}
         {showOnboarding && (
