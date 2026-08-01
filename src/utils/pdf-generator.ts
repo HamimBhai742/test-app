@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export interface PDFTransactionItem {
   id: string;
@@ -115,9 +115,14 @@ export function generateMonthlyStatementHTML(
     .stamp-box { border: 2.5px solid #10b981; color: #10b981; padding: 10px 20px; border-radius: 10px; font-weight: 800; font-size: 13px; text-transform: uppercase; transform: rotate(-3deg); letter-spacing: 0.5px; }
     .footer-text { font-size: 11.5px; color: #94a3b8; text-align: right; line-height: 1.5; }
 
+    @page {
+      size: A4;
+      margin: 15mm 15mm 15mm 15mm;
+    }
+
     @media print {
-      body { background: white; padding: 0; }
-      .container { box-shadow: none; padding: 0; width: 100%; max-width: 100%; }
+      html, body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; }
+      .container { box-shadow: none !important; border: none !important; padding: 10px 15px !important; width: 100% !important; max-width: 100% !important; }
     }
   </style>
 </head>
@@ -238,9 +243,14 @@ export function generateCashMemoHTML(
 
     .footer { text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 14px; }
 
+    @page {
+      size: A4;
+      margin: 15mm 15mm 15mm 15mm;
+    }
+
     @media print {
-      body { background: white; padding: 0; }
-      .memo-card { box-shadow: none; border: none; width: 100%; }
+      html, body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; }
+      .memo-card { box-shadow: none !important; border: 1.5px solid #e2e8f0 !important; padding: 25px !important; width: 100% !important; }
     }
   </style>
 </head>
@@ -344,18 +354,17 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
       }, 400);
     }
   } else {
-    // 2. Native Mobile App (Android / iOS): Generate PDF file & save directly
+    // 2. Native Mobile App (Android / iOS): Generate Base64 PDF & save directly
     try {
-      const pdf = await Print.printToFileAsync({ html: htmlContent });
-      if (pdf && pdf.uri) {
-        const filename = `${safeFilename}.pdf`;
-        const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
-        const targetUri = docDir ? `${docDir}${filename}` : pdf.uri;
+      const pdf = await Print.printToFileAsync({ html: htmlContent, base64: true });
+      const filename = `${safeFilename}.pdf`;
+      const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
+      const targetUri = `${docDir}${filename}`;
 
-        // Copy cache file to documentDirectory for full read/share permissions
-        await FileSystem.copyAsync({
-          from: pdf.uri,
-          to: targetUri,
+      if (pdf && pdf.base64) {
+        // Write base64 PDF directly to documentDirectory
+        await FileSystem.writeAsStringAsync(targetUri, pdf.base64, {
+          encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
         });
 
         if (await Sharing.isAvailableAsync()) {
@@ -366,10 +375,19 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
           });
           return;
         }
+      } else if (pdf && pdf.uri) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(pdf.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: filename,
+            UTI: 'com.adobe.pdf',
+          });
+          return;
+        }
       }
       await Print.printAsync({ html: htmlContent });
     } catch (error) {
-      console.warn('PDF Save Error, falling back to print view:', error);
+      console.warn('Base64 PDF Save Error, falling back to print view:', error);
       try {
         await Print.printAsync({ html: htmlContent });
       } catch (fallbackErr) {

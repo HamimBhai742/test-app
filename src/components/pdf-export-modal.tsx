@@ -120,7 +120,7 @@ export function PDFExportModal({
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>{t.pdfModalTitle}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Text style={styles.closeText}>✕</Text>
+              <Text style={[styles.closeText, { color: theme.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -130,7 +130,7 @@ export function PDFExportModal({
               style={[
                 styles.modeTab,
                 mode === 'statement' && styles.modeTabActive,
-                { backgroundColor: mode === 'statement' ? '#208AEF' : theme.backgroundElement },
+                { backgroundColor: mode === 'statement' ? '#208AEF' : isDark ? '#232836' : '#E2E8F0' },
               ]}
               onPress={() => setMode('statement')}
             >
@@ -143,7 +143,7 @@ export function PDFExportModal({
               style={[
                 styles.modeTab,
                 mode === 'memo' && styles.modeTabActive,
-                { backgroundColor: mode === 'memo' ? '#208AEF' : theme.backgroundElement },
+                { backgroundColor: mode === 'memo' ? '#208AEF' : isDark ? '#232836' : '#E2E8F0' },
               ]}
               onPress={() => setMode('memo')}
             >
@@ -155,8 +155,8 @@ export function PDFExportModal({
 
           {/* Mode 1: Monthly Statement Preview */}
           {mode === 'statement' ? (
-            <View style={[styles.previewCard, { backgroundColor: isDark ? '#1A1D24' : '#F8FAFC', borderColor: isDark ? '#2F3442' : '#E2E8F0' }]}>
-              <Text style={styles.previewTitle}>
+            <View style={[styles.previewCard, { backgroundColor: isDark ? '#1F2430' : '#F8FAFC', borderColor: isDark ? '#2D3548' : '#E2E8F0' }]}>
+              <Text style={[styles.previewTitle, { color: theme.text }]}>
                 {summaryToUse.monthName} {summaryToUse.year} - রিপোর্ট সামারি
               </Text>
 
@@ -165,25 +165,25 @@ export function PDFExportModal({
                   <Text style={[styles.statVal, { color: '#10B981' }]}>
                     ৳ {summaryToUse.totalIncome.toLocaleString()}
                   </Text>
-                  <Text style={styles.statLbl}>মোট আয়</Text>
+                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>মোট আয়</Text>
                 </View>
 
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#EF4444' }]}>
                     ৳ {summaryToUse.totalExpense.toLocaleString()}
                   </Text>
-                  <Text style={styles.statLbl}>মোট ব্যয়</Text>
+                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>মোট ব্যয়</Text>
                 </View>
 
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#208AEF' }]}>
                     ৳ {summaryToUse.netSavings.toLocaleString()}
                   </Text>
-                  <Text style={styles.statLbl}>নিট সঞ্চয়</Text>
+                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>নিট সঞ্চয়</Text>
                 </View>
               </View>
 
-              <Text style={styles.txCountNote}>
+              <Text style={[styles.txCountNote, { color: theme.textSecondary }]}>
                 মোট {transactions.length} টি লেনদেন এই রিপোর্টে যুক্ত করা হবে।
               </Text>
             </View>
@@ -205,8 +205,14 @@ export function PDFExportModal({
                       style={[
                         styles.txSelectItem,
                         {
-                          backgroundColor: isSelected ? 'rgba(32, 138, 239, 0.15)' : theme.backgroundElement,
-                          borderColor: isSelected ? '#208AEF' : 'transparent',
+                          backgroundColor: isSelected
+                            ? isDark
+                              ? 'rgba(32, 138, 239, 0.25)'
+                              : 'rgba(32, 138, 239, 0.15)'
+                            : isDark
+                            ? '#1F2430'
+                            : theme.backgroundElement,
+                          borderColor: isSelected ? '#208AEF' : isDark ? '#2D3548' : '#E2E8F0',
                         },
                       ]}
                       onPress={() => setSelectedTxId(tx.id)}
