@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 export interface User {
   id?: string;
@@ -65,22 +67,78 @@ const getApiBaseUrl = () => {
 const STORAGE_KEY_USER = 'hisab_kitab_auth_user';
 const STORAGE_KEY_TOKEN = 'hisab_kitab_auth_token';
 
+// Safe persistent storage helpers for Web, Android, and iOS
+const setStorageItem = async (key: string, value: string) => {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+    } else {
+      try {
+        await SecureStore.setItemAsync(key, value);
+      } catch {
+        await AsyncStorage.setItem(key, value);
+      }
+    }
+  } catch (e) {
+    console.warn('Storage set error:', e);
+  }
+};
+
+const getStorageItem = async (key: string): Promise<string | null> => {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+      return null;
+    } else {
+      try {
+        const val = await SecureStore.getItemAsync(key);
+        if (val !== null) return val;
+      } catch {}
+      return await AsyncStorage.getItem(key);
+    }
+  } catch (e) {
+    console.warn('Storage get error:', e);
+    return null;
+  }
+};
+
+const removeStorageItem = async (key: string) => {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    } else {
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch {}
+      await AsyncStorage.removeItem(key);
+    }
+  } catch (e) {
+    console.warn('Storage remove error:', e);
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Restore user session on app start
+  // Restore user session permanently on app start across device restarts
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          const storedUser = localStorage.getItem(STORAGE_KEY_USER);
-          const storedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
-          if (storedUser && storedToken) {
-            setUser(JSON.parse(storedUser));
-            setToken(storedToken);
-          }
+        const storedUser = await getStorageItem(STORAGE_KEY_USER);
+        const storedToken = await getStorageItem(STORAGE_KEY_TOKEN);
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+        if (storedToken) {
+          setToken(storedToken);
         }
       } catch (e) {
         console.warn('Session restoration error:', e);
@@ -95,14 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const saveSession = (userData: User, userToken?: string) => {
     setUser(userData);
     if (userToken) setToken(userToken);
-    try {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData));
-        if (userToken) localStorage.setItem(STORAGE_KEY_TOKEN, userToken);
-      }
-    } catch (e) {
-      console.warn('Storage save error:', e);
-    }
+    setStorageItem(STORAGE_KEY_USER, JSON.stringify(userData));
+    if (userToken) setStorageItem(STORAGE_KEY_TOKEN, userToken);
   };
 
   // Sign In Handler
@@ -377,10 +429,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setUser(null);
       setToken(null);
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        localStorage.removeItem(STORAGE_KEY_USER);
-        localStorage.removeItem(STORAGE_KEY_TOKEN);
-      }
+      await removeStorageItem(STORAGE_KEY_USER);
+      await removeStorageItem(STORAGE_KEY_TOKEN);
     } catch (error) {
       console.error('Logout Error:', error);
     } finally {
