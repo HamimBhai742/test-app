@@ -18,6 +18,8 @@ import { OnboardingScreen, getOnboardingCompleted } from '@/components/onboardin
 import ProfileScreen from './profile';
 import { useAuth } from '@/context/AuthContext';
 
+import { PointsProvider } from '@/context/PointsContext';
+
 SplashScreen.preventAutoHideAsync();
 
 function MainContent() {
@@ -56,7 +58,9 @@ export default function TabLayout() {
           <DueProvider>
             <AuthProvider>
               <SecurityProvider>
-                <MainContent />
+                <PointsProvider>
+                  <MainContent />
+                </PointsProvider>
               </SecurityProvider>
             </AuthProvider>
           </DueProvider>

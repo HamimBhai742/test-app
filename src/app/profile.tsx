@@ -29,6 +29,8 @@ import { translations } from '@/constants/translations';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingScreen } from '@/components/onboarding';
 import { useSecurity } from '@/context/SecurityContext';
+import { usePoints } from '@/context/PointsContext';
+import LeaderboardScreen from './leaderboard';
 
 let GoogleSignin: any = null;
 let statusCodes: any = {};
@@ -64,11 +66,16 @@ export default function ProfileScreen() {
   const [firstPin, setFirstPin] = useState<string>('');
   const [pinModalError, setPinModalError] = useState<string>('');
 
-  // Info Modals (About, Contact, Privacy, Google Auth)
+  // Info Modals (About, Contact, Privacy, Google Auth, Leaderboard)
   const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
   const [showContactModal, setShowContactModal] = useState<boolean>(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
   const [showGoogleModal, setShowGoogleModal] = useState<boolean>(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState<boolean>(false);
+  const [showLeaderboardPage, setShowLeaderboardPage] = useState<boolean>(false);
+
+  // Points & Rewards Context
+  const { points, userBadge, dailyLoginEarnedToday, dailyTxEarnedToday, getLeaderboard } = usePoints();
 
   // Google Modal Inputs
   const [googleEmailInput, setGoogleEmailInput] = useState<string>('mdhamim5088@gmail.com');
@@ -1034,6 +1041,11 @@ export default function ProfileScreen() {
     );
   }
 
+  // Render Full-Page Leaderboard
+  if (showLeaderboardPage) {
+    return <LeaderboardScreen onBack={() => setShowLeaderboardPage(false)} />;
+  }
+
   // Profile View (When Logged In)
   return (
     <ThemedView style={styles.container}>
@@ -1058,6 +1070,15 @@ export default function ProfileScreen() {
               <View style={styles.proBadgeContainer}>
                 <ThemedText style={styles.proBadgeText}>⚡ {t.proBadge}</ThemedText>
               </View>
+
+              {/* Points Rank Badge display right on Profile Image */}
+              <TouchableOpacity
+                style={styles.pointsBadgeOverlay}
+                onPress={() => setShowLeaderboardPage(true)}
+                activeOpacity={0.85}
+              >
+                <ThemedText style={styles.pointsBadgeOverlayText}>{userBadge}</ThemedText>
+              </TouchableOpacity>
             </View>
 
             <ThemedText type="subtitle" style={styles.userName}>
@@ -1140,6 +1161,35 @@ export default function ProfileScreen() {
               </ThemedText>
             </View>
           </View>
+
+          {/* 🏆 Reward Points & Leaderboard Card */}
+          <TouchableOpacity
+            style={{
+              backgroundColor: 'rgba(234, 179, 8, 0.12)',
+              borderRadius: 20,
+              padding: 16,
+              marginBottom: Spacing.four,
+              borderWidth: 1.5,
+              borderColor: 'rgba(234, 179, 8, 0.4)',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+            onPress={() => setShowLeaderboardPage(true)}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <ThemedText style={{ fontSize: 32 }}>🏆</ThemedText>
+              <View>
+                <ThemedText style={{ fontSize: 16, fontWeight: '800', color: '#EAB308' }}>
+                  {points} পয়েন্ট (Reward Points)
+                </ThemedText>
+                <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  ব্যাজ: {userBadge} • লিডারবোর্ড দেখুন ➔
+                </ThemedText>
+              </View>
+            </View>
+          </TouchableOpacity>
 
           {/* 🔒 Card 1: Security & App Lock Section */}
           <View style={styles.sectionHeaderRow}>
@@ -1997,6 +2047,108 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </Modal>
 
+        {/* 🏆 Leaderboard & Reward Points Modal */}
+        <Modal
+          visible={showLeaderboardModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowLeaderboardModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowLeaderboardModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, maxHeight: '85%' }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>🏆 লিডারবোর্ড ও রেটিং (Leaderboard)</ThemedText>
+                <TouchableOpacity onPress={() => setShowLeaderboardModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {/* User Stats Card */}
+              <View style={{ backgroundColor: 'rgba(234, 179, 8, 0.15)', borderRadius: 16, padding: 16, marginVertical: 12, borderWidth: 1, borderColor: 'rgba(234, 179, 8, 0.3)', alignItems: 'center' }}>
+                <ThemedText style={{ fontSize: 28, fontWeight: '900', color: '#EAB308' }}>⭐ {points} Points</ThemedText>
+                <ThemedText style={{ fontSize: 14, fontWeight: '700', marginTop: 4 }}>আপনার ব্যাজ: {userBadge}</ThemedText>
+              </View>
+
+              {/* Daily Tasks Progress Checklist */}
+              <View style={{ backgroundColor: theme.background, borderRadius: 14, padding: 12, marginBottom: 12 }}>
+                <ThemedText type="smallBold" style={{ marginBottom: 8, fontSize: 13 }}>🎯 আজকের ডেইলি পয়েন্ট টাস্ক:</ThemedText>
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}>
+                  <ThemedText type="small" style={{ fontSize: 12 }}>📱 প্রতিদিন অ্যাপ ওপেন রিওয়ার্ড:</ThemedText>
+                  <ThemedText style={{ fontSize: 12, fontWeight: '800', color: dailyLoginEarnedToday ? '#10B981' : '#EAB308' }}>
+                    {dailyLoginEarnedToday ? '✓ +১০ পয়েন্ট (অর্জিত)' : '⏳ +১০ পয়েন্ট'}
+                  </ThemedText>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}>
+                  <ThemedText type="small" style={{ fontSize: 12 }}>📝 প্রতিদিন হিসাব সেভ করার বোনাস:</ThemedText>
+                  <ThemedText style={{ fontSize: 12, fontWeight: '800', color: dailyTxEarnedToday ? '#10B981' : '#EAB308' }}>
+                    {dailyTxEarnedToday ? '✓ +১০ পয়েন্ট (অর্জিত)' : '⏳ +১০ পয়েন্ট বাকি'}
+                  </ThemedText>
+                </View>
+              </View>
+
+              <ThemedText type="smallBold" style={{ marginBottom: 8, fontSize: 13 }}>📊 শীর্ষ ইউজার লিডারবোর্ড (Top Ranks):</ThemedText>
+
+              {/* Leaderboard List */}
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 240 }}>
+                {getLeaderboard().map((userItem, index) => {
+                  const rank = index + 1;
+                  const rankBadge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                  return (
+                    <View
+                      key={userItem.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        borderRadius: 12,
+                        marginBottom: 6,
+                        backgroundColor: userItem.isCurrentUser ? 'rgba(32, 138, 239, 0.15)' : theme.background,
+                        borderWidth: userItem.isCurrentUser ? 1.5 : 0,
+                        borderColor: '#208AEF',
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <ThemedText style={{ fontSize: 16, fontWeight: '900', minWidth: 28 }}>{rankBadge}</ThemedText>
+                        <View>
+                          <ThemedText style={{ fontSize: 13, fontWeight: userItem.isCurrentUser ? '800' : '600' }}>
+                            {userItem.name} {userItem.isCurrentUser ? '(আপনি)' : ''}
+                          </ThemedText>
+                          <ThemedText style={{ fontSize: 10, color: theme.textSecondary }}>{userItem.badge}</ThemedText>
+                        </View>
+                      </View>
+
+                      <ThemedText style={{ fontSize: 14, fontWeight: '800', color: '#EAB308' }}>
+                        {userItem.points} Pts
+                      </ThemedText>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16, marginTop: 14 }]}
+                onPress={() => setShowLeaderboardModal(false)}
+              >
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  ঠিক আছে ✓
+                </ThemedText>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
         {/* Floating Modern Toast Feedback Notification */}
         {toast.visible && (
           <TouchableOpacity
@@ -2329,12 +2481,33 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     position: 'relative',
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.four,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  pointsBadgeOverlay: {
+    position: 'absolute',
+    bottom: -12,
+    alignSelf: 'center',
+    backgroundColor: '#0F172A',
+    borderColor: '#EAB308',
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    shadowColor: '#EAB308',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  pointsBadgeOverlayText: {
+    color: '#EAB308',
+    fontSize: 11,
+    fontWeight: '900',
   },
   avatarImage: {
     width: 110,
