@@ -9,6 +9,8 @@ import { TransactionProvider } from '@/context/TransactionContext';
 import { DueProvider } from '@/context/DueContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { SecurityProvider } from '@/context/SecurityContext';
+import { AppLockScreen } from '@/components/app-lock-screen';
 
 import React, { useState, useEffect } from 'react';
 import { OnboardingScreen, getOnboardingCompleted } from '@/components/onboarding';
@@ -31,6 +33,7 @@ function MainContent() {
   return (
     <>
       <AnimatedSplashOverlay />
+      <AppLockScreen />
       {showOnboarding && (
         <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
       )}
@@ -52,7 +55,9 @@ export default function TabLayout() {
         <TransactionProvider>
           <DueProvider>
             <AuthProvider>
-              <MainContent />
+              <SecurityProvider>
+                <MainContent />
+              </SecurityProvider>
             </AuthProvider>
           </DueProvider>
         </TransactionProvider>

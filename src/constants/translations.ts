@@ -164,6 +164,31 @@ export const translations = {
     pdfShareWABtn: '📲 WhatsApp-এ শেয়ার করুন',
     pdfSelectMonth: 'রিপোর্টের মাস নির্বাচন করুন:',
 
+    // Security & App Lock
+    securityTitle: 'সিকিউরিটি ও অ্যাপ লক',
+    pinLockLabel: 'সিকিউরিটি পিন লক',
+    biometricLabel: 'ফিঙ্গারপ্রিন্ট / ফেস আইডি',
+    changePinBtn: 'পিন কোড পরিবর্তন করুন',
+    lockScreenTitle: 'হিসাব কিতাব সিকিউরিটি',
+    enterPinPrompt: 'অ্যাপে প্রবেশ করতে ৪ ডিজিটের পিন কোড দিন',
+    setupPinPrompt: 'নতুন ৪ ডিজিটের সিকিউরিটি পিন দিন',
+    confirmPinPrompt: 'নিশ্চিত করতে আবার ৪ ডিজিটের পিন কোড দিন',
+    disablePinPrompt: 'পিন লক বন্ধ করতে বর্তমান ৪ ডিজিটের পিন দিন',
+    wrongPinError: 'ভুল পিন কোড! আবার চেষ্টা করুন',
+    pinSuccess: 'পিন কোড সফলভাবে সেভ হয়েছে!',
+    pinDisabledSuccess: 'সিকিউরিটি পিন লক সফলভাবে বন্ধ করা হয়েছে',
+    useBiometricBtn: '👆 ফিঙ্গারপ্রিন্ট / ফেস আইডি দিয়ে খুলুন',
+
+    // About, Contact & Terms
+    aboutTitle: 'আমাদের সম্পর্কে (About Us)',
+    contactTitle: 'হেল্পলাইন ও সাপোর্ট (Contact Us)',
+    privacyTitle: 'প্রাইভেসি পলিসি ও টার্মস',
+    appVersionLabel: 'ভার্সন: v1.0.0 (Build 2026.1)',
+    aboutDesc: 'হিসাব কিতাব হলো বাংলাদেশের সবচেয়ে সহজ, দ্রুত ও সুরক্ষিত ডিজিটাল ফাইন্যান্স ও ক্যাশখাতা অ্যাপ। আপনার প্রাত্যহিক আয়-ব্যয়, ক্যাটাগরি বাজেট, দেনা-পাওনার খাতা এবং অটো SMS ট্র্যাকের মাধ্যমে সঠিক হিসাব রাখতে এটি তৈরি করা হয়েছে।',
+    contactSupportDesc: 'কোনো প্রশ্ন, মতামত বা কারিগরি সহায়তার জন্য আমাদের টিমের সাথে সরাসরি যোগাযোগ করুন:',
+    supportEmailLabel: 'ইমেইল সাপোর্ট:',
+    supportPhoneLabel: 'হোয়াটসঅ্যাপ হেল্পলাইন:',
+
     // Debt & Due Ledger (দেনা-পাওনার খাতা)
     dueLedgerTitle: 'দেনা-পাওনার খাতা',
     dueEyebrow: 'DEBT & DUE LEDGER',
@@ -482,6 +507,31 @@ export const translations = {
     pdfDownloadBtn: '📥 Download PDF Document',
     pdfShareWABtn: '📲 Share via WhatsApp',
     pdfSelectMonth: 'Select Report Month:',
+
+    // Security & App Lock
+    securityTitle: 'Security & App Lock',
+    pinLockLabel: 'Security PIN Lock',
+    biometricLabel: 'Fingerprint / FaceID',
+    changePinBtn: 'Change PIN Code',
+    lockScreenTitle: 'Hisab Kitab Security',
+    enterPinPrompt: 'Enter 4-digit PIN code to unlock',
+    setupPinPrompt: 'Enter new 4-digit security PIN',
+    confirmPinPrompt: 'Re-enter 4-digit PIN to confirm',
+    disablePinPrompt: 'Enter current 4-digit PIN to turn off lock',
+    wrongPinError: 'Incorrect PIN code! Try again',
+    pinSuccess: 'PIN code saved successfully!',
+    pinDisabledSuccess: 'Security PIN lock disabled successfully',
+    useBiometricBtn: '👆 Unlock with Biometrics',
+
+    // About, Contact & Terms
+    aboutTitle: 'About Us',
+    contactTitle: 'Help & Support (Contact Us)',
+    privacyTitle: 'Privacy Policy & Terms',
+    appVersionLabel: 'Version: v1.0.0 (Build 2026.1)',
+    aboutDesc: 'Hisab Kitab is Bangladesh’s premier easy, fast, and secure digital finance & cash ledger app. Designed to streamline your daily income/expenses, category budget planning, due ledger, and bKash SMS parsing.',
+    contactSupportDesc: 'For any queries, feedback, or technical assistance, reach out to our dedicated support team:',
+    supportEmailLabel: 'Email Support:',
+    supportPhoneLabel: 'WhatsApp Helpline:',
 
     // Debt & Due Ledger
     dueLedgerTitle: 'Debt & Due Ledger',

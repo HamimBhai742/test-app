@@ -11,6 +11,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Modal,
+  Switch,
+  Linking,
+  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,6 +28,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingScreen } from '@/components/onboarding';
+import { useSecurity } from '@/context/SecurityContext';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -38,6 +42,19 @@ export default function ProfileScreen() {
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const { language, setLanguage } = useLanguage();
   const t = translations[language];
+  const { isPinSet, isLockEnabled, isBiometricEnabled, setupPin, verifyPin, toggleLock, toggleBiometrics, lockApp } = useSecurity();
+
+  // Security PIN Modal states
+  const [showPinModal, setShowPinModal] = useState<boolean>(false);
+  const [pinStep, setPinStep] = useState<'create' | 'confirm' | 'disable'>('create');
+  const [pinInputTemp, setPinInputTemp] = useState<string>('');
+  const [firstPin, setFirstPin] = useState<string>('');
+  const [pinModalError, setPinModalError] = useState<string>('');
+
+  // Info Modals (About, Contact, Privacy)
+  const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
+  const [showContactModal, setShowContactModal] = useState<boolean>(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
   // Input states
   const [email, setEmail] = useState('');
@@ -960,7 +977,109 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Settings Actions list */}
+          {/* 🔒 Card 1: Security & App Lock Section */}
+          <View style={styles.sectionHeaderRow}>
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionHeader}>
+              {t.securityTitle}
+            </ThemedText>
+            <View style={styles.headerIndicatorDot} />
+          </View>
+
+          <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement, marginBottom: Spacing.four }]}>
+            {/* Security PIN Lock Toggle */}
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => {
+                if (!isPinSet) {
+                  setPinStep('create');
+                  setPinInputTemp('');
+                  setFirstPin('');
+                  setPinModalError('');
+                  setShowPinModal(true);
+                } else if (isLockEnabled) {
+                  // Require PIN to disable
+                  setPinStep('disable');
+                  setPinInputTemp('');
+                  setPinModalError('');
+                  setShowPinModal(true);
+                } else {
+                  toggleLock(true);
+                }
+              }}
+            >
+              <ThemedText style={styles.actionIcon}>🔒</ThemedText>
+              <View style={styles.actionTextContainer}>
+                <ThemedText type="small">{t.pinLockLabel}</ThemedText>
+                <ThemedText type="code" themeColor="textSecondary" style={styles.actionValue}>
+                  {isLockEnabled ? (language === 'bn' ? 'চালু (Enabled)' : 'Enabled') : (language === 'bn' ? 'বন্ধ (Disabled)' : 'Disabled')}
+                </ThemedText>
+              </View>
+              <Switch
+                value={isLockEnabled}
+                onValueChange={(val) => {
+                  if (val && !isPinSet) {
+                    setPinStep('create');
+                    setPinInputTemp('');
+                    setFirstPin('');
+                    setPinModalError('');
+                    setShowPinModal(true);
+                  } else if (!val && isLockEnabled) {
+                    // Require PIN to disable
+                    setPinStep('disable');
+                    setPinInputTemp('');
+                    setPinModalError('');
+                    setShowPinModal(true);
+                  } else {
+                    toggleLock(val);
+                  }
+                }}
+                trackColor={{ false: '#64748B', true: '#208AEF' }}
+                thumbColor="#FFFFFF"
+              />
+            </TouchableOpacity>
+
+            {/* Change PIN Button (only if pin is set AND lock is enabled) */}
+            {isPinSet && isLockEnabled && (
+              <>
+                <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+                <TouchableOpacity
+                  style={styles.actionRow}
+                  onPress={() => {
+                    setPinStep('create');
+                    setPinInputTemp('');
+                    setFirstPin('');
+                    setPinModalError('');
+                    setShowPinModal(true);
+                  }}
+                >
+                  <ThemedText style={styles.actionIcon}>🔑</ThemedText>
+                  <View style={styles.actionTextContainer}>
+                    <ThemedText type="small">{t.changePinBtn}</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Lock App Now Test Button */}
+            {isPinSet && isLockEnabled && (
+              <>
+                <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+                <TouchableOpacity
+                  style={styles.actionRow}
+                  onPress={() => lockApp()}
+                >
+                  <ThemedText style={styles.actionIcon}>🔒</ThemedText>
+                  <View style={styles.actionTextContainer}>
+                    <ThemedText type="small" style={{ color: '#208AEF', fontWeight: '700' }}>
+                      {language === 'bn' ? '🔒 এখনই অ্যাপ লক করুন (Test Lock)' : '🔒 Lock App Now (Test Lock)'}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+
+          {/* ⚙️ Card 2: App Preferences Section */}
           <View style={styles.sectionHeaderRow}>
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionHeader}>
               {t.settingsHeader}
@@ -968,7 +1087,7 @@ export default function ProfileScreen() {
             <View style={styles.headerIndicatorDot} />
           </View>
 
-          <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement, marginBottom: Spacing.four }]}>
             {/* Language Switch */}
             <TouchableOpacity
               style={styles.actionRow}
@@ -1007,6 +1126,8 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
 
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
             {/* Replay Onboarding */}
             <TouchableOpacity style={styles.actionRow} onPress={() => setShowOnboarding(true)}>
               <ThemedText style={styles.actionIcon}>🚀</ThemedText>
@@ -1024,14 +1145,42 @@ export default function ProfileScreen() {
                 <ThemedText type="small">{t.exportData}</ThemedText>
               </View>
             </TouchableOpacity>
+          </View>
+
+          {/* ℹ️ Card 3: Help & Support Section */}
+          <View style={styles.sectionHeaderRow}>
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionHeader}>
+              {language === 'bn' ? 'তথ্য ও সহায়তা' : 'Help & Support'}
+            </ThemedText>
+            <View style={styles.headerIndicatorDot} />
+          </View>
+
+          <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement }]}>
+            {/* Help & Support (Contact Us) */}
+            <TouchableOpacity style={styles.actionRow} onPress={() => setShowContactModal(true)}>
+              <ThemedText style={styles.actionIcon}>📞</ThemedText>
+              <View style={styles.actionTextContainer}>
+                <ThemedText type="small">{t.contactTitle}</ThemedText>
+              </View>
+            </TouchableOpacity>
 
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
 
-            {/* Help & Support */}
-            <TouchableOpacity style={styles.actionRow} onPress={handleSupport}>
-              <ThemedText style={styles.actionIcon}>💬</ThemedText>
+            {/* About Us */}
+            <TouchableOpacity style={styles.actionRow} onPress={() => setShowAboutModal(true)}>
+              <ThemedText style={styles.actionIcon}>ℹ️</ThemedText>
               <View style={styles.actionTextContainer}>
-                <ThemedText type="small">{t.helpSupport}</ThemedText>
+                <ThemedText type="small">{t.aboutTitle}</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
+            {/* Privacy Policy & Terms */}
+            <TouchableOpacity style={styles.actionRow} onPress={() => setShowPrivacyModal(true)}>
+              <ThemedText style={styles.actionIcon}>📜</ThemedText>
+              <View style={styles.actionTextContainer}>
+                <ThemedText type="small">{t.privacyTitle}</ThemedText>
               </View>
             </TouchableOpacity>
 
@@ -1244,6 +1393,305 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         </Modal>
 
+        {/* Setup PIN Modal */}
+        <Modal
+          visible={showPinModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowPinModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>
+                  {pinStep === 'create'
+                    ? t.setupPinPrompt
+                    : pinStep === 'confirm'
+                    ? t.confirmPinPrompt
+                    : t.disablePinPrompt}
+                </ThemedText>
+                <TouchableOpacity onPress={() => setShowPinModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {pinModalError ? (
+                <View style={[styles.feedbackBanner, { backgroundColor: '#fee2e2', borderColor: '#fca5a5', borderWidth: 1, marginBottom: 12 }]}>
+                  <ThemedText style={{ color: '#dc2626', fontSize: 13, fontWeight: '500' }}>⚠️ {pinModalError}</ThemedText>
+                </View>
+              ) : null}
+
+              <TextInput
+                style={[styles.inputField, { color: theme.text, backgroundColor: theme.backgroundElement, textAlign: 'center', fontSize: 24, letterSpacing: 8, marginVertical: 12 }]}
+                placeholder="••••"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="numeric"
+                maxLength={4}
+                secureTextEntry
+                value={pinInputTemp}
+                onChangeText={(text) => {
+                  setPinInputTemp(text);
+                  setPinModalError('');
+                }}
+                autoFocus
+              />
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: pinStep === 'disable' ? '#EF4444' : '#208AEF', marginTop: 16 }]}
+                onPress={async () => {
+                  if (pinInputTemp.length !== 4) {
+                    setPinModalError('৪ ডিজিটের পিন কোড দিন');
+                    return;
+                  }
+
+                  if (pinStep === 'disable') {
+                    const isValid = verifyPin(pinInputTemp);
+                    if (isValid) {
+                      await toggleLock(false);
+                      setShowPinModal(false);
+                      setToast({ visible: true, message: t.pinDisabledSuccess, type: 'success' });
+                    } else {
+                      setPinModalError(t.wrongPinError);
+                      setPinInputTemp('');
+                    }
+                    return;
+                  }
+
+                  if (pinStep === 'create') {
+                    setFirstPin(pinInputTemp);
+                    setPinInputTemp('');
+                    setPinStep('confirm');
+                  } else {
+                    if (pinInputTemp !== firstPin) {
+                      setPinModalError(t.wrongPinError);
+                      setPinInputTemp('');
+                      return;
+                    }
+                    const success = await setupPin(firstPin);
+                    if (success) {
+                      setShowPinModal(false);
+                      setToast({ visible: true, message: t.pinSuccess, type: 'success' });
+                    }
+                  }
+                }}
+              >
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  {pinStep === 'create'
+                    ? (language === 'bn' ? 'পরবর্তীধাপ ➔' : 'Next ➔')
+                    : pinStep === 'confirm'
+                    ? (language === 'bn' ? 'সেভ করুন ✓' : 'Save PIN ✓')
+                    : (language === 'bn' ? 'লক বন্ধ করুন ✓' : 'Turn Off Lock ✓')}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* About Us Modal */}
+        <Modal
+          visible={showAboutModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAboutModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowAboutModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>{t.aboutTitle}</ThemedText>
+                <TouchableOpacity onPress={() => setShowAboutModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ alignItems: 'center', marginVertical: 14 }}>
+                <ThemedText style={{ fontSize: 48 }}>📊</ThemedText>
+                <ThemedText type="subtitle" style={{ fontSize: 20, fontWeight: '800', marginTop: 4 }}>
+                  হিসাব কিতাব
+                </ThemedText>
+                <View style={{ backgroundColor: 'rgba(32, 138, 239, 0.15)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 14, marginTop: 8 }}>
+                  <ThemedText style={{ color: '#208AEF', fontSize: 12, fontWeight: '700' }}>
+                    {t.appVersionLabel}
+                  </ThemedText>
+                </View>
+              </View>
+
+              <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 22, marginBottom: 16, textAlign: 'center' }}>
+                {t.aboutDesc}
+              </ThemedText>
+
+              <View style={{ backgroundColor: theme.background, borderRadius: 16, padding: 16, gap: 10, marginBottom: 20, borderWidth: 1, borderColor: theme.backgroundSelected }}>
+                <ThemedText type="smallBold" style={{ fontSize: 13 }}>⚡ মূল ফিচারসমূহ:</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">• 📊 প্রাত্যহিক আয়-ব্যয় এন্ট্রি ও বাজেট প্ল্যান</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">• 📝 দেনা-পাওনার খাতা ও ১-ট্যাপ WhatsApp রিমাইন্ডার</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">• 📱 বিকাশ, নগদ ও ব্যাংক SMS পার্সিং</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">• 📄 প্রফেশনাল PDF স্টেটমেন্ট ও মেমো এক্সপোর্ট</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">• 🔒 পিন ও বায়োমেট্রিক ফিঙ্গারপ্রিন্ট লক</ThemedText>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16 }]}
+                onPress={() => setShowAboutModal(false)}
+              >
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  বন্ধ করুন ✓
+                </ThemedText>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Contact Us Modal */}
+        <Modal
+          visible={showContactModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowContactModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowContactModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>{t.contactTitle}</ThemedText>
+                <TouchableOpacity onPress={() => setShowContactModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20, marginBottom: 18, marginTop: 8 }}>
+                {t.contactSupportDesc}
+              </ThemedText>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: theme.background,
+                  borderRadius: 16,
+                  padding: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 14,
+                  marginBottom: 14,
+                  borderWidth: 1,
+                  borderColor: theme.backgroundSelected,
+                }}
+                onPress={() => Linking.openURL('mailto:support@hisabkitab.app').catch(() => {})}
+              >
+                <ThemedText style={{ fontSize: 26 }}>📩</ThemedText>
+                <View>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ fontSize: 11, fontWeight: '600' }}>{t.supportEmailLabel}</ThemedText>
+                  <ThemedText style={{ color: '#208AEF', fontSize: 15, fontWeight: '800', marginTop: 2 }}>support@hisabkitab.app</ThemedText>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  borderRadius: 16,
+                  padding: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 14,
+                  marginBottom: 22,
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(16, 185, 129, 0.4)',
+                }}
+                onPress={() => Linking.openURL('https://wa.me/8801700000000?text=Hi%20Hisab%20Kitab%20Support').catch(() => {})}
+              >
+                <ThemedText style={{ fontSize: 26 }}>📲</ThemedText>
+                <View>
+                  <ThemedText style={{ color: '#10B981', fontSize: 11, fontWeight: '600' }}>{t.supportPhoneLabel}</ThemedText>
+                  <ThemedText style={{ color: '#10B981', fontSize: 15, fontWeight: '800', marginTop: 2 }}>+880 1700-000000</ThemedText>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16 }]}
+                onPress={() => setShowContactModal(false)}
+              >
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  ঠিক আছে ✓
+                </ThemedText>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Privacy Policy Modal */}
+        <Modal
+          visible={showPrivacyModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPrivacyModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowPrivacyModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>{t.privacyTitle}</ThemedText>
+                <TouchableOpacity onPress={() => setShowPrivacyModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 320, marginVertical: 14 }} showsVerticalScrollIndicator={false}>
+                <View style={{ gap: 14 }}>
+                  <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)', padding: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+                    <ThemedText style={{ fontSize: 24 }}>🔒</ThemedText>
+                    <ThemedText style={{ color: '#10B981', fontSize: 12.5, fontWeight: '700', flex: 1, lineHeight: 18 }}>
+                      আপনার সকল আর্থিক ডাটা ১০০% গোপনীয় ও আপনার নিজস্ব নিয়ন্ত্রণে সুরক্ষিত।
+                    </ThemedText>
+                  </View>
+
+                  <ThemedText type="smallBold" style={{ fontSize: 13 }}>১. তথ্য সুরক্ষা ও গোপনীয়তা:</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20 }}>
+                    হিসাব কিতাব অ্যাপ আপনার কোনো ব্যক্তিগত আর্থিক লেনদেনের তথ্য তৃতীয় কোনো পক্ষের কাছে বিক্রি বা শেয়ার করে না।
+                  </ThemedText>
+
+                  <ThemedText type="smallBold" style={{ fontSize: 13 }}>২. SMS পার্সিং ও নিরাপত্তা:</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20 }}>
+                    বিকাশ বা নগদ SMS পার্সিং অ্যালগরিদম সম্পূর্ণ আপনার ডিভাইসে অফলাইনে কাজ করে। আপনার মেসেজের টেক্সট কোনো সার্ভারে পাঠানো হয় না।
+                  </ThemedText>
+
+                  <ThemedText type="smallBold" style={{ fontSize: 13 }}>৩. ডাটা ব্যাকআপ ও সিঙ্ক:</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20 }}>
+                    ক্লাউড সিঙ্ক ফিচার ব্যবহার করলে আপনার হিসাব নিরাপদ এনক্রিপ্টেড ব্যাকআপ হিসেবে জমা থাকে যা শুধুমাত্র আপনার অ্যাকাউন্ট থেকে অ্যাক্সেসযোগ্য।
+                  </ThemedText>
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16 }]}
+                onPress={() => setShowPrivacyModal(false)}
+              >
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  বুঝেছি ✓
+                </ThemedText>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
         {/* Floating Modern Toast Feedback Notification */}
         {toast.visible && (
           <View style={[
@@ -1423,7 +1871,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.three,
+    width: '100%',
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(150, 150, 150, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#94A3B8',
   },
   feedbackBanner: {
     padding: Spacing.two,

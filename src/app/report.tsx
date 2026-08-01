@@ -370,11 +370,11 @@ export default function ReportScreen() {
               <ThemedText style={styles.headerTitle}>{t.monthlyReportTitle}</ThemedText>
             </View>
             <TouchableOpacity
-              style={styles.pdfExportHeaderBtn}
+              style={styles.addIconBtn}
               onPress={() => setPdfModalVisible(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.pdfExportHeaderBtnText}>{t.pdfExportBtn}</Text>
+              <Text style={styles.addIconBtnText}>📄</Text>
             </TouchableOpacity>
           </View>
           <ThemedView type="backgroundElement" style={styles.emptyCard}>
@@ -412,11 +412,11 @@ export default function ReportScreen() {
             <ThemedText style={styles.headerTitle}>{t.monthlyReportTitle}</ThemedText>
           </View>
           <TouchableOpacity
-            style={styles.pdfExportHeaderBtn}
+            style={styles.addIconBtn}
             onPress={() => setPdfModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.pdfExportHeaderBtnText}>{t.pdfExportBtn}</Text>
+            <Text style={styles.addIconBtnText}>📄</Text>
           </TouchableOpacity>
         </View>
 
@@ -700,6 +700,24 @@ const styles = StyleSheet.create({
   pdfExportHeaderBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '700',
+  },
+  addIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#208AEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#208AEF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  addIconBtnText: {
+    color: '#FFFFFF',
+    fontSize: 20,
     fontWeight: '700',
   },
   downloadStatementBtn: {
