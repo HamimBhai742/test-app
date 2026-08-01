@@ -1057,7 +1057,11 @@ export default function ProfileScreen() {
           {/* Enhanced Profile Header with glowing background */}
           <View style={styles.profileHeader}>
             <View style={[styles.glowingBackground, { backgroundColor: theme.backgroundElement }]} />
-            <View style={styles.avatarWrapper}>
+            <TouchableOpacity
+              style={styles.avatarWrapper}
+              onPress={handlePickImage}
+              activeOpacity={0.85}
+            >
               {(user.avatar || user.photo) ? (
                 <Image source={{ uri: user.avatar || user.photo }} style={styles.avatarImage} />
               ) : (
@@ -1067,19 +1071,24 @@ export default function ProfileScreen() {
                   </ThemedText>
                 </View>
               )}
-              <View style={styles.proBadgeContainer}>
-                <ThemedText style={styles.proBadgeText}>⚡ {t.proBadge}</ThemedText>
+
+              {/* 📷 Camera Edit Badge */}
+              <View style={styles.cameraBadgeContainer}>
+                <ThemedText style={{ fontSize: 13, color: '#ffffff' }}>📷</ThemedText>
               </View>
 
               {/* Points Rank Badge display right on Profile Image */}
               <TouchableOpacity
                 style={styles.pointsBadgeOverlay}
-                onPress={() => setShowLeaderboardPage(true)}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setShowLeaderboardPage(true);
+                }}
                 activeOpacity={0.85}
               >
                 <ThemedText style={styles.pointsBadgeOverlayText}>{userBadge}</ThemedText>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
 
             <ThemedText type="subtitle" style={styles.userName}>
               {user.name}
@@ -1104,6 +1113,37 @@ export default function ProfileScreen() {
               <ThemedText type="smallBold" style={{ color: theme.text }}>
                 {t.editProfileBtn}
               </ThemedText>
+            </TouchableOpacity>
+
+            {/* 🏆 Reward Points & Leaderboard Hero Banner */}
+            <TouchableOpacity
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(234, 179, 8, 0.12)',
+                borderRadius: 16,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                marginTop: 16,
+                borderWidth: 1.5,
+                borderColor: 'rgba(234, 179, 8, 0.4)',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+              onPress={() => setShowLeaderboardPage(true)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <ThemedText style={{ fontSize: 28 }}>🏆</ThemedText>
+                <View>
+                  <ThemedText style={{ fontSize: 15, fontWeight: '800', color: '#EAB308' }}>
+                    {points} পয়েন্ট (Reward Points)
+                  </ThemedText>
+                  <ThemedText style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                    ব্যাজ: {userBadge} • লিডারবোর্ড দেখুন ➔
+                  </ThemedText>
+                </View>
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -1161,35 +1201,6 @@ export default function ProfileScreen() {
               </ThemedText>
             </View>
           </View>
-
-          {/* 🏆 Reward Points & Leaderboard Card */}
-          <TouchableOpacity
-            style={{
-              backgroundColor: 'rgba(234, 179, 8, 0.12)',
-              borderRadius: 20,
-              padding: 16,
-              marginBottom: Spacing.four,
-              borderWidth: 1.5,
-              borderColor: 'rgba(234, 179, 8, 0.4)',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-            onPress={() => setShowLeaderboardPage(true)}
-            activeOpacity={0.8}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <ThemedText style={{ fontSize: 32 }}>🏆</ThemedText>
-              <View>
-                <ThemedText style={{ fontSize: 16, fontWeight: '800', color: '#EAB308' }}>
-                  {points} পয়েন্ট (Reward Points)
-                </ThemedText>
-                <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                  ব্যাজ: {userBadge} • লিডারবোর্ড দেখুন ➔
-                </ThemedText>
-              </View>
-            </View>
-          </TouchableOpacity>
 
           {/* 🔒 Card 1: Security & App Lock Section */}
           <View style={styles.sectionHeaderRow}>
@@ -1296,23 +1307,6 @@ export default function ProfileScreen() {
               </>
             )}
 
-            {/* Lock App Now Test Button */}
-            {isPinSet && isLockEnabled && (
-              <>
-                <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
-                <TouchableOpacity
-                  style={styles.actionRow}
-                  onPress={() => lockApp()}
-                >
-                  <ThemedText style={styles.actionIcon}>🔒</ThemedText>
-                  <View style={styles.actionTextContainer}>
-                    <ThemedText type="small" style={{ color: '#208AEF', fontWeight: '700' }}>
-                      {language === 'bn' ? '🔒 এখনই অ্যাপ লক করুন (Test Lock)' : '🔒 Lock App Now (Test Lock)'}
-                    </ThemedText>
-                  </View>
-                </TouchableOpacity>
-              </>
-            )}
           </View>
 
           {/* ⚙️ Card 2: App Preferences Section */}
@@ -2487,6 +2481,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  cameraBadgeContainer: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#208AEF',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   pointsBadgeOverlay: {
     position: 'absolute',
