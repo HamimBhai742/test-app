@@ -352,6 +352,16 @@ export const translations = {
     onboardingSlide2Sub: 'খাবার, শপিং, বাসা ভাড়া কিংবা বেতনের আলাদা হিসাব দেখে খরচের ওপর রাখুন পূর্ণ নিয়ন্ত্রণ।',
     onboardingSlide3Title: 'লাইভ গ্রাফ ও বিস্তারিত রিপোর্ট',
     onboardingSlide3Sub: 'সুন্দর ভিজ্যুয়াল চার্ট ও রিপোর্ট দেখে বুঝতে পারবেন আপনার টাকা কোথায় খরচ হচ্ছে।',
+
+    // Notifications
+    notificationSectionTitle: 'নোটিফিকেশন ও অ্যালার্ট 🔔',
+    dailyReminderTitle: 'দৈনিক হিসাবের রিমাইন্ডার',
+    dailyReminderSub: 'প্রতিদিন নির্দিষ্ট সময়ে হিসাব লেখার নোটিফিকেশন পান',
+    dueReminderTitle: 'বকেয়া দেনা-পাওনা অ্যালার্ট',
+    dueReminderSub: 'পেমেন্টের নির্দিষ্ট তারিখে অ্যালার্ট পান',
+    budgetWarningTitle: 'বাজেট সীমা সতর্কতা',
+    budgetWarningSub: 'খরচ বাজেটের ৮০% বা ১০০% হলে অ্যালার্ট পান',
+    reminderTimeLabel: 'রিমাইন্ডারের সময়',
   },
   en: {
     // Shared / Profile
@@ -706,5 +716,15 @@ export const translations = {
     onboardingSlide2Sub: 'Organize spending across Food, Shopping, Rent & Salary with effortless budget control.',
     onboardingSlide3Title: 'Live Analytics & Reports',
     onboardingSlide3Sub: 'Visualize spending patterns through monthly interactive graphs and instant report exports.',
+
+    // Notifications
+    notificationSectionTitle: 'Notifications & Alerts 🔔',
+    dailyReminderTitle: 'Daily Expense Reminder',
+    dailyReminderSub: 'Get notified daily to log your transactions',
+    dueReminderTitle: 'Due & Debt Alerts',
+    dueReminderSub: 'Receive notifications on payment due dates',
+    budgetWarningTitle: 'Budget Threshold Warnings',
+    budgetWarningSub: 'Alert when spending exceeds 80% or 100%',
+    reminderTimeLabel: 'Reminder Time',
   },
 };

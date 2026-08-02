@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { registerForPushNotificationsAsync } from '@/services/notificationService';
 
 export interface User {
   id?: string;
@@ -128,6 +129,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Sync pushToken with server
+  const syncPushTokenWithServer = async (userToken?: string) => {
+    try {
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        const activeToken = userToken || (await getStorageItem(STORAGE_KEY_TOKEN));
+        if (activeToken) {
+          await fetch(`${getApiBaseUrl()}/user/update-me`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${activeToken}`,
+            },
+            body: JSON.stringify({ pushToken }),
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('Error syncing push token:', e);
+    }
+  };
+
   // Restore user session permanently on app start across device restarts
   useEffect(() => {
     const restoreSession = async () => {
@@ -139,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (storedToken) {
           setToken(storedToken);
+          syncPushTokenWithServer(storedToken);
         }
       } catch (e) {
         console.warn('Session restoration error:', e);
@@ -154,7 +178,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
     if (userToken) setToken(userToken);
     setStorageItem(STORAGE_KEY_USER, JSON.stringify(userData));
-    if (userToken) setStorageItem(STORAGE_KEY_TOKEN, userToken);
+    if (userToken) {
+      setStorageItem(STORAGE_KEY_TOKEN, userToken);
+      syncPushTokenWithServer(userToken);
+    }
   };
 
   // Sign In Handler

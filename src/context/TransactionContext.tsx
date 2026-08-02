@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { triggerBudgetWarning } from '@/services/notificationService';
 
 export interface Transaction {
   id: string;
@@ -102,6 +103,19 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     const optimisticTx: Transaction = { ...newTx, id: tempId };
 
     setTransactions((prev) => [optimisticTx, ...prev]);
+
+    // Budget warning check for new expenses
+    if (newTx.type === 'expense') {
+      const currentExpenses = transactions
+        .filter((t) => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+      const newTotalExpense = currentExpenses + Number(newTx.amount);
+      const defaultMonthlyBudget = 50000;
+      const percent = (newTotalExpense / defaultMonthlyBudget) * 100;
+      if (percent >= 80) {
+        triggerBudgetWarning(newTotalExpense, defaultMonthlyBudget, percent);
+      }
+    }
 
     try {
       let token = '';

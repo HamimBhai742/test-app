@@ -19,6 +19,7 @@ import ProfileScreen from './profile';
 import { useAuth } from '@/context/AuthContext';
 
 import { PointsProvider } from '@/context/PointsContext';
+import { NotificationBannerProvider } from '@/context/NotificationBannerContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,25 +38,15 @@ function MainContent() {
     setShowOnboarding(false);
   };
 
-  // Wait until onboarding check completes before rendering content
-  if (showOnboarding === null) {
-    return (
-      <>
-        <AnimatedSplashOverlay />
-      </>
-    );
-  }
-
   return (
     <>
       <AnimatedSplashOverlay />
       <AppLockScreen />
-      {showOnboarding ? (
+      {showOnboarding === true && (
         <OnboardingScreen onComplete={handleOnboardingComplete} />
-      ) : !user ? (
-        <ProfileScreen />
-      ) : (
-        <AppTabs />
+      )}
+      {showOnboarding === false && (
+        !user ? <ProfileScreen /> : <AppTabs />
       )}
     </>
   );
@@ -72,7 +63,9 @@ export default function TabLayout() {
             <AuthProvider>
               <SecurityProvider>
                 <PointsProvider>
-                  <MainContent />
+                  <NotificationBannerProvider>
+                    <MainContent />
+                  </NotificationBannerProvider>
                 </PointsProvider>
               </SecurityProvider>
             </AuthProvider>

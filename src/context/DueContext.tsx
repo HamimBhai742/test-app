@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { scheduleDueReminder, cancelDueReminder } from '@/services/notificationService';
 
 export interface DueItem {
   id: string;
@@ -140,6 +141,10 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     const updated = [newItem, ...dues];
     saveLocal(updated);
 
+    if (newItem.dueDate) {
+      scheduleDueReminder(newItem.id, newItem.personName, newItem.amount, newItem.dueDate, newItem.type);
+    }
+
     try {
       let token = '';
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -168,6 +173,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
   const settleDue = async (id: string) => {
     const updated = dues.map((d) => (d.id === id ? { ...d, isSettled: !d.isSettled } : d));
     saveLocal(updated);
+    cancelDueReminder(id);
 
     try {
       let token = '';
@@ -189,6 +195,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
   const deleteDue = async (id: string) => {
     const updated = dues.filter((d) => d.id !== id);
     saveLocal(updated);
+    cancelDueReminder(id);
 
     try {
       let token = '';

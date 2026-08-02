@@ -31,6 +31,14 @@ import { OnboardingScreen } from '@/components/onboarding';
 import { useSecurity } from '@/context/SecurityContext';
 import { usePoints } from '@/context/PointsContext';
 import LeaderboardScreen from './leaderboard';
+import {
+  getNotificationSettings,
+  saveNotificationSettings,
+  registerForPushNotificationsAsync,
+  scheduleFiveSecondTestNotification,
+  NotificationSettings,
+} from '@/services/notificationService';
+import { useNotificationBanner } from '@/context/NotificationBannerContext';
 
 let GoogleSignin: any = null;
 let statusCodes: any = {};
@@ -47,6 +55,7 @@ try {
 
 export default function ProfileScreen() {
   const theme = useTheme();
+  const { showNotification } = useNotificationBanner();
   const { themeMode, setThemeMode } = useThemeMode();
   const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout } = useAuth();
   
@@ -76,6 +85,24 @@ export default function ProfileScreen() {
 
   // Points & Rewards Context
   const { points, userBadge, dailyLoginEarnedToday, dailyTxEarnedToday, getLeaderboard } = usePoints();
+
+  // Notification Settings State
+  const [showTimePickerModal, setShowTimePickerModal] = useState<boolean>(false);
+  const [customHour, setCustomHour] = useState<number>(9);
+  const [customMinute, setCustomMinute] = useState<number>(0);
+  const [customAmPm, setCustomAmPm] = useState<'AM' | 'PM'>('PM');
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
+    dailyEnabled: true,
+    dailyHour: 21,
+    dailyMinute: 0,
+    dueEnabled: true,
+    budgetEnabled: true,
+  });
+
+  useEffect(() => {
+    getNotificationSettings().then(setNotifSettings);
+    registerForPushNotificationsAsync();
+  }, []);
 
   // Google Modal Inputs
   const [googleEmailInput, setGoogleEmailInput] = useState<string>('mdhamim5088@gmail.com');
@@ -1377,6 +1404,121 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* 🔔 Card 3: Notification & Alert Settings Section */}
+          <View style={styles.sectionHeaderRow}>
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionHeader}>
+              {t.notificationSectionTitle}
+            </ThemedText>
+            <View style={styles.headerIndicatorDot} />
+          </View>
+
+          <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement, marginBottom: Spacing.four }]}>
+            {/* Daily Accounting Reminder */}
+            <View style={styles.actionRow}>
+              <View style={[styles.notifBadge, { backgroundColor: '#3B82F61E' }]}>
+                <Text style={styles.notifIcon}>📝</Text>
+              </View>
+              <View style={styles.notifTextContainer}>
+                <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.dailyReminderTitle}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.notifSubText}>
+                  {t.dailyReminderSub}
+                </ThemedText>
+                {notifSettings.dailyEnabled && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowTimePickerModal(true)}
+                    style={styles.timeBadgeContainer}
+                  >
+                    <Text style={styles.timeBadgeText}>
+                      ⏰ {notifSettings.dailyHour > 12 ? notifSettings.dailyHour - 12 : notifSettings.dailyHour === 0 ? 12 : notifSettings.dailyHour}:{notifSettings.dailyMinute < 10 ? '0' : ''}{notifSettings.dailyMinute} {notifSettings.dailyHour >= 12 ? 'PM' : 'AM'} ✏️
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Switch
+                value={notifSettings.dailyEnabled}
+                onValueChange={(val) => {
+                  saveNotificationSettings({ dailyEnabled: val }).then(setNotifSettings);
+                }}
+                trackColor={{ false: theme.backgroundSelected, true: '#3B82F6' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
+            {/* Due & Debt Alerts */}
+            <View style={styles.actionRow}>
+              <View style={[styles.notifBadge, { backgroundColor: '#F59E0B1E' }]}>
+                <Text style={styles.notifIcon}>⏰</Text>
+              </View>
+              <View style={styles.notifTextContainer}>
+                <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.dueReminderTitle}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.notifSubText}>
+                  {t.dueReminderSub}
+                </ThemedText>
+              </View>
+              <Switch
+                value={notifSettings.dueEnabled}
+                onValueChange={(val) => {
+                  saveNotificationSettings({ dueEnabled: val }).then(setNotifSettings);
+                }}
+                trackColor={{ false: theme.backgroundSelected, true: '#F59E0B' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
+            {/* Budget Threshold Warnings */}
+            <View style={styles.actionRow}>
+              <View style={[styles.notifBadge, { backgroundColor: '#EF44441E' }]}>
+                <Text style={styles.notifIcon}>⚡</Text>
+              </View>
+              <View style={styles.notifTextContainer}>
+                <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.budgetWarningTitle}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.notifSubText}>
+                  {t.budgetWarningSub}
+                </ThemedText>
+              </View>
+              <Switch
+                value={notifSettings.budgetEnabled}
+                onValueChange={(val) => {
+                  saveNotificationSettings({ budgetEnabled: val }).then(setNotifSettings);
+                }}
+                trackColor={{ false: theme.backgroundSelected, true: '#EF4444' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
+            {/* Test Notification Alert Trigger */}
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => {
+                showNotification(
+                  'আজকের হিসাব লিখেছেন তো? 📝',
+                  'আপনার দৈনন্দিন আয়-ব্যয়ের সঠিক হিসাব রাখতে এখনই এন্ট্রি করুন।',
+                  'daily'
+                );
+                scheduleFiveSecondTestNotification();
+              }}
+            >
+              <View style={[styles.notifBadge, { backgroundColor: '#10B9811E' }]}>
+                <Text style={styles.notifIcon}>🔔</Text>
+              </View>
+              <View style={styles.notifTextContainer}>
+                <ThemedText type="smallBold" style={{ fontSize: 14, color: '#10B981' }}>
+                  {language === 'bn' ? 'লাইভ টেস্ট নোটিফিকেশন দেখুন (৫ সে.) 🚀' : 'Trigger Live Test Alert (5s) 🚀'}
+                </ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.notifSubText}>
+                  {language === 'bn' ? 'ক্লিক করে ৫ সেকেন্ডের মধ্যে নোটিফিকেশন অ্যালার্ট টেস্ট করুন' : 'Tap to test notification alert in 5 seconds'}
+                </ThemedText>
+              </View>
+            </TouchableOpacity>
+          </View>
+
           {/* ℹ️ Card 3: Help & Support Section */}
           <View style={styles.sectionHeaderRow}>
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionHeader}>
@@ -2037,6 +2179,167 @@ export default function ProfileScreen() {
                   Google অ্যাকাউন্ট দিয়ে প্রবেশ করুন ➔
                 </ThemedText>
               </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* ⏰ Time Picker Modal for Daily Reminder */}
+        <Modal
+          visible={showTimePickerModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowTimePickerModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTimePickerModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1 }}>
+                  {language === 'bn' ? 'রিমাইন্ডারের সময় নির্বাচন ⏰' : 'Select Reminder Time ⏰'}
+                </ThemedText>
+                <TouchableOpacity onPress={() => setShowTimePickerModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <ThemedText themeColor="textSecondary" style={{ fontSize: 13, marginVertical: 10 }}>
+                {language === 'bn' ? 'প্রতিদিন কোন সময়ে হিসাব লেখার নোটিফিকেশন পেতে চান?' : 'When would you like to receive daily accounting reminders?'}
+              </ThemedText>
+
+              {/* Preset Time Grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 14 }}>
+                {[
+                  { label: language === 'bn' ? 'সকাল ০৮:০০ (08:00 AM)' : '08:00 AM', hour: 8, minute: 0 },
+                  { label: language === 'bn' ? 'দুপুর ০১:০০ (01:00 PM)' : '01:00 PM', hour: 13, minute: 0 },
+                  { label: language === 'bn' ? 'সন্ধ্যা ০৬:০০ (06:00 PM)' : '06:00 PM', hour: 18, minute: 0 },
+                  { label: language === 'bn' ? 'রাত ০৮:০০ (08:00 PM)' : '08:00 PM', hour: 20, minute: 0 },
+                  { label: language === 'bn' ? 'রাত ০৯:০০ (09:00 PM)' : '09:00 PM', hour: 21, minute: 0 },
+                  { label: language === 'bn' ? 'রাত ১০:০০ (10:00 PM)' : '10:00 PM', hour: 22, minute: 0 },
+                  { label: language === 'bn' ? 'রাত ১১:০০ (11:00 PM)' : '11:00 PM', hour: 23, minute: 0 },
+                ].map((item, idx) => {
+                  const isSelected = notifSettings.dailyHour === item.hour && notifSettings.dailyMinute === item.minute;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        saveNotificationSettings({ dailyHour: item.hour, dailyMinute: item.minute }).then(setNotifSettings);
+                        setShowTimePickerModal(false);
+                      }}
+                      style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        backgroundColor: isSelected ? '#3B82F6' : theme.backgroundSelected,
+                        borderWidth: 1,
+                        borderColor: isSelected ? '#2563EB' : 'transparent',
+                        width: '48%',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? '#FFFFFF' : theme.text }}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Custom Time Selector (Alarm Clock Style) */}
+              <View style={{ backgroundColor: theme.background, borderRadius: 16, padding: 16, marginTop: 4, alignItems: 'center' }}>
+                <ThemedText type="smallBold" style={{ fontSize: 13, marginBottom: 12, color: theme.textSecondary }}>
+                  {language === 'bn' ? '⏱️ কাস্টম সময় ডায়াল করুন (অ্যালার্ম ঘড়ির মতো):' : '⏱️ Set Custom Time (Alarm Dial):'}
+                </ThemedText>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {/* Hour Input */}
+                  <View style={{ alignItems: 'center' }}>
+                    <TouchableOpacity
+                      onPress={() => setCustomHour((prev) => (prev >= 12 ? 1 : prev + 1))}
+                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▲</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text, marginVertical: 4 }}>
+                      {customHour < 10 ? `0${customHour}` : customHour}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setCustomHour((prev) => (prev <= 1 ? 12 : prev - 1))}
+                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▼</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text }}>:</Text>
+
+                  {/* Minute Input */}
+                  <View style={{ alignItems: 'center' }}>
+                    <TouchableOpacity
+                      onPress={() => setCustomMinute((prev) => (prev >= 55 ? 0 : prev + 5))}
+                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▲</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text, marginVertical: 4 }}>
+                      {customMinute < 10 ? `0${customMinute}` : customMinute}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setCustomMinute((prev) => (prev <= 0 ? 55 : prev - 5))}
+                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▼</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* AM / PM Toggle */}
+                  <TouchableOpacity
+                    onPress={() => setCustomAmPm((prev) => (prev === 'AM' ? 'PM' : 'AM'))}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                      borderRadius: 12,
+                      backgroundColor: '#3B82F6',
+                      marginLeft: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>
+                      {customAmPm}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Save Custom Time Button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    let h24 = customHour;
+                    if (customAmPm === 'PM' && customHour < 12) h24 += 12;
+                    if (customAmPm === 'AM' && customHour === 12) h24 = 0;
+                    saveNotificationSettings({ dailyHour: h24, dailyMinute: customMinute }).then(setNotifSettings);
+                    setShowTimePickerModal(false);
+                  }}
+                  style={{
+                    backgroundColor: '#2563EB',
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    paddingHorizontal: 24,
+                    marginTop: 16,
+                    width: '100%',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
+                    {language === 'bn' ? 'কাস্টম সময় সেট করুন 🔔' : 'Set Custom Time 🔔'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
@@ -2722,5 +3025,42 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  notifBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  notifTextContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    paddingRight: 10,
+  },
+  notifIcon: {
+    fontSize: 18,
+  },
+  notifSubText: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  timeBadgeContainer: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#3B82F618',
+    borderWidth: 1,
+    borderColor: '#3B82F633',
+  },
+  timeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3B82F6',
   },
 });
