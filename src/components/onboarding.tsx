@@ -26,7 +26,8 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
-const STORAGE_KEY = '@hisabkitab_onboarding_completed';
+const STORAGE_KEY = 'hisabkitab_onboarding_completed';
+const SECURE_KEY = 'hisabkitab_onboarding_completed';
 let memoryOnboardingState: boolean | null = null;
 
 export const getOnboardingCompleted = async (): Promise<boolean> => {
@@ -35,22 +36,26 @@ export const getOnboardingCompleted = async (): Promise<boolean> => {
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.localStorage) {
         const val = window.localStorage.getItem(STORAGE_KEY);
-        memoryOnboardingState = val === 'true';
-        return memoryOnboardingState;
-      }
-    } else {
-      try {
-        const secureVal = await SecureStore.getItemAsync(STORAGE_KEY);
-        if (secureVal !== null) {
-          memoryOnboardingState = secureVal === 'true';
+        if (val !== null) {
+          memoryOnboardingState = val === 'true';
           return memoryOnboardingState;
         }
-      } catch {}
-
+      }
+    } else {
+      // First try AsyncStorage (standard key-value storage)
       try {
         const asyncVal = await AsyncStorage.getItem(STORAGE_KEY);
         if (asyncVal !== null) {
           memoryOnboardingState = asyncVal === 'true';
+          return memoryOnboardingState;
+        }
+      } catch {}
+
+      // Fallback check SecureStore
+      try {
+        const secureVal = await SecureStore.getItemAsync(SECURE_KEY);
+        if (secureVal !== null) {
+          memoryOnboardingState = secureVal === 'true';
           return memoryOnboardingState;
         }
       } catch {}
@@ -61,19 +66,15 @@ export const getOnboardingCompleted = async (): Promise<boolean> => {
 
 export const setOnboardingCompleted = async (completed: boolean): Promise<void> => {
   memoryOnboardingState = completed;
+  const val = completed ? 'true' : 'false';
   try {
-    const val = completed ? 'true' : 'false';
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(STORAGE_KEY, val);
       }
     } else {
-      try {
-        await SecureStore.setItemAsync(STORAGE_KEY, val);
-      } catch {}
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, val);
-      } catch {}
+      await AsyncStorage.setItem(STORAGE_KEY, val).catch(() => {});
+      await SecureStore.setItemAsync(SECURE_KEY, val).catch(() => {});
     }
   } catch (e) {}
 };
@@ -90,15 +91,10 @@ export function OnboardingScreen({ onComplete }: OnboardingProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const t = translations[language];
-  const { user } = useAuth();
-  const router = useRouter();
 
   const handleFinish = async () => {
     await setOnboardingCompleted(true);
     onComplete();
-    if (!user) {
-      router.replace('/profile');
-    }
   };
 
   const handleNext = () => {

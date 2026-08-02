@@ -37,14 +37,22 @@ function MainContent() {
     setShowOnboarding(false);
   };
 
+  // Wait until onboarding check completes before rendering content
+  if (showOnboarding === null) {
+    return (
+      <>
+        <AnimatedSplashOverlay />
+      </>
+    );
+  }
+
   return (
     <>
       <AnimatedSplashOverlay />
       <AppLockScreen />
-      {showOnboarding && (
+      {showOnboarding ? (
         <OnboardingScreen onComplete={handleOnboardingComplete} />
-      )}
-      {!showOnboarding && !user ? (
+      ) : !user ? (
         <ProfileScreen />
       ) : (
         <AppTabs />
