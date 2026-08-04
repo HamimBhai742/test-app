@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { useLanguage } from './LanguageContext';
 
 export interface LeaderboardUser {
   id: string;
@@ -64,17 +65,25 @@ const getTodayDateString = (): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-export const getBadgeForPoints = (pts: number): string => {
-  if (pts >= 600) return '💎 ডায়মন্ড লিজেন্ড';
-  if (pts >= 300) return '🥇 গোল্ড মাস্টার';
-  if (pts >= 100) return '🥈 সিলভার ম্যানেজার';
-  return '🥉 ব্রোঞ্জ সেভার';
+export const getBadgeForPoints = (pts: number, lang: string = 'bn'): string => {
+  if (lang === 'bn') {
+    if (pts >= 600) return '💎 ডায়মন্ড লিজেন্ড';
+    if (pts >= 300) return '🥇 গোল্ড মাস্টার';
+    if (pts >= 100) return '🥈 সিলভার ম্যানেজার';
+    return '🥉 ব্রোঞ্জ সেভার';
+  } else {
+    if (pts >= 600) return '💎 Diamond Legend';
+    if (pts >= 300) return '🥇 Gold Master';
+    if (pts >= 100) return '🥈 Silver Manager';
+    return '🥉 Bronze Saver';
+  }
 };
 
 export function PointsProvider({ children }: { children: React.ReactNode }) {
   const [points, setPoints] = useState<number>(50);
   const [dailyLoginEarnedToday, setDailyLoginEarnedToday] = useState<boolean>(false);
   const [dailyTxEarnedToday, setDailyTxEarnedToday] = useState<boolean>(false);
+  const { language } = useLanguage();
 
   useEffect(() => {
     const initPointsSystem = async () => {
@@ -144,12 +153,12 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
   // Community Leaderboard Data Generator
   const getLeaderboard = (): LeaderboardUser[] => {
     const mockCommunity: LeaderboardUser[] = [
-      { id: '1', name: 'হামিম আহমেদ', points: Math.max(points + 120, 520), badge: '💎 ডায়মন্ড লিজেন্ড' },
-      { id: '2', name: 'তানভীর হাসান', points: 430, badge: '🥇 গোল্ড মাস্টার' },
-      { id: '3', name: 'সাকিব রহমান', points: 340, badge: '🥇 গোল্ড মাস্টার' },
-      { id: '4', name: 'আপনি (Current User)', points: points, badge: getBadgeForPoints(points), isCurrentUser: true },
-      { id: '5', name: 'রফিক উদ্দিন', points: Math.max(points - 20, 80), badge: '🥈 সিলভার ম্যানেজার' },
-      { id: '6', name: 'আরিফ হোসেন', points: 60, badge: '🥉 ব্রোঞ্জ সেভার' },
+      { id: '1', name: language === 'bn' ? 'হামিম আহমেদ' : 'Hamim Ahmed', points: Math.max(points + 120, 520), badge: getBadgeForPoints(Math.max(points + 120, 520), language) },
+      { id: '2', name: language === 'bn' ? 'তানভীর হাসান' : 'Tanvir Hasan', points: 430, badge: getBadgeForPoints(430, language) },
+      { id: '3', name: language === 'bn' ? 'সাকিব রহমান' : 'Sakib Rahman', points: 340, badge: getBadgeForPoints(340, language) },
+      { id: '4', name: language === 'bn' ? 'আপনি' : 'You', points: points, badge: getBadgeForPoints(points, language), isCurrentUser: true },
+      { id: '5', name: language === 'bn' ? 'রফিক উদ্দিন' : 'Rafiq Uddin', points: Math.max(points - 20, 80), badge: getBadgeForPoints(Math.max(points - 20, 80), language) },
+      { id: '6', name: language === 'bn' ? 'আরিফ হোসেন' : 'Arif Hossain', points: 60, badge: getBadgeForPoints(60, language) },
     ];
 
     // Sort descending by points
@@ -160,7 +169,7 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     <PointsContext.Provider
       value={{
         points,
-        userBadge: getBadgeForPoints(points),
+        userBadge: getBadgeForPoints(points, language),
         dailyLoginEarnedToday,
         dailyTxEarnedToday,
         claimDailyOpenReward,
