@@ -167,7 +167,7 @@ export default function HomeScreen() {
                 }}
               >
                 <ThemedText style={{ fontSize: 16 }}>
-                  {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
+                  {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌗'}
                 </ThemedText>
               </TouchableOpacity>
               {/* নতুন লেনদেন যোগ করার কুইক বাটন */}

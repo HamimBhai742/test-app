@@ -1425,7 +1425,7 @@ export default function ProfileScreen() {
               }}
             >
               <ThemedText style={styles.actionIcon}>
-                {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌓'}
+                {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌗'}
               </ThemedText>
               <View style={styles.actionTextContainer}>
                 <ThemedText type="small">{t.themeText}</ThemedText>
