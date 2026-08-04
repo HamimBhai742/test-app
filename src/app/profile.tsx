@@ -1277,7 +1277,7 @@ export default function ProfileScreen() {
               <View style={styles.actionTextContainer}>
                 <ThemedText type="small">{t.pinLockLabel}</ThemedText>
                 <ThemedText type="code" themeColor="textSecondary" style={styles.actionValue}>
-                  {isLockEnabled ? (language === 'bn' ? 'চালু (Enabled)' : 'Enabled') : (language === 'bn' ? 'বন্ধ (Disabled)' : 'Disabled')}
+                  {isLockEnabled ? (language === 'bn' ? 'চালু' : 'Enabled') : (language === 'bn' ? 'বন্ধ' : 'Disabled')}
                 </ThemedText>
               </View>
               <Switch
