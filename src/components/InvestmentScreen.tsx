@@ -21,6 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useInvestments, InvestmentProject, InvestmentLog } from '@/context/InvestmentContext';
+import { CustomDatePicker } from '@/components/custom-date-picker';
 
 const formatNum = (num: number) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -173,13 +174,10 @@ function AddLogModal({
                 style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
               />
 
-              <ThemedText style={styles.inputLabel}>{t.logDateLabel}</ThemedText>
-              <TextInput
+              <CustomDatePicker
+                label={t.logDateLabel}
                 value={date}
-                onChangeText={setDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={theme.textSecondary}
-                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+                onChange={setDate}
               />
 
               <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>

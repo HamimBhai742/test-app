@@ -26,7 +26,7 @@ export interface GoalItem {
 interface GoalContextType {
   goals: GoalItem[];
   isLoading: boolean;
-  addGoal: (name: string, targetAmount: number, description?: string, pointsAwarded?: number) => Promise<void>;
+  addGoal: (name: string, targetAmount: number, description?: string) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   addSavings: (goalId: string, amount: number, note?: string, date?: string) => Promise<void>;
   deleteSavings: (goalId: string, savingsLogId: string) => Promise<void>;
@@ -87,14 +87,17 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const addGoal = async (name: string, targetAmount: number, description?: string, pointsAwarded = 50) => {
+  const addGoal = async (name: string, targetAmount: number, description?: string) => {
+    // Automatically calculate reward points as 1% of target savings amount (minimum 10 points)
+    const pointsAwarded = Math.max(10, Math.floor(targetAmount / 100));
+
     const newGoal: GoalItem = {
       id: Date.now().toString(),
       name,
       targetAmount,
       description,
       isCompleted: false,
-      pointsAwarded: pointsAwarded > 0 ? pointsAwarded : 50,
+      pointsAwarded,
       createdAt: new Date().toISOString().split('T')[0],
       history: [],
     };

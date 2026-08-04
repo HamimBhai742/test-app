@@ -21,6 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useGoals, GoalItem, SavingsLog } from '@/context/GoalContext';
+import { CustomDatePicker } from '@/components/custom-date-picker';
 
 const formatNum = (num: number) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -34,7 +35,7 @@ function AddGoalModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onSave: (name: string, targetAmount: number, desc?: string, points?: number) => void;
+  onSave: (name: string, targetAmount: number, desc?: string) => void;
 }) {
   const theme = useTheme();
   const { language } = useLanguage();
@@ -43,19 +44,16 @@ function AddGoalModal({
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
   const [desc, setDesc] = useState('');
-  const [points, setPoints] = useState('50');
 
   const handleSave = () => {
     if (!name.trim() || !target.trim()) return;
     const numTarget = parseFloat(target);
     if (isNaN(numTarget) || numTarget <= 0) return;
-    const numPoints = points.trim() ? parseInt(points, 10) : 50;
 
-    onSave(name.trim(), numTarget, desc.trim() || undefined, numPoints);
+    onSave(name.trim(), numTarget, desc.trim() || undefined);
     setName('');
     setTarget('');
     setDesc('');
-    setPoints('50');
     onClose();
   };
 
@@ -83,30 +81,15 @@ function AddGoalModal({
                 style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
               />
 
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.inputLabel}>{t.targetAmountLabel}</ThemedText>
-                  <TextInput
-                    value={target}
-                    onChangeText={setTarget}
-                    placeholder="e.g. 20000"
-                    placeholderTextColor={theme.textSecondary}
-                    keyboardType="numeric"
-                    style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
-                  />
-                </View>
-                <View style={{ width: 120 }}>
-                  <ThemedText style={styles.inputLabel}>{language === 'bn' ? 'পয়েন্ট রিওয়ার্ড' : 'Reward Points'}</ThemedText>
-                  <TextInput
-                    value={points}
-                    onChangeText={setPoints}
-                    placeholder="50"
-                    placeholderTextColor={theme.textSecondary}
-                    keyboardType="numeric"
-                    style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
-                  />
-                </View>
-              </View>
+              <ThemedText style={styles.inputLabel}>{t.targetAmountLabel}</ThemedText>
+              <TextInput
+                value={target}
+                onChangeText={setTarget}
+                placeholder="e.g. 20000"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="numeric"
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
 
               <ThemedText style={styles.inputLabel}>{t.goalDescriptionLabel}</ThemedText>
               <TextInput
@@ -193,13 +176,10 @@ function AddSavingsModal({
                 style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
               />
 
-              <ThemedText style={styles.inputLabel}>{t.savingsDateLabel}</ThemedText>
-              <TextInput
+              <CustomDatePicker
+                label={t.savingsDateLabel}
                 value={date}
-                onChangeText={setDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={theme.textSecondary}
-                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+                onChange={setDate}
               />
 
               <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
@@ -250,8 +230,8 @@ export default function GoalScreen({ onBack }: { onBack: () => void }) {
     return goal.history.reduce((sum, log) => sum + log.amount, 0);
   };
 
-  const handleCreateGoal = (name: string, targetAmount: number, desc?: string, points?: number) => {
-    addGoal(name, targetAmount, desc, points);
+  const handleCreateGoal = (name: string, targetAmount: number, desc?: string) => {
+    addGoal(name, targetAmount, desc);
   };
 
   const handleDeleteGoal = (id: string) => {
