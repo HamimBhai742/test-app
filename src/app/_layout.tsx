@@ -12,6 +12,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import { SecurityProvider } from '@/context/SecurityContext';
 import { AppLockScreen } from '@/components/app-lock-screen';
 import { InvestmentProvider } from '@/context/InvestmentContext';
+import { GoalProvider } from '@/context/GoalContext';
 
 import React, { useState, useEffect } from 'react';
 import { OnboardingScreen, getOnboardingCompleted, setOnboardingCompleted } from '@/components/onboarding';
@@ -65,9 +66,11 @@ export default function TabLayout() {
               <AuthProvider>
                 <SecurityProvider>
                   <PointsProvider>
-                    <NotificationBannerProvider>
-                      <MainContent />
-                    </NotificationBannerProvider>
+                    <GoalProvider>
+                      <NotificationBannerProvider>
+                        <MainContent />
+                      </NotificationBannerProvider>
+                    </GoalProvider>
                   </PointsProvider>
                 </SecurityProvider>
               </AuthProvider>

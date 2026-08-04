@@ -20,6 +20,7 @@ interface PointsContextType {
   claimDailyOpenReward: () => Promise<boolean>;
   claimDailyTxReward: () => Promise<boolean>;
   getLeaderboard: () => LeaderboardUser[];
+  addPoints: (amount: number) => Promise<void>;
 }
 
 const STORAGE_KEY_POINTS = 'hisab_kitab_user_points';
@@ -165,6 +166,11 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
         claimDailyOpenReward,
         claimDailyTxReward,
         getLeaderboard,
+        addPoints: async (amount: number) => {
+          const newPts = points + amount;
+          setPoints(newPts);
+          await setItem(STORAGE_KEY_POINTS, newPts.toString());
+        },
       }}
     >
       {children}
