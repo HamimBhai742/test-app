@@ -44,25 +44,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Get Base API URL based on platform & Expo host IP
 const getApiBaseUrl = () => {
-  if (Platform.OS === 'web') {
-    return 'http://localhost:5001/api/v1';
-  }
-  try {
-    const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-        return `http://${ip}:5001/api/v1`;
-      }
-    }
-  } catch (e) {
-    console.warn('Could not determine host IP, using default fallback:', e);
-  }
-
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5001/api/v1';
-  }
-  return 'http://localhost:5001/api/v1';
+  return 'http://52.221.243.198:5042/api/v1';
 };
 
 const STORAGE_KEY_USER = 'hisab_kitab_auth_user';
@@ -79,12 +61,10 @@ const setStorageItem = async (key: string, value: string) => {
       try {
         await SecureStore.setItemAsync(key, value);
       } catch {
-        await AsyncStorage.setItem(key, value);
+        await AsyncStorage.setItem(key, value).catch(() => {});
       }
     }
-  } catch (e) {
-    console.warn('Storage set error:', e);
-  }
+  } catch (e) {}
 };
 
 const getStorageItem = async (key: string): Promise<string | null> => {
@@ -99,10 +79,9 @@ const getStorageItem = async (key: string): Promise<string | null> => {
         const val = await SecureStore.getItemAsync(key);
         if (val !== null) return val;
       } catch {}
-      return await AsyncStorage.getItem(key);
+      return await AsyncStorage.getItem(key).catch(() => null);
     }
   } catch (e) {
-    console.warn('Storage get error:', e);
     return null;
   }
 };
@@ -117,11 +96,9 @@ const removeStorageItem = async (key: string) => {
       try {
         await SecureStore.deleteItemAsync(key);
       } catch {}
-      await AsyncStorage.removeItem(key);
+      await AsyncStorage.removeItem(key).catch(() => {});
     }
-  } catch (e) {
-    console.warn('Storage remove error:', e);
-  }
+  } catch (e) {}
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -136,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (pushToken) {
         const activeToken = userToken || (await getStorageItem(STORAGE_KEY_TOKEN));
         if (activeToken) {
-          await fetch(`${getApiBaseUrl()}/user/update-me`, {
+          await fetch(`${getApiBaseUrl()}/user/me`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',

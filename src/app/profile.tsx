@@ -31,6 +31,7 @@ import { OnboardingScreen } from '@/components/onboarding';
 import { useSecurity } from '@/context/SecurityContext';
 import { usePoints } from '@/context/PointsContext';
 import LeaderboardScreen from './leaderboard';
+import InvestmentScreen from '@/components/InvestmentScreen';
 import {
   getNotificationSettings,
   saveNotificationSettings,
@@ -82,6 +83,7 @@ export default function ProfileScreen() {
   const [showGoogleModal, setShowGoogleModal] = useState<boolean>(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState<boolean>(false);
   const [showLeaderboardPage, setShowLeaderboardPage] = useState<boolean>(false);
+  const [showInvestmentPage, setShowInvestmentPage] = useState<boolean>(false);
 
   // Points & Rewards Context
   const { points, userBadge, dailyLoginEarnedToday, dailyTxEarnedToday, getLeaderboard } = usePoints();
@@ -1073,6 +1075,11 @@ export default function ProfileScreen() {
     return <LeaderboardScreen onBack={() => setShowLeaderboardPage(false)} />;
   }
 
+  // Render Full-Page Investment Screen
+  if (showInvestmentPage) {
+    return <InvestmentScreen onBack={() => setShowInvestmentPage(false)} />;
+  }
+
   // Profile View (When Logged In)
   return (
     <ThemedView style={styles.container}>
@@ -1345,6 +1352,25 @@ export default function ProfileScreen() {
           </View>
 
           <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement, marginBottom: Spacing.four }]}>
+            {/* 📈 Investment Option */}
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => setShowInvestmentPage(true)}
+            >
+              <ThemedText style={styles.actionIcon}>📈</ThemedText>
+              <View style={styles.actionTextContainer}>
+                <View style={{ flex: 1 }}>
+                  <ThemedText type="small" style={{ fontWeight: '600' }}>{t.investmentTitle}</ThemedText>
+                  <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
+                    {t.investmentSubtitle}
+                  </Text>
+                </View>
+                <ThemedText style={{ color: theme.textSecondary, marginLeft: 8, fontSize: 16 }}>→</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
             {/* Language Switch */}
             <TouchableOpacity
               style={styles.actionRow}

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "my-test-app",
+    "name": "Hisab Kitab",
     "slug": "my-test-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -36,9 +36,13 @@
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "typedRoutes": true,
+    "reactCompiler": true,
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "797c6e6a-4042-4ca0-9356-48800c7eb42d"
+      }
     }
   }
 }

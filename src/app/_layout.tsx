@@ -11,6 +11,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { SecurityProvider } from '@/context/SecurityContext';
 import { AppLockScreen } from '@/components/app-lock-screen';
+import { InvestmentProvider } from '@/context/InvestmentContext';
 
 import React, { useState, useEffect } from 'react';
 import { OnboardingScreen, getOnboardingCompleted, setOnboardingCompleted } from '@/components/onboarding';
@@ -58,19 +59,21 @@ export default function TabLayout() {
     // ThemeProvider এর মাধ্যমে অ্যাপের লাইট/ডার্ক মোড সেটআপ করা হচ্ছে।
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <LanguageProvider>
-        <TransactionProvider>
-          <DueProvider>
-            <AuthProvider>
-              <SecurityProvider>
-                <PointsProvider>
-                  <NotificationBannerProvider>
-                    <MainContent />
-                  </NotificationBannerProvider>
-                </PointsProvider>
-              </SecurityProvider>
-            </AuthProvider>
-          </DueProvider>
-        </TransactionProvider>
+        <InvestmentProvider>
+          <TransactionProvider>
+            <DueProvider>
+              <AuthProvider>
+                <SecurityProvider>
+                  <PointsProvider>
+                    <NotificationBannerProvider>
+                      <MainContent />
+                    </NotificationBannerProvider>
+                  </PointsProvider>
+                </SecurityProvider>
+              </AuthProvider>
+            </DueProvider>
+          </TransactionProvider>
+        </InvestmentProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

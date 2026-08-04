@@ -30,24 +30,7 @@ interface DueContextType {
 const STORAGE_KEY = '@hisabkitab_dues';
 
 const getApiBaseUrl = () => {
-  if (Platform.OS === 'web') {
-    return 'http://localhost:5001/api/v1';
-  }
-  try {
-    const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-        return `http://${ip}:5001/api/v1`;
-      }
-    }
-  } catch (e) {
-    console.warn('Could not determine host IP:', e);
-  }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5001/api/v1';
-  }
-  return 'http://localhost:5001/api/v1';
+  return 'http://52.221.243.198:5042/api/v1';
 };
 
 const DEFAULT_DUES: DueItem[] = [
