@@ -1437,16 +1437,6 @@ export default function ProfileScreen() {
 
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
 
-            {/* Replay Onboarding */}
-            <TouchableOpacity style={styles.actionRow} onPress={() => setShowOnboarding(true)}>
-              <ThemedText style={styles.actionIcon}>🚀</ThemedText>
-              <View style={styles.actionTextContainer}>
-                <ThemedText type="small">{t.onboardingReplay}</ThemedText>
-              </View>
-            </TouchableOpacity>
-
-            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
-
             {/* Export Transactions */}
             <TouchableOpacity style={styles.actionRow} onPress={handleExportData}>
               <ThemedText style={styles.actionIcon}>📤</ThemedText>
@@ -1542,33 +1532,6 @@ export default function ProfileScreen() {
                 thumbColor="#FFFFFF"
               />
             </View>
-
-            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
-
-            {/* Test Notification Alert Trigger */}
-            <TouchableOpacity
-              style={styles.actionRow}
-              onPress={() => {
-                showNotification(
-                  'আজকের হিসাব লিখেছেন তো? 📝',
-                  'আপনার দৈনন্দিন আয়-ব্যয়ের সঠিক হিসাব রাখতে এখনই এন্ট্রি করুন।',
-                  'daily'
-                );
-                scheduleFiveSecondTestNotification();
-              }}
-            >
-              <View style={[styles.notifBadge, { backgroundColor: '#10B9811E' }]}>
-                <Text style={styles.notifIcon}>🔔</Text>
-              </View>
-              <View style={styles.notifTextContainer}>
-                <ThemedText type="smallBold" style={{ fontSize: 14, color: '#10B981' }}>
-                  {language === 'bn' ? 'লাইভ টেস্ট নোটিফিকেশন দেখুন (৫ সে.) 🚀' : 'Trigger Live Test Alert (5s) 🚀'}
-                </ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.notifSubText}>
-                  {language === 'bn' ? 'ক্লিক করে ৫ সেকেন্ডের মধ্যে নোটিফিকেশন অ্যালার্ট টেস্ট করুন' : 'Tap to test notification alert in 5 seconds'}
-                </ThemedText>
-              </View>
-            </TouchableOpacity>
           </View>
 
           {/* ℹ️ Card 3: Help & Support Section */}
