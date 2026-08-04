@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -70,6 +70,99 @@ function AddGoalModal({
           >
             <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
             <ThemedText style={styles.modalTitle}>{t.addGoalBtn}</ThemedText>
+
+            <View style={styles.modalFormContainer}>
+              <ThemedText style={styles.inputLabel}>{t.goalNameLabel}</ThemedText>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder={t.goalNamePlaceholder}
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <ThemedText style={styles.inputLabel}>{t.targetAmountLabel}</ThemedText>
+              <TextInput
+                value={target}
+                onChangeText={setTarget}
+                placeholder="e.g. 20000"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="numeric"
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <ThemedText style={styles.inputLabel}>{t.goalDescriptionLabel}</ThemedText>
+              <TextInput
+                value={desc}
+                onChangeText={setDesc}
+                placeholder="e.g. Buying a new Android phone"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
+                <Text style={styles.submitBtnText}>{t.saveBtn}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Edit Goal Modal ────────────────────────────────────────────────────────
+function EditGoalModal({
+  visible,
+  onClose,
+  goal,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  goal: GoalItem | null;
+  onSave: (name: string, targetAmount: number, desc?: string) => void;
+}) {
+  const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
+
+  const [name, setName] = useState('');
+  const [target, setTarget] = useState('');
+  const [desc, setDesc] = useState('');
+
+  useEffect(() => {
+    if (goal) {
+      setName(goal.name);
+      setTarget(goal.targetAmount.toString());
+      setDesc(goal.description || '');
+    }
+  }, [goal, visible]);
+
+  const handleSave = () => {
+    if (!name.trim() || !target.trim()) return;
+    const numTarget = parseFloat(target);
+    if (isNaN(numTarget) || numTarget <= 0) return;
+
+    onSave(name.trim(), numTarget, desc.trim() || undefined);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable
+            style={[styles.modalSheet, { backgroundColor: theme.background }]}
+            onPress={Keyboard.dismiss}
+          >
+            <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
+            <ThemedText style={styles.modalTitle}>
+              {language === 'bn' ? 'লক্ষ্য পরিবর্তন করুন' : 'Edit Goal'}
+            </ThemedText>
 
             <View style={styles.modalFormContainer}>
               <ThemedText style={styles.inputLabel}>{t.goalNameLabel}</ThemedText>
@@ -193,6 +286,95 @@ function AddSavingsModal({
   );
 }
 
+// ─── Edit Savings Modal ─────────────────────────────────────────────────────
+function EditSavingsModal({
+  visible,
+  onClose,
+  log,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  log: SavingsLog | null;
+  onSave: (title: string, amount: number, date: string) => void;
+}) {
+  const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
+
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState('');
+
+  useEffect(() => {
+    if (log) {
+      setTitle(log.note || '');
+      setAmount(log.amount.toString());
+      setDate(log.date);
+    }
+  }, [log, visible]);
+
+  const handleSave = () => {
+    if (!title.trim() || !amount.trim()) return;
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return;
+    onSave(title.trim(), numAmount, date.trim());
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable
+            style={[styles.modalSheet, { backgroundColor: theme.background }]}
+            onPress={Keyboard.dismiss}
+          >
+            <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
+            <ThemedText style={styles.modalTitle}>
+              {language === 'bn' ? 'সঞ্চয়ের বিবরণ পরিবর্তন করুন' : 'Edit Savings Log'}
+            </ThemedText>
+
+            <View style={styles.modalFormContainer}>
+              <ThemedText style={styles.inputLabel}>{t.savingsTitleLabel}</ThemedText>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder={t.savingsTitlePlaceholder}
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <ThemedText style={styles.inputLabel}>{t.savingsAmountLabel}</ThemedText>
+              <TextInput
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="e.g. 5000"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="numeric"
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <CustomDatePicker
+                label={t.savingsDateLabel}
+                value={date}
+                onChange={setDate}
+              />
+
+              <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
+                <Text style={styles.submitBtnText}>{t.saveBtn}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Main Goal Screen Component ──────────────────────────────────────────────
 export default function GoalScreen({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
@@ -204,13 +386,18 @@ export default function GoalScreen({ onBack }: { onBack: () => void }) {
     goals,
     addGoal,
     deleteGoal,
+    updateGoal,
     addSavings,
     deleteSavings,
+    updateSavings,
   } = useGoals();
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [addGoalVisible, setAddGoalVisible] = useState(false);
+  const [editGoalVisible, setEditGoalVisible] = useState(false);
   const [addSavingsVisible, setAddSavingsVisible] = useState(false);
+  const [editSavingsVisible, setEditSavingsVisible] = useState(false);
+  const [selectedSavingsLog, setSelectedSavingsLog] = useState<SavingsLog | null>(null);
 
   // Find currently selected goal
   const selectedGoal = useMemo(() => {
@@ -232,6 +419,18 @@ export default function GoalScreen({ onBack }: { onBack: () => void }) {
 
   const handleCreateGoal = (name: string, targetAmount: number, desc?: string) => {
     addGoal(name, targetAmount, desc);
+  };
+
+  const handleUpdateGoal = (name: string, targetAmount: number, desc?: string) => {
+    if (selectedGoalId) {
+      updateGoal(selectedGoalId, name, targetAmount, desc);
+    }
+  };
+
+  const handleUpdateSavings = (note: string, amount: number, date: string) => {
+    if (selectedGoalId && selectedSavingsLog) {
+      updateSavings(selectedGoalId, selectedSavingsLog.id, amount, note, date);
+    }
   };
 
   const handleDeleteGoal = (id: string) => {
@@ -299,13 +498,22 @@ export default function GoalScreen({ onBack }: { onBack: () => void }) {
           </Text>
 
           {selectedGoal ? (
-            <TouchableOpacity
-              style={styles.deleteHeaderBtn}
-              onPress={() => handleDeleteGoal(selectedGoal.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 18 }}>🗑️</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={styles.deleteHeaderBtn}
+                onPress={() => setEditGoalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 18 }}>✏️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteHeaderBtn}
+                onPress={() => handleDeleteGoal(selectedGoal.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 18 }}>🗑️</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <TouchableOpacity
               style={styles.addHeaderBtn}
@@ -550,9 +758,14 @@ export default function GoalScreen({ onBack }: { onBack: () => void }) {
                 </View>
               ) : (
                 selectedGoal.history.map((log) => (
-                  <View
+                  <TouchableOpacity
                     key={log.id}
                     style={[styles.logItemRow, { backgroundColor: theme.backgroundElement, borderBottomColor: theme.backgroundSelected }]}
+                    onPress={() => {
+                      setSelectedSavingsLog(log);
+                      setEditSavingsVisible(true);
+                    }}
+                    activeOpacity={0.7}
                   >
                     <View style={{ flex: 1, paddingRight: 12 }}>
                       <ThemedText type="smallBold" style={styles.logItemTitle} numberOfLines={2}>
@@ -570,7 +783,7 @@ export default function GoalScreen({ onBack }: { onBack: () => void }) {
                         <Text style={styles.logDeleteBtnIcon}>🗑️</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
             </View>
@@ -590,6 +803,22 @@ export default function GoalScreen({ onBack }: { onBack: () => void }) {
         visible={addSavingsVisible}
         onClose={() => setAddSavingsVisible(false)}
         onSave={handleCreateSavings}
+      />
+
+      {/* Edit Goal Modal */}
+      <EditGoalModal
+        visible={editGoalVisible}
+        onClose={() => setEditGoalVisible(false)}
+        goal={selectedGoal}
+        onSave={handleUpdateGoal}
+      />
+
+      {/* Edit Savings Modal */}
+      <EditSavingsModal
+        visible={editSavingsVisible}
+        onClose={() => setEditSavingsVisible(false)}
+        log={selectedSavingsLog}
+        onSave={handleUpdateSavings}
       />
     </View>
   );

@@ -28,8 +28,10 @@ interface GoalContextType {
   isLoading: boolean;
   addGoal: (name: string, targetAmount: number, description?: string) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
+  updateGoal: (id: string, name: string, targetAmount: number, description?: string) => Promise<void>;
   addSavings: (goalId: string, amount: number, note?: string, date?: string) => Promise<void>;
   deleteSavings: (goalId: string, savingsLogId: string) => Promise<void>;
+  updateSavings: (goalId: string, savingsLogId: string, amount: number, note?: string, date?: string) => Promise<void>;
 }
 
 const STORAGE_KEY = '@hisabkitab_goals';
@@ -110,6 +112,49 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await saveGoals(updated);
   };
 
+  const updateGoal = async (id: string, name: string, targetAmount: number, description?: string) => {
+    let goalCompletedAward = false;
+    let awardedPointsAmount = 0;
+
+    const updated = goals.map((goal) => {
+      if (goal.id === id) {
+        const saved = goal.history.reduce((sum, log) => sum + log.amount, 0);
+        const reachedTarget = saved >= targetAmount;
+        const newlyCompleted = reachedTarget && !goal.isCompleted;
+
+        // Recalculate automatic points
+        const pointsAwarded = Math.max(10, Math.floor(targetAmount / 100));
+
+        if (newlyCompleted) {
+          goalCompletedAward = true;
+          awardedPointsAmount = pointsAwarded;
+        }
+
+        return {
+          ...goal,
+          name,
+          targetAmount,
+          description,
+          pointsAwarded,
+          isCompleted: reachedTarget,
+        };
+      }
+      return goal;
+    });
+
+    await saveGoals(updated);
+
+    if (goalCompletedAward && awardedPointsAmount > 0) {
+      await addPoints(awardedPointsAmount);
+      const msg = t.goalCompletedAlert.replace('{points}', awardedPointsAmount.toString());
+      Alert.alert(
+        language === 'bn' ? '🎉 অভিনন্দন!' : '🎉 Congratulations!',
+        msg,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   const addSavings = async (goalId: string, amount: number, note?: string, date?: string) => {
     const newLog: SavingsLog = {
       id: Date.now().toString(),
@@ -177,6 +222,55 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await saveGoals(updated);
   };
 
+  const updateSavings = async (goalId: string, savingsLogId: string, amount: number, note?: string, date?: string) => {
+    let goalCompletedAward = false;
+    let awardedPointsAmount = 0;
+
+    const updated = goals.map((goal) => {
+      if (goal.id === goalId) {
+        const updatedHistory = goal.history.map((log) => {
+          if (log.id === savingsLogId) {
+            return {
+              ...log,
+              amount,
+              date: date || new Date().toISOString().split('T')[0],
+              note,
+            };
+          }
+          return log;
+        });
+
+        const newTotal = updatedHistory.reduce((sum, h) => sum + h.amount, 0);
+        const reachedTarget = newTotal >= goal.targetAmount;
+        const newlyCompleted = reachedTarget && !goal.isCompleted;
+
+        if (newlyCompleted) {
+          goalCompletedAward = true;
+          awardedPointsAmount = goal.pointsAwarded;
+        }
+
+        return {
+          ...goal,
+          isCompleted: reachedTarget ? true : goal.isCompleted,
+          history: updatedHistory,
+        };
+      }
+      return goal;
+    });
+
+    await saveGoals(updated);
+
+    if (goalCompletedAward && awardedPointsAmount > 0) {
+      await addPoints(awardedPointsAmount);
+      const msg = t.goalCompletedAlert.replace('{points}', awardedPointsAmount.toString());
+      Alert.alert(
+        language === 'bn' ? '🎉 অভিনন্দন!' : '🎉 Congratulations!',
+        msg,
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   return (
     <GoalContext.Provider
       value={{
@@ -184,8 +278,10 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isLoading,
         addGoal,
         deleteGoal,
+        updateGoal,
         addSavings,
         deleteSavings,
+        updateSavings,
       }}
     >
       {children}

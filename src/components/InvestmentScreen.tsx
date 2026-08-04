@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -68,6 +68,97 @@ function AddInvestmentModal({
           >
             <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
             <ThemedText style={styles.modalTitle}>{t.addInvestmentBtn}</ThemedText>
+
+            <View style={styles.modalFormContainer}>
+              <ThemedText style={styles.inputLabel}>{t.investmentNameLabel}</ThemedText>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder={t.investmentNamePlaceholder}
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <ThemedText style={styles.inputLabel}>{t.targetBudgetLabel}</ThemedText>
+              <TextInput
+                value={budget}
+                onChangeText={setBudget}
+                placeholder="e.g. 500000"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="numeric"
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <ThemedText style={styles.inputLabel}>{t.descriptionLabel}</ThemedText>
+              <TextInput
+                value={desc}
+                onChangeText={setDesc}
+                placeholder="e.g. 4 Years B.Sc program fees"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
+                <Text style={styles.submitBtnText}>{t.saveBtn}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Edit Investment Modal ──────────────────────────────────────────────────
+function EditInvestmentModal({
+  visible,
+  onClose,
+  project,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  project: InvestmentProject | null;
+  onSave: (name: string, targetBudget?: number, desc?: string) => void;
+}) {
+  const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
+
+  const [name, setName] = useState('');
+  const [budget, setBudget] = useState('');
+  const [desc, setDesc] = useState('');
+
+  useEffect(() => {
+    if (project) {
+      setName(project.name);
+      setBudget(project.targetBudget ? project.targetBudget.toString() : '');
+      setDesc(project.description || '');
+    }
+  }, [project, visible]);
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    const numBudget = budget.trim() ? parseFloat(budget) : undefined;
+    onSave(name.trim(), numBudget, desc.trim() || undefined);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable
+            style={[styles.modalSheet, { backgroundColor: theme.background }]}
+            onPress={Keyboard.dismiss}
+          >
+            <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
+            <ThemedText style={styles.modalTitle}>
+              {language === 'bn' ? 'ইনভেস্টমেন্ট প্রজেক্ট পরিবর্তন করুন' : 'Edit Investment Project'}
+            </ThemedText>
 
             <View style={styles.modalFormContainer}>
               <ThemedText style={styles.inputLabel}>{t.investmentNameLabel}</ThemedText>
@@ -191,6 +282,95 @@ function AddLogModal({
   );
 }
 
+// ─── Edit Log Modal ─────────────────────────────────────────────────────────
+function EditLogModal({
+  visible,
+  onClose,
+  log,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  log: InvestmentLog | null;
+  onSave: (title: string, amount: number, date: string) => void;
+}) {
+  const theme = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
+
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState('');
+
+  useEffect(() => {
+    if (log) {
+      setTitle(log.title);
+      setAmount(log.amount.toString());
+      setDate(log.date);
+    }
+  }, [log, visible]);
+
+  const handleSave = () => {
+    if (!title.trim() || !amount.trim()) return;
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return;
+    onSave(title.trim(), numAmount, date.trim());
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable
+            style={[styles.modalSheet, { backgroundColor: theme.background }]}
+            onPress={Keyboard.dismiss}
+          >
+            <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
+            <ThemedText style={styles.modalTitle}>
+              {language === 'bn' ? 'খরচের বিবরণ পরিবর্তন করুন' : 'Edit Expense Log'}
+            </ThemedText>
+
+            <View style={styles.modalFormContainer}>
+              <ThemedText style={styles.inputLabel}>{t.logTitleLabel}</ThemedText>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder={t.logTitlePlaceholder}
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <ThemedText style={styles.inputLabel}>{t.logAmountLabel}</ThemedText>
+              <TextInput
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="e.g. 45000"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="numeric"
+                style={[styles.inputBox, { color: theme.text, borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}
+              />
+
+              <CustomDatePicker
+                label={t.logDateLabel}
+                value={date}
+                onChange={setDate}
+              />
+
+              <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
+                <Text style={styles.submitBtnText}>{t.saveBtn}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Main Investment Screen Component ─────────────────────────────────────────
 export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
@@ -202,13 +382,18 @@ export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
     investments,
     addInvestment,
     deleteInvestment,
+    updateInvestment,
     addLogToInvestment,
     deleteLogFromInvestment,
+    updateLogInInvestment,
   } = useInvestments();
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [addProjectVisible, setAddProjectVisible] = useState(false);
+  const [editProjectVisible, setEditProjectVisible] = useState(false);
   const [addLogVisible, setAddLogVisible] = useState(false);
+  const [editLogVisible, setEditLogVisible] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<InvestmentLog | null>(null);
 
   // Find currently selected project
   const selectedProject = useMemo(() => {
@@ -223,13 +408,25 @@ export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
     }, 0);
   }, [investments]);
 
-  // Project-specific sum calculator
+  // Goal-specific sum calculator
   const getProjectSpent = (project: InvestmentProject) => {
     return project.logs.reduce((sum, log) => sum + log.amount, 0);
   };
 
-  const handleCreateProject = (name: string, budget?: number, desc?: string) => {
-    addInvestment(name, budget, desc);
+  const handleCreateProject = (name: string, targetBudget?: number, desc?: string) => {
+    addInvestment(name, targetBudget, desc);
+  };
+
+  const handleUpdateProject = (name: string, targetBudget?: number, desc?: string) => {
+    if (selectedProjectId) {
+      updateInvestment(selectedProjectId, name, targetBudget, desc);
+    }
+  };
+
+  const handleUpdateLog = (title: string, amount: number, date: string) => {
+    if (selectedProjectId && selectedLog) {
+      updateLogInInvestment(selectedProjectId, selectedLog.id, title, amount, date);
+    }
   };
 
   const handleDeleteProject = (id: string) => {
@@ -297,13 +494,22 @@ export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
           </Text>
 
           {selectedProject ? (
-            <TouchableOpacity
-              style={styles.deleteHeaderBtn}
-              onPress={() => handleDeleteProject(selectedProject.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 18 }}>🗑️</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={styles.deleteHeaderBtn}
+                onPress={() => setEditProjectVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 18 }}>✏️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteHeaderBtn}
+                onPress={() => handleDeleteProject(selectedProject.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 18 }}>🗑️</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <TouchableOpacity
               style={styles.addHeaderBtn}
@@ -531,9 +737,14 @@ export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
                 </View>
               ) : (
                 selectedProject.logs.map((log) => (
-                  <View
+                  <TouchableOpacity
                     key={log.id}
                     style={[styles.logItemRow, { backgroundColor: theme.backgroundElement, borderBottomColor: theme.backgroundSelected }]}
+                    onPress={() => {
+                      setSelectedLog(log);
+                      setEditLogVisible(true);
+                    }}
+                    activeOpacity={0.7}
                   >
                     <View style={{ flex: 1, paddingRight: 12 }}>
                       <ThemedText type="smallBold" style={styles.logItemTitle} numberOfLines={2}>
@@ -551,7 +762,7 @@ export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
                         <Text style={styles.logDeleteBtnIcon}>🗑️</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
             </View>
@@ -571,6 +782,22 @@ export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
         visible={addLogVisible}
         onClose={() => setAddLogVisible(false)}
         onSave={handleCreateLog}
+      />
+
+      {/* Edit Investment Modal */}
+      <EditInvestmentModal
+        visible={editProjectVisible}
+        onClose={() => setEditProjectVisible(false)}
+        project={selectedProject}
+        onSave={handleUpdateProject}
+      />
+
+      {/* Edit Log Modal */}
+      <EditLogModal
+        visible={editLogVisible}
+        onClose={() => setEditLogVisible(false)}
+        log={selectedLog}
+        onSave={handleUpdateLog}
       />
     </View>
   );

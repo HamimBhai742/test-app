@@ -23,8 +23,10 @@ interface InvestmentContextType {
   isLoading: boolean;
   addInvestment: (name: string, targetBudget?: number, description?: string) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
+  updateInvestment: (id: string, name: string, targetBudget?: number, description?: string) => Promise<void>;
   addLogToInvestment: (investmentId: string, title: string, amount: number, date: string) => Promise<void>;
   deleteLogFromInvestment: (investmentId: string, logId: string) => Promise<void>;
+  updateLogInInvestment: (investmentId: string, logId: string, title: string, amount: number, date: string) => Promise<void>;
 }
 
 const STORAGE_KEY = '@hisabkitab_investments';
@@ -97,6 +99,21 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     await saveInvestments(updated);
   };
 
+  const updateInvestment = async (id: string, name: string, targetBudget?: number, description?: string) => {
+    const updated = investments.map((item) => {
+      if (item.id === id) {
+        return {
+          ...item,
+          name,
+          targetBudget,
+          description,
+        };
+      }
+      return item;
+    });
+    await saveInvestments(updated);
+  };
+
   const addLogToInvestment = async (investmentId: string, title: string, amount: number, date: string) => {
     const newLog: InvestmentLog = {
       id: Date.now().toString(),
@@ -132,6 +149,30 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     await saveInvestments(updated);
   };
 
+  const updateLogInInvestment = async (investmentId: string, logId: string, title: string, amount: number, date: string) => {
+    const updated = investments.map((project) => {
+      if (project.id === investmentId) {
+        const updatedLogs = project.logs.map((log) => {
+          if (log.id === logId) {
+            return {
+              ...log,
+              title,
+              amount,
+              date,
+            };
+          }
+          return log;
+        });
+        return {
+          ...project,
+          logs: updatedLogs,
+        };
+      }
+      return project;
+    });
+    await saveInvestments(updated);
+  };
+
   return (
     <InvestmentContext.Provider
       value={{
@@ -139,8 +180,10 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
         isLoading,
         addInvestment,
         deleteInvestment,
+        updateInvestment,
         addLogToInvestment,
         deleteLogFromInvestment,
+        updateLogInInvestment,
       }}
     >
       {children}
