@@ -50,7 +50,7 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
         <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
           <Text style={[styles.backBtnIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>🏆 লিডারবোর্ড ও রেটিং</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>🏆 {t.leaderboardHeader}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -83,7 +83,7 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
 
               <View style={styles.userHeroInfo}>
                 <Text style={[styles.userNameText, { color: theme.text }]}>
-                  {user?.name || 'আপনার অ্যাকাউন্ট'}
+                  {user?.name || t.currentAccount}
                 </Text>
                 <View style={styles.badgePill}>
                   <Text style={styles.badgePillText}>{userBadge}</Text>
@@ -92,7 +92,7 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
 
               <View style={styles.pointsPillBox}>
                 <Text style={styles.pointsPillVal}>⭐ {points}</Text>
-                <Text style={styles.pointsPillLbl}>পয়েন্ট</Text>
+                <Text style={styles.pointsPillLbl}>{t.pointsPillLabel}</Text>
               </View>
             </View>
 
@@ -100,7 +100,7 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
             <View style={styles.progressContainer}>
               <View style={styles.progressTextRow}>
                 <Text style={[styles.progressLbl, { color: theme.textSecondary }]}>
-                  পরবর্তী ব্যাজ অগ্রগতি ({points}/{nextMilestone} Pts)
+                  {t.nextBadgeProgress.replace('{points}', points.toString()).replace('{nextMilestone}', nextMilestone.toString())}
                 </Text>
                 <Text style={[styles.progressPercent, { color: '#EAB308' }]}>{progressPercent}%</Text>
               </View>
@@ -112,19 +112,19 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
 
           {/* ── Daily Reward Tasks ── */}
           <ThemedView type="backgroundElement" style={styles.tasksCard}>
-            <Text style={[styles.cardSectionTitle, { color: theme.text }]}>🎯 দৈনিক ফ্রি পয়েন্ট রিওয়ার্ড</Text>
+            <Text style={[styles.cardSectionTitle, { color: theme.text }]}>{t.dailyRewardTasksTitle}</Text>
 
             <View style={styles.taskItemRow}>
               <View style={styles.taskIconBox}>
                 <Text style={{ fontSize: 20 }}>📱</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.taskTitle, { color: theme.text }]}>দৈনিক অ্যাপ ওপেন বোলাইন</Text>
-                <Text style={[styles.taskSub, { color: theme.textSecondary }]}>প্রতিদিন ১ বার অ্যাপে প্রবেশে +১০ পয়েন্ট</Text>
+                <Text style={[styles.taskTitle, { color: theme.text }]}>{t.dailyAppOpenBonus}</Text>
+                <Text style={[styles.taskSub, { color: theme.textSecondary }]}>{t.dailyAppOpenDesc}</Text>
               </View>
               <View style={[styles.taskStatusBadge, { backgroundColor: dailyLoginEarnedToday ? 'rgba(16,185,129,0.15)' : 'rgba(234,179,8,0.15)' }]}>
                 <Text style={[styles.taskStatusText, { color: dailyLoginEarnedToday ? '#10B981' : '#EAB308' }]}>
-                  {dailyLoginEarnedToday ? '✓ অর্জিত' : '⏳ বাকি'}
+                  {dailyLoginEarnedToday ? `✓ ${t.earnedBadge}` : `⏳ ${t.pendingBadge}`}
                 </Text>
               </View>
             </View>
@@ -136,12 +136,12 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
                 <Text style={{ fontSize: 20 }}>📝</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.taskTitle, { color: theme.text }]}>দৈনিক হিসাব সংরক্ষণ এন্ট্রি</Text>
-                <Text style={[styles.taskSub, { color: theme.textSecondary }]}>দৈনিক অন্তত ১টি লেনদেন সেভে +১০ পয়েন্ট</Text>
+                <Text style={[styles.taskTitle, { color: theme.text }]}>{t.dailyTxBonus}</Text>
+                <Text style={[styles.taskSub, { color: theme.textSecondary }]}>{t.dailyTxDesc}</Text>
               </View>
               <View style={[styles.taskStatusBadge, { backgroundColor: dailyTxEarnedToday ? 'rgba(16,185,129,0.15)' : 'rgba(234,179,8,0.15)' }]}>
                 <Text style={[styles.taskStatusText, { color: dailyTxEarnedToday ? '#10B981' : '#EAB308' }]}>
-                  {dailyTxEarnedToday ? '✓ অর্জিত' : '⏳ বাকি'}
+                  {dailyTxEarnedToday ? `✓ ${t.earnedBadge}` : `⏳ ${t.pendingBadge}`}
                 </Text>
               </View>
             </View>
@@ -149,8 +149,8 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
 
           {/* ── Community Ranks List ── */}
           <View style={styles.rankSectionHeader}>
-            <Text style={[styles.cardSectionTitle, { color: theme.text }]}>📊 শীর্ষ ইউজার লিডারবোর্ড</Text>
-            <Text style={[styles.rankSectionSub, { color: theme.textSecondary }]}>সর্বমোট পয়েন্টের ভিত্তিতে স্থান</Text>
+            <Text style={[styles.cardSectionTitle, { color: theme.text }]}>{t.topUserLeaderboard}</Text>
+            <Text style={[styles.rankSectionSub, { color: theme.textSecondary }]}>{t.leaderboardRankDesc}</Text>
           </View>
 
           <View style={styles.leaderboardList}>
@@ -185,7 +185,7 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
 
                     <View>
                       <Text style={[styles.rankItemName, { color: theme.text, fontWeight: item.isCurrentUser ? '800' : '600' }]}>
-                        {item.name} {item.isCurrentUser ? '(আপনি)' : ''}
+                        {item.name} {item.isCurrentUser ? ` (${language === 'bn' ? 'আপনি' : 'You'})` : ''}
                       </Text>
                       <Text style={[styles.rankItemBadgeLabel, { color: theme.textSecondary }]}>
                         {item.badge}

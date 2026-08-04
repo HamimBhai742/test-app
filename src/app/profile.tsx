@@ -1178,10 +1178,10 @@ export default function ProfileScreen() {
                 <ThemedText style={{ fontSize: 28 }}>🏆</ThemedText>
                 <View>
                   <ThemedText style={{ fontSize: 15, fontWeight: '800', color: '#EAB308' }}>
-                    {points} পয়েন্ট (Reward Points)
+                    {t.rewardPointsLabel.replace('{points}', points.toString())}
                   </ThemedText>
                   <ThemedText style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
-                    ব্যাজ: {userBadge} • লিডারবোর্ড দেখুন ➔
+                    {t.badgeLabel.replace('{badge}', userBadge)}
                   </ThemedText>
                 </View>
               </View>
@@ -2377,7 +2377,7 @@ export default function ProfileScreen() {
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.modalHeader}>
-                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>🏆 লিডারবোর্ড ও রেটিং (Leaderboard)</ThemedText>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>🏆 {t.leaderboardHeader}</ThemedText>
                 <TouchableOpacity onPress={() => setShowLeaderboardModal(false)} style={styles.modalCloseBtn}>
                   <ThemedText style={styles.modalCloseText}>✕</ThemedText>
                 </TouchableOpacity>
@@ -2385,30 +2385,30 @@ export default function ProfileScreen() {
 
               {/* User Stats Card */}
               <View style={{ backgroundColor: 'rgba(234, 179, 8, 0.15)', borderRadius: 16, padding: 16, marginVertical: 12, borderWidth: 1, borderColor: 'rgba(234, 179, 8, 0.3)', alignItems: 'center' }}>
-                <ThemedText style={{ fontSize: 28, fontWeight: '900', color: '#EAB308' }}>⭐ {points} Points</ThemedText>
-                <ThemedText style={{ fontSize: 14, fontWeight: '700', marginTop: 4 }}>আপনার ব্যাজ: {userBadge}</ThemedText>
+                <ThemedText style={{ fontSize: 28, fontWeight: '900', color: '#EAB308' }}>⭐ {points} {t.pointsPillLabel}</ThemedText>
+                <ThemedText style={{ fontSize: 14, fontWeight: '700', marginTop: 4 }}>{language === 'bn' ? `আপনার ব্যাজ: ${userBadge}` : `Your Badge: ${userBadge}`}</ThemedText>
               </View>
 
               {/* Daily Tasks Progress Checklist */}
               <View style={{ backgroundColor: theme.background, borderRadius: 14, padding: 12, marginBottom: 12 }}>
-                <ThemedText type="smallBold" style={{ marginBottom: 8, fontSize: 13 }}>🎯 আজকের ডেইলি পয়েন্ট টাস্ক:</ThemedText>
+                <ThemedText type="smallBold" style={{ marginBottom: 8, fontSize: 13 }}>{t.dailyRewardTasksTitle}</ThemedText>
                 
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}>
-                  <ThemedText type="small" style={{ fontSize: 12 }}>📱 প্রতিদিন অ্যাপ ওপেন রিওয়ার্ড:</ThemedText>
+                  <ThemedText type="small" style={{ fontSize: 12 }}>{t.dailyAppOpenBonus}:</ThemedText>
                   <ThemedText style={{ fontSize: 12, fontWeight: '800', color: dailyLoginEarnedToday ? '#10B981' : '#EAB308' }}>
-                    {dailyLoginEarnedToday ? '✓ +১০ পয়েন্ট (অর্জিত)' : '⏳ +১০ পয়েন্ট'}
+                    {dailyLoginEarnedToday ? `✓ +10 ${t.pointsPillLabel} (${t.earnedBadge})` : `⏳ +10 ${t.pointsPillLabel}`}
                   </ThemedText>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}>
-                  <ThemedText type="small" style={{ fontSize: 12 }}>📝 প্রতিদিন হিসাব সেভ করার বোনাস:</ThemedText>
+                  <ThemedText type="small" style={{ fontSize: 12 }}>{t.dailyTxBonus}:</ThemedText>
                   <ThemedText style={{ fontSize: 12, fontWeight: '800', color: dailyTxEarnedToday ? '#10B981' : '#EAB308' }}>
-                    {dailyTxEarnedToday ? '✓ +১০ পয়েন্ট (অর্জিত)' : '⏳ +১০ পয়েন্ট বাকি'}
+                    {dailyTxEarnedToday ? `✓ +10 ${t.pointsPillLabel} (${t.earnedBadge})` : `⏳ +10 ${t.pointsPillLabel} ${t.pendingBadge}`}
                   </ThemedText>
                 </View>
               </View>
 
-              <ThemedText type="smallBold" style={{ marginBottom: 8, fontSize: 13 }}>📊 শীর্ষ ইউজার লিডারবোর্ড (Top Ranks):</ThemedText>
+              <ThemedText type="smallBold" style={{ marginBottom: 8, fontSize: 13 }}>{t.topUserLeaderboard}:</ThemedText>
 
               {/* Leaderboard List */}
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 240 }}>
