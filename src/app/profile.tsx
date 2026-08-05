@@ -95,6 +95,7 @@ export default function ProfileScreen() {
   const [customHour, setCustomHour] = useState<number>(9);
   const [customMinute, setCustomMinute] = useState<number>(0);
   const [customAmPm, setCustomAmPm] = useState<'AM' | 'PM'>('PM');
+  const [timePickerTab, setTimePickerTab] = useState<'hour' | 'minute'>('hour');
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
     dailyEnabled: true,
     dailyHour: 21,
@@ -489,6 +490,18 @@ export default function ProfileScreen() {
     } else {
       Alert.alert(t.helpSupport, t.supportMsg);
     }
+  };
+
+  const handleOpenTimePicker = () => {
+    const h24 = notifSettings.dailyHour;
+    const m = notifSettings.dailyMinute;
+    const isPm = h24 >= 12;
+    const h12 = h24 > 12 ? h24 - 12 : h24 === 0 ? 12 : h24;
+    setCustomHour(h12);
+    setCustomMinute(m);
+    setCustomAmPm(isPm ? 'PM' : 'AM');
+    setTimePickerTab('hour');
+    setShowTimePickerModal(true);
   };
 
   const handleLogout = () => {
@@ -1468,7 +1481,7 @@ export default function ProfileScreen() {
                 {notifSettings.dailyEnabled && (
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => setShowTimePickerModal(true)}
+                    onPress={handleOpenTimePicker}
                     style={styles.timeBadgeContainer}
                   >
                     <Text style={styles.timeBadgeText}>
@@ -1480,7 +1493,12 @@ export default function ProfileScreen() {
               <Switch
                 value={notifSettings.dailyEnabled}
                 onValueChange={(val) => {
-                  saveNotificationSettings({ dailyEnabled: val }).then(setNotifSettings);
+                  saveNotificationSettings({ dailyEnabled: val }).then((updated) => {
+                    setNotifSettings(updated);
+                    if (val) {
+                      handleOpenTimePicker();
+                    }
+                  });
                 }}
                 trackColor={{ false: theme.backgroundSelected, true: '#3B82F6' }}
                 thumbColor="#FFFFFF"
@@ -2212,32 +2230,31 @@ export default function ProfileScreen() {
           >
             <TouchableOpacity
               activeOpacity={1}
-              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement }]}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, maxWidth: 390 }]}
               onPress={(e) => e.stopPropagation()}
             >
               <View style={styles.modalHeader}>
                 <ThemedText type="subtitle" style={{ flex: 1 }}>
-                  {language === 'bn' ? 'রিমাইন্ডারের সময় নির্বাচন ⏰' : 'Select Reminder Time ⏰'}
+                  {language === 'bn' ? 'রিমাইন্ডার সময় নির্বাচন ⏰' : 'Select Reminder Time ⏰'}
                 </ThemedText>
                 <TouchableOpacity onPress={() => setShowTimePickerModal(false)} style={styles.modalCloseBtn}>
                   <ThemedText style={styles.modalCloseText}>✕</ThemedText>
                 </TouchableOpacity>
               </View>
 
-              <ThemedText themeColor="textSecondary" style={{ fontSize: 13, marginVertical: 10 }}>
+              <ThemedText themeColor="textSecondary" style={{ fontSize: 13, marginBottom: 12 }}>
                 {language === 'bn' ? 'প্রতিদিন কোন সময়ে হিসাব লেখার নোটিফিকেশন পেতে চান?' : 'When would you like to receive daily accounting reminders?'}
               </ThemedText>
 
               {/* Preset Time Grid */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 14 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 8, justifyContent: 'space-between' }}>
                 {[
-                  { label: language === 'bn' ? 'সকাল ০৮:০০ (08:00 AM)' : '08:00 AM', hour: 8, minute: 0 },
-                  { label: language === 'bn' ? 'দুপুর ০১:০০ (01:00 PM)' : '01:00 PM', hour: 13, minute: 0 },
-                  { label: language === 'bn' ? 'সন্ধ্যা ০৬:০০ (06:00 PM)' : '06:00 PM', hour: 18, minute: 0 },
-                  { label: language === 'bn' ? 'রাত ০৮:০০ (08:00 PM)' : '08:00 PM', hour: 20, minute: 0 },
-                  { label: language === 'bn' ? 'রাত ০৯:০০ (09:00 PM)' : '09:00 PM', hour: 21, minute: 0 },
-                  { label: language === 'bn' ? 'রাত ১০:০০ (10:00 PM)' : '10:00 PM', hour: 22, minute: 0 },
-                  { label: language === 'bn' ? 'রাত ১১:০০ (11:00 PM)' : '11:00 PM', hour: 23, minute: 0 },
+                  { label: language === 'bn' ? '🌅 সকাল ০৮:০০' : '🌅 08:00 AM', hour: 8, minute: 0 },
+                  { label: language === 'bn' ? '☀️ দুপুর ০১:০০' : '☀️ 01:00 PM', hour: 13, minute: 0 },
+                  { label: language === 'bn' ? '🌇 সন্ধ্যা ০৬:০০' : '🌇 06:00 PM', hour: 18, minute: 0 },
+                  { label: language === 'bn' ? '🌙 রাত ০৮:০০' : '🌙 08:00 PM', hour: 20, minute: 0 },
+                  { label: language === 'bn' ? '🌙 রাত ০৯:০০' : '🌙 09:00 PM', hour: 21, minute: 0 },
+                  { label: language === 'bn' ? '🌙 রাত ১০:০০' : '🌙 10:00 PM', hour: 22, minute: 0 },
                 ].map((item, idx) => {
                   const isSelected = notifSettings.dailyHour === item.hour && notifSettings.dailyMinute === item.minute;
                   return (
@@ -2249,14 +2266,20 @@ export default function ProfileScreen() {
                         setShowTimePickerModal(false);
                       }}
                       style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
                         borderRadius: 12,
                         backgroundColor: isSelected ? '#3B82F6' : theme.backgroundSelected,
                         borderWidth: 1,
                         borderColor: isSelected ? '#2563EB' : 'transparent',
                         width: '48%',
                         alignItems: 'center',
+                        justifyContent: 'center',
+                        shadowColor: isSelected ? '#3B82F6' : '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: isSelected ? 0.2 : 0.05,
+                        shadowRadius: 4,
+                        elevation: 2,
                       }}
                     >
                       <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? '#FFFFFF' : theme.text }}>
@@ -2267,94 +2290,275 @@ export default function ProfileScreen() {
                 })}
               </View>
 
-              {/* Custom Time Selector (Alarm Clock Style) */}
-              <View style={{ backgroundColor: theme.background, borderRadius: 16, padding: 16, marginTop: 4, alignItems: 'center' }}>
-                <ThemedText type="smallBold" style={{ fontSize: 13, marginBottom: 12, color: theme.textSecondary }}>
-                  {language === 'bn' ? '⏱️ কাস্টম সময় ডায়াল করুন (অ্যালার্ম ঘড়ির মতো):' : '⏱️ Set Custom Time (Alarm Dial):'}
-                </ThemedText>
+              <View style={{ marginVertical: 12, height: 1, backgroundColor: theme.backgroundSelected }} />
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  {/* Hour Input */}
-                  <View style={{ alignItems: 'center' }}>
-                    <TouchableOpacity
-                      onPress={() => setCustomHour((prev) => (prev >= 12 ? 1 : prev + 1))}
-                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
-                    >
-                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▲</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text, marginVertical: 4 }}>
-                      {customHour < 10 ? `0${customHour}` : customHour}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setCustomHour((prev) => (prev <= 1 ? 12 : prev - 1))}
-                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
-                    >
-                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
+              <ThemedText type="smallBold" style={{ fontSize: 13, marginBottom: 12, color: theme.textSecondary, textAlign: 'center' }}>
+                {language === 'bn' ? '⏱️ কাস্টম সময় সেট করুন:' : '⏱️ Set Custom Time:'}
+              </ThemedText>
 
-                  <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text }}>:</Text>
-
-                  {/* Minute Input */}
-                  <View style={{ alignItems: 'center' }}>
-                    <TouchableOpacity
-                      onPress={() => setCustomMinute((prev) => (prev >= 55 ? 0 : prev + 5))}
-                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
-                    >
-                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▲</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text, marginVertical: 4 }}>
-                      {customMinute < 10 ? `0${customMinute}` : customMinute}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setCustomMinute((prev) => (prev <= 0 ? 55 : prev - 5))}
-                      style={{ padding: 8, backgroundColor: theme.backgroundSelected, borderRadius: 10, width: 48, alignItems: 'center' }}
-                    >
-                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* AM / PM Toggle */}
-                  <TouchableOpacity
-                    onPress={() => setCustomAmPm((prev) => (prev === 'AM' ? 'PM' : 'AM'))}
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 14,
-                      borderRadius: 12,
-                      backgroundColor: '#3B82F6',
-                      marginLeft: 6,
-                    }}
-                  >
-                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>
-                      {customAmPm}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Save Custom Time Button */}
+              {/* Digital Time Picker Display Card */}
+              <View style={{
+                backgroundColor: theme.background,
+                borderRadius: 16,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+                flexDirection: 'row',
+                gap: 8,
+                borderWidth: 1,
+                borderColor: theme.backgroundSelected,
+              }}>
+                {/* Hour Segment */}
                 <TouchableOpacity
-                  onPress={() => {
-                    let h24 = customHour;
-                    if (customAmPm === 'PM' && customHour < 12) h24 += 12;
-                    if (customAmPm === 'AM' && customHour === 12) h24 = 0;
-                    saveNotificationSettings({ dailyHour: h24, dailyMinute: customMinute }).then(setNotifSettings);
-                    setShowTimePickerModal(false);
-                  }}
+                  activeOpacity={0.8}
+                  onPress={() => setTimePickerTab('hour')}
                   style={{
-                    backgroundColor: '#2563EB',
+                    backgroundColor: timePickerTab === 'hour' ? '#3B82F6' : theme.backgroundSelected,
                     borderRadius: 12,
-                    paddingVertical: 12,
-                    paddingHorizontal: 24,
-                    marginTop: 16,
-                    width: '100%',
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    minWidth: 64,
                     alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: timePickerTab === 'hour' ? '#2563EB' : 'transparent',
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
-                    {language === 'bn' ? 'কাস্টম সময় সেট করুন 🔔' : 'Set Custom Time 🔔'}
+                  <Text style={{
+                    fontSize: 28,
+                    fontWeight: '800',
+                    color: timePickerTab === 'hour' ? '#FFFFFF' : theme.text,
+                  }}>
+                    {customHour < 10 ? `0${customHour}` : customHour}
+                  </Text>
+                  <Text style={{
+                    fontSize: 9,
+                    fontWeight: '700',
+                    marginTop: 2,
+                    color: timePickerTab === 'hour' ? '#E0F2FE' : theme.textSecondary,
+                  }}>
+                    {language === 'bn' ? 'ঘণ্টা' : 'HOUR'}
                   </Text>
                 </TouchableOpacity>
+
+                <Text style={{ fontSize: 28, fontWeight: '800', color: theme.textSecondary, marginHorizontal: 2 }}>:</Text>
+
+                {/* Minute Segment */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setTimePickerTab('minute')}
+                  style={{
+                    backgroundColor: timePickerTab === 'minute' ? '#3B82F6' : theme.backgroundSelected,
+                    borderRadius: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    minWidth: 64,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: timePickerTab === 'minute' ? '#2563EB' : 'transparent',
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 28,
+                    fontWeight: '800',
+                    color: timePickerTab === 'minute' ? '#FFFFFF' : theme.text,
+                  }}>
+                    {customMinute < 10 ? `0${customMinute}` : customMinute}
+                  </Text>
+                  <Text style={{
+                    fontSize: 9,
+                    fontWeight: '700',
+                    marginTop: 2,
+                    color: timePickerTab === 'minute' ? '#E0F2FE' : theme.textSecondary,
+                  }}>
+                    {language === 'bn' ? 'মিনিট' : 'MIN'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* AM / PM Toggle Pill */}
+                <View style={{
+                  flexDirection: 'row',
+                  backgroundColor: theme.backgroundSelected,
+                  borderRadius: 12,
+                  padding: 4,
+                  marginLeft: 10,
+                }}>
+                  {(['AM', 'PM'] as const).map((mode) => {
+                    const isSelected = customAmPm === mode;
+                    return (
+                      <TouchableOpacity
+                        key={mode}
+                        activeOpacity={0.8}
+                        onPress={() => setCustomAmPm(mode)}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 8,
+                          backgroundColor: isSelected ? '#3B82F6' : 'transparent',
+                          shadowColor: isSelected ? '#3B82F6' : 'transparent',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: isSelected ? 0.2 : 0,
+                          shadowRadius: 2,
+                          elevation: isSelected ? 2 : 0,
+                        }}
+                      >
+                        <Text style={{
+                          fontSize: 12,
+                          fontWeight: '800',
+                          color: isSelected ? '#FFFFFF' : theme.textSecondary,
+                        }}>
+                          {mode}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
+
+              {/* Selector Grids */}
+              {timePickerTab === 'hour' ? (
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, textAlign: 'center', marginBottom: 8 }}>
+                    {language === 'bn' ? 'ঘণ্টা নির্বাচন করুন (১-১২)' : 'Select Hour (1-12)'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                    {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((hour) => {
+                      const isSelected = customHour === hour;
+                      return (
+                        <TouchableOpacity
+                          key={hour}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            setCustomHour(hour);
+                            setTimePickerTab('minute');
+                          }}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            backgroundColor: isSelected ? '#3B82F6' : theme.background,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: 1,
+                            borderColor: isSelected ? '#2563EB' : theme.backgroundSelected,
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 14,
+                            fontWeight: '700',
+                            color: isSelected ? '#FFFFFF' : theme.text,
+                          }}>
+                            {hour}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : (
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.textSecondary, textAlign: 'center', marginBottom: 8 }}>
+                    {language === 'bn' ? 'মিনিট নির্বাচন করুন' : 'Select Minute'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
+                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((minute) => {
+                      const isSelected = customMinute === minute;
+                      return (
+                        <TouchableOpacity
+                          key={minute}
+                          activeOpacity={0.8}
+                          onPress={() => setCustomMinute(minute)}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            backgroundColor: isSelected ? '#3B82F6' : theme.background,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: 1,
+                            borderColor: isSelected ? '#2563EB' : theme.backgroundSelected,
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 13,
+                            fontWeight: '700',
+                            color: isSelected ? '#FFFFFF' : theme.text,
+                          }}>
+                            {minute < 10 ? `0${minute}` : minute}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Fine Tuning controls */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 16,
+                    backgroundColor: theme.background,
+                    borderRadius: 12,
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: theme.backgroundSelected,
+                    alignSelf: 'center',
+                    width: '70%',
+                  }}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setCustomMinute((prev) => (prev <= 0 ? 59 : prev - 1))}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: theme.backgroundSelected,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>-</Text>
+                    </TouchableOpacity>
+
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text, minWidth: 60, textAlign: 'center' }}>
+                      {language === 'bn' ? `${customMinute} মিনিট` : `${customMinute} min`}
+                    </Text>
+
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setCustomMinute((prev) => (prev >= 59 ? 0 : prev + 1))}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: theme.backgroundSelected,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: theme.text }}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Save Custom Time Button */}
+              <TouchableOpacity
+                onPress={() => {
+                  let h24 = customHour;
+                  if (customAmPm === 'PM' && customHour < 12) h24 += 12;
+                  if (customAmPm === 'AM' && customHour === 12) h24 = 0;
+                  saveNotificationSettings({ dailyHour: h24, dailyMinute: customMinute }).then(setNotifSettings);
+                  setShowTimePickerModal(false);
+                }}
+                style={[styles.primaryButton, { backgroundColor: '#3B82F6', borderRadius: 14, marginTop: 16 }]}
+              >
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  {language === 'bn' ? 'কাস্টম সময় সেট করুন 🔔' : 'Set Custom Time 🔔'}
+                </ThemedText>
+              </TouchableOpacity>
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
