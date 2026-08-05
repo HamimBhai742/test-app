@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { scheduleDueReminder, cancelDueReminder } from '@/services/notificationService';
+import { API_BASE_URL } from '@/constants/config';
 
 export interface DueItem {
   id: string;
@@ -30,7 +33,24 @@ interface DueContextType {
 const STORAGE_KEY = '@hisabkitab_dues';
 
 const getApiBaseUrl = () => {
-  return 'http://52.221.243.198:5042/api/v1';
+  return API_BASE_URL;
+};
+
+const getAuthToken = async () => {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem('hisab_kitab_auth_token') || localStorage.getItem('token');
+      }
+    } else {
+      try {
+        return await SecureStore.getItemAsync('hisab_kitab_auth_token');
+      } catch {
+        return await AsyncStorage.getItem('hisab_kitab_auth_token');
+      }
+    }
+  } catch (e) {}
+  return null;
 };
 
 const DEFAULT_DUES: DueItem[] = [
@@ -76,10 +96,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
   const fetchDues = async () => {
     setIsLoading(true);
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('token') || '';
-      }
+      const token = await getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}/dues`, {
         headers: {
           'Content-Type': 'application/json',
@@ -129,10 +146,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('token') || '';
-      }
+      const token = await getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}/dues`, {
         method: 'POST',
         headers: {
@@ -159,10 +173,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     cancelDueReminder(id);
 
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('token') || '';
-      }
+      const token = await getAuthToken();
       await fetch(`${getApiBaseUrl()}/dues/${id}/settle`, {
         method: 'PATCH',
         headers: {
@@ -181,10 +192,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     cancelDueReminder(id);
 
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('token') || '';
-      }
+      const token = await getAuthToken();
       await fetch(`${getApiBaseUrl()}/dues/${id}`, {
         method: 'DELETE',
         headers: {

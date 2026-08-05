@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { registerForPushNotificationsAsync } from '@/services/notificationService';
+import { API_BASE_URL } from '@/constants/config';
 
 export interface User {
   id?: string;
@@ -44,7 +45,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Get Base API URL based on platform & Expo host IP
 const getApiBaseUrl = () => {
-  return 'http://52.221.243.198:5042/api/v1';
+  return API_BASE_URL;
 };
 
 const STORAGE_KEY_USER = 'hisab_kitab_auth_user';

@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { triggerBudgetWarning } from '@/services/notificationService';
+import { API_BASE_URL } from '@/constants/config';
 
 export interface Transaction {
   id: string;
@@ -26,7 +29,24 @@ interface TransactionContextType {
 
 // Get Base API URL based on platform & Expo host IP
 const getApiBaseUrl = () => {
-  return 'http://52.221.243.198:5042/api/v1';
+  return API_BASE_URL;
+};
+
+const getAuthToken = async () => {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem('hisab_kitab_auth_token') || localStorage.getItem('token');
+      }
+    } else {
+      try {
+        return await SecureStore.getItemAsync('hisab_kitab_auth_token');
+      } catch {
+        return await AsyncStorage.getItem('hisab_kitab_auth_token');
+      }
+    }
+  } catch (e) {}
+  return null;
 };
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -39,10 +59,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const fetchTransactions = async () => {
     setIsLoading(true);
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('hisab_kitab_auth_token') || '';
-      }
+      const token = await getAuthToken();
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -100,10 +117,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
 
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('hisab_kitab_auth_token') || '';
-      }
+      const token = await getAuthToken();
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -140,10 +154,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     setTransactions((prev) => prev.filter((t) => t.id !== id));
 
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('hisab_kitab_auth_token') || '';
-      }
+      const token = await getAuthToken();
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -166,10 +177,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     setTransactions([]);
 
     try {
-      let token = '';
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        token = localStorage.getItem('hisab_kitab_auth_token') || '';
-      }
+      const token = await getAuthToken();
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',

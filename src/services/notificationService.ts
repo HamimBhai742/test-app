@@ -276,10 +276,19 @@ export const registerForPushNotificationsAsync = async (): Promise<string | null
     let token: string | null = null;
     const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
 
-    if (Notifications && typeof Notifications.getExpoPushTokenAsync === 'function') {
-      const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined).catch(() => null);
-      if (tokenData && tokenData.data) {
-        token = tokenData.data;
+    // Get native device push token (FCM/APNs) to support direct Firebase Admin messaging on the server
+    if (Notifications && typeof Notifications.getDevicePushTokenAsync === 'function') {
+      const deviceTokenData = await Notifications.getDevicePushTokenAsync().catch(() => null);
+      if (deviceTokenData && deviceTokenData.data) {
+        token = deviceTokenData.data;
+      }
+    }
+
+    // Secondary fallback to Expo Push Token if native FCM token is not returned (e.g. inside Expo Go)
+    if (!token && Notifications && typeof Notifications.getExpoPushTokenAsync === 'function') {
+      const expoTokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined).catch(() => null);
+      if (expoTokenData && expoTokenData.data) {
+        token = expoTokenData.data;
       }
     }
 

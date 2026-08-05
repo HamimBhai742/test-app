@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { GOOGLE_WEB_CLIENT_ID } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -49,7 +50,10 @@ try {
   GoogleSignin = gModule.GoogleSignin;
   statusCodes = gModule.statusCodes || {};
   if (GoogleSignin && typeof GoogleSignin.configure === 'function') {
-    GoogleSignin.configure({ offlineAccess: false });
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: false,
+    });
   }
 } catch (e) {
   // Expo Go safe fallback
@@ -379,6 +383,12 @@ export default function ProfileScreen() {
     try {
       if (Platform.OS !== 'web' && GoogleSignin && typeof GoogleSignin.hasPlayServices === 'function') {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        // Force account chooser by clearing cached sign-in state first
+        try {
+          await GoogleSignin.signOut();
+        } catch (e) {
+          // Ignore errors when not signed in
+        }
         const userInfo: any = await GoogleSignin.signIn();
         const userEmail = userInfo.data?.user?.email || userInfo.user?.email;
         const userName = userInfo.data?.user?.name || userInfo.user?.name;
@@ -402,6 +412,7 @@ export default function ProfileScreen() {
       }
       setShowGoogleModal(true);
     } catch (error: any) {
+      console.warn('Google Sign-in Error Details:', error);
       if (error?.code === statusCodes?.SIGN_IN_CANCELLED) {
         setAuthError('গুগল সাইন-ইন বাতিল করা হয়েছে (Sign In Cancelled)');
       } else {
