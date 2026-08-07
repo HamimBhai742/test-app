@@ -21,6 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -401,6 +402,25 @@ export default function BudgetScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [addCatModalVisible, setAddCatModalVisible] = useState(false);
 
+  // Load budgets and categories from AsyncStorage on mount
+  React.useEffect(() => {
+    const loadSavedData = async () => {
+      try {
+        const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
+        const storedCategories = await AsyncStorage.getItem('hisabkitab_categories');
+        if (storedBudgets) {
+          setBudgets(JSON.parse(storedBudgets));
+        }
+        if (storedCategories) {
+          setCategoriesList(JSON.parse(storedCategories));
+        }
+      } catch (error) {
+        console.warn('Error loading budgets/categories from AsyncStorage:', error);
+      }
+    };
+    loadSavedData();
+  }, []);
+
   // Calculate actual spending per category from transactions
   const spentByCategory = useMemo(() => {
     const map: Partial<Record<string, number>> = {};
@@ -444,7 +464,11 @@ export default function BudgetScreen() {
 
   const handleSaveBudget = (val: number) => {
     if (editingCat) {
-      setBudgets((prev) => ({ ...prev, [editingCat.key]: val }));
+      setBudgets((prev) => {
+        const updated = { ...prev, [editingCat.key]: val };
+        AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
     }
   };
 
@@ -461,13 +485,16 @@ export default function BudgetScreen() {
 
     setCategoriesList((prev) => {
       if (prev.some((c) => c.key === name)) return prev;
-      return [...prev, newCatItem];
+      const updated = [...prev, newCatItem];
+      AsyncStorage.setItem('hisabkitab_categories', JSON.stringify(updated)).catch(() => {});
+      return updated;
     });
 
-    setBudgets((prev) => ({
-      ...prev,
-      [name]: budgetVal,
-    }));
+    setBudgets((prev) => {
+      const updated = { ...prev, [name]: budgetVal };
+      AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
   };
 
   const summaryStatusColor =

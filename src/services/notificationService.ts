@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -232,8 +232,30 @@ export const cancelDueReminder = async (dueId: string): Promise<void> => {
 export const triggerBudgetWarning = async (
   spentAmount: number,
   totalBudget: number,
-  percent: number
+  percent: number,
+  categoryName?: string
 ): Promise<void> => {
+  const isExceeded = percent >= 100;
+  const categoryPrefix = categoryName ? `"${categoryName}" ক্যাটাগরির ` : 'আপনার নির্ধারিত ';
+  let title = '';
+  let body = '';
+
+  if (isExceeded) {
+    title = `⚠️ ${categoryName ? `"${categoryName}" ` : ''}বাজেট ১০০% অতিক্রম করেছে!`;
+    body = `${categoryPrefix}বাজেট ৳${totalBudget.toLocaleString()} এর বিপরীতে মোট ৳${spentAmount.toLocaleString()} খরচ হয়েছে।`;
+  } else if (percent >= 90) {
+    title = `🟠 ${categoryName ? `"${categoryName}" ` : ''}বাজেটের ৯০% খরচ হয়ে গেছে!`;
+    body = `${categoryPrefix}বাজেট ৳${totalBudget.toLocaleString()} এর মধ্যে ৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) ইতিমধ্যেই খরচ হয়ে গেছে।`;
+  } else {
+    title = `🟡 ${categoryName ? `"${categoryName}" ` : ''}বাজেটের ৮০% খরচ হয়ে গেছে!`;
+    body = `${categoryPrefix}বাজেট ৳${totalBudget.toLocaleString()} এর মধ্যে ৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) ইতিমধ্যেই খরচ হয়ে গেছে।`;
+  }
+
+  // Show native alert immediately if app is in foreground
+  if (Platform.OS !== 'web') {
+    Alert.alert(title, body);
+  }
+
   if (Platform.OS === 'web' || !Notifications) return;
 
   try {
@@ -243,18 +265,12 @@ export const triggerBudgetWarning = async (
     const hasPermission = await requestNotificationPermissions();
     if (!hasPermission) return;
 
-    const isExceeded = percent >= 100;
-    const title = isExceeded ? '⚠️ বাজেট ১০০% অতিক্রম করেছে!' : '🟡 বাজেটের ৮০% খরচ হয়ে গেছে!';
-    const body = isExceeded
-      ? `আপনার নির্ধারিত বাজেট ৳${totalBudget.toLocaleString()} এর বিপরীতে মোট ৳${spentAmount.toLocaleString()} খরচ হয়েছে।`
-      : `আপনার নির্ধারিত বাজেট ৳${totalBudget.toLocaleString()} এর মধ্যে ৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) ইতিমধ্যেই খরচ হয়ে গেছে।`;
-
     if (typeof Notifications.scheduleNotificationAsync === 'function') {
       await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
-          data: { type: 'budget_warning' },
+          data: { type: 'budget_warning', categoryName },
           sound: true,
         },
         trigger: null, // Trigger immediately

@@ -96,6 +96,175 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     fetchTransactions();
   }, []);
 
+  // Helper to check and trigger budget notifications
+  const checkBudgetNotification = async (
+    currentTx: Omit<Transaction, 'id'>,
+    allTransactions: Transaction[]
+  ) => {
+    if (currentTx.type !== 'expense') return;
+
+    try {
+      // 1. Load user's custom budgets from AsyncStorage
+      const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
+      // Default budgets matching explore.tsx
+      const defaultBudgets: Record<string, number> = {
+        Food: 3000,
+        Shopping: 4000,
+        Utilities: 2500,
+        Rent: 12000,
+        Entertainment: 500,
+        Transport: 2500,
+        Health: 2000,
+        Education: 3000,
+        Bills: 1800,
+        Others: 1000,
+      };
+      const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : defaultBudgets;
+
+      // 2. Filter transactions for the current month's expenses
+      const getMonthKey = (dateStr?: string) => {
+        if (!dateStr) return '';
+        return dateStr.substring(0, 7); // returns "YYYY-MM"
+      };
+      const currentMonth = getMonthKey(currentTx.date) || getMonthKey(new Date().toISOString());
+
+      const monthExpenses = allTransactions.filter(
+        (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonth
+      );
+
+      // Sum up expenses for the current month including the new transaction
+      const catSpent = monthExpenses
+        .filter((t) => t.category === currentTx.category)
+        .reduce((sum, t) => sum + t.amount, 0) + Number(currentTx.amount);
+
+      const totalSpent = monthExpenses.reduce((sum, t) => sum + t.amount, 0) + Number(currentTx.amount);
+
+      // Get budget targets
+      const catBudget = budgets[currentTx.category] ?? 0;
+      const totalBudget: number = Object.values(budgets).reduce((a: any, b: any) => Number(a) + Number(b), 0) as number;
+
+      // 3. Load triggered alerts cache to prevent spamming
+      const storedAlerts = await AsyncStorage.getItem('hisabkitab_triggered_alerts');
+      let alertsCache = storedAlerts ? JSON.parse(storedAlerts) : { month: currentMonth, alerts: {} };
+
+      // Reset cache if month changes
+      if (alertsCache.month !== currentMonth) {
+        alertsCache = { month: currentMonth, alerts: {} };
+      }
+
+      const checkAndTrigger = async (
+        spent: number,
+        budget: number,
+        nameKey: string,
+        displayName?: string
+      ) => {
+        if (budget <= 0) return;
+        const percent = (spent / budget) * 100;
+        
+        let thresholdCrossed: number | null = null;
+        if (percent >= 100) {
+          thresholdCrossed = 100;
+        } else if (percent >= 90) {
+          thresholdCrossed = 90;
+        } else if (percent >= 80) {
+          thresholdCrossed = 80;
+        }
+
+        if (thresholdCrossed !== null) {
+          const cacheKey = `${nameKey}_${thresholdCrossed}`;
+          if (!alertsCache.alerts[cacheKey]) {
+            // Trigger the alert
+            await triggerBudgetWarning(spent, budget, percent, displayName);
+            // Save state
+            alertsCache.alerts[cacheKey] = true;
+          }
+        }
+      };
+
+      // Check Category-wise Budget Warning
+      if (catBudget > 0) {
+        await checkAndTrigger(catSpent, catBudget, `category_${currentTx.category}`, currentTx.category);
+      }
+
+      // Check Overall Budget Warning
+      if (totalBudget > 0) {
+        await checkAndTrigger(totalSpent, totalBudget, 'global');
+      }
+
+      // Save triggered alerts
+      await AsyncStorage.setItem('hisabkitab_triggered_alerts', JSON.stringify(alertsCache));
+    } catch (error) {
+      console.warn('Error checking budget notifications:', error);
+    }
+  };
+
+  // Helper to cleanup triggered alerts when expenses decrease (e.g. deletion)
+  const cleanupTriggeredAlerts = async (allTransactions: Transaction[]) => {
+    try {
+      const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
+      const defaultBudgets: Record<string, number> = {
+        Food: 3000,
+        Shopping: 4000,
+        Utilities: 2500,
+        Rent: 12000,
+        Entertainment: 500,
+        Transport: 2500,
+        Health: 2000,
+        Education: 3000,
+        Bills: 1800,
+        Others: 1000,
+      };
+      const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : defaultBudgets;
+
+      const getMonthKey = (dateStr?: string) => {
+        if (!dateStr) return '';
+        return dateStr.substring(0, 7);
+      };
+      const currentMonth = getMonthKey(new Date().toISOString());
+
+      const monthExpenses = allTransactions.filter(
+        (t) => t.type === 'expense' && getMonthKey(t.date) === currentMonth
+      );
+
+      const totalSpent = monthExpenses.reduce((sum, t) => sum + t.amount, 0);
+      const totalBudget: number = Object.values(budgets).reduce((a: any, b: any) => Number(a) + Number(b), 0) as number;
+
+      const storedAlerts = await AsyncStorage.getItem('hisabkitab_triggered_alerts');
+      if (!storedAlerts) return;
+      let alertsCache = JSON.parse(storedAlerts);
+
+      if (alertsCache.month !== currentMonth) return;
+
+      const cleanAlerts: Record<string, boolean> = { ...alertsCache.alerts };
+
+      const verifyAndClean = (spent: number, budget: number, nameKey: string) => {
+        if (budget <= 0) return;
+        const percent = (spent / budget) * 100;
+        
+        if (percent < 100) delete cleanAlerts[`${nameKey}_100`];
+        if (percent < 90) delete cleanAlerts[`${nameKey}_90`];
+        if (percent < 80) delete cleanAlerts[`${nameKey}_80`];
+      };
+
+      // Clean global alerts
+      verifyAndClean(totalSpent, totalBudget, 'global');
+
+      // Clean category alerts
+      Object.keys(budgets).forEach((cat) => {
+        const catSpent = monthExpenses
+          .filter((t) => t.category === cat)
+          .reduce((sum, t) => sum + t.amount, 0);
+        const catBudget = budgets[cat] ?? 0;
+        verifyAndClean(catSpent, catBudget, `category_${cat}`);
+      });
+
+      alertsCache.alerts = cleanAlerts;
+      await AsyncStorage.setItem('hisabkitab_triggered_alerts', JSON.stringify(alertsCache));
+    } catch (error) {
+      console.warn('Error cleaning up triggered alerts:', error);
+    }
+  };
+
   // Add Transaction to Backend API & MongoDB
   const addTransaction = async (newTx: Omit<Transaction, 'id'>) => {
     const tempId = Math.random().toString(36).substring(2, 9);
@@ -104,17 +273,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     setTransactions((prev) => [optimisticTx, ...prev]);
 
     // Budget warning check for new expenses
-    if (newTx.type === 'expense') {
-      const currentExpenses = transactions
-        .filter((t) => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-      const newTotalExpense = currentExpenses + Number(newTx.amount);
-      const defaultMonthlyBudget = 50000;
-      const percent = (newTotalExpense / defaultMonthlyBudget) * 100;
-      if (percent >= 80) {
-        triggerBudgetWarning(newTotalExpense, defaultMonthlyBudget, percent);
-      }
-    }
+    checkBudgetNotification(newTx, transactions).catch(() => {});
 
     try {
       const token = await getAuthToken();
@@ -151,7 +310,11 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Delete Transaction from Backend API & MongoDB
   const deleteTransaction = async (id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
+    const updatedTransactions = transactions.filter((t) => t.id !== id);
+    setTransactions(updatedTransactions);
+
+    // Recalculate and clean up triggered alerts cache based on updated transactions
+    cleanupTriggeredAlerts(updatedTransactions).catch(() => {});
 
     try {
       const token = await getAuthToken();

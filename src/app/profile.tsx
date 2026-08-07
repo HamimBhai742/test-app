@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { GOOGLE_WEB_CLIENT_ID } from '@/constants/config';
+import { GOOGLE_CLIENT_ID } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -51,7 +51,7 @@ try {
   statusCodes = gModule.statusCodes || {};
   if (GoogleSignin && typeof GoogleSignin.configure === 'function') {
     GoogleSignin.configure({
-      webClientId: GOOGLE_WEB_CLIENT_ID,
+      webClientId: GOOGLE_CLIENT_ID,
       offlineAccess: false,
     });
   }
