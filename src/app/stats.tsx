@@ -8,6 +8,7 @@ import {
   Text,
   Animated,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -58,7 +59,9 @@ function DonutChart({
   const { language } = useLanguage();
   const t = translations[language];
   const topSlice = slices[0];
-  const holeSize = RING_SIZE - RING_WIDTH * 2 - 8;
+  const R = (RING_SIZE - RING_WIDTH) / 2;
+  const C = 2 * Math.PI * R;
+  let accumulatedPercent = 0;
 
   return (
     <View style={styles.donutWrapper}>
@@ -71,50 +74,37 @@ function DonutChart({
           justifyContent: 'center',
         }}
       >
-        {/* Track ring (background) */}
-        <View
-          style={[
-            styles.donutRingBase,
-            { borderColor: 'rgba(150,150,150,0.10)' },
-          ]}
-        />
+        <Svg width={RING_SIZE} height={RING_SIZE} style={{ transform: [{ rotate: '-90deg' }] }}>
+          {/* Base circle background */}
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={R}
+            stroke="rgba(150,150,150,0.1)"
+            strokeWidth={RING_WIDTH}
+            fill="transparent"
+          />
+          {/* Slices */}
+          {slices.map((slice, index) => {
+            const strokeLength = (slice.percentage / 100) * C;
+            const strokeOffset = -(accumulatedPercent / 100) * C;
+            accumulatedPercent += slice.percentage;
 
-        {/* Colored arc segments */}
-        {(() => {
-          let acc = 0;
-          return slices.map((s, i) => {
-            const sweep = (s.percentage / 100) * 360;
-            const arcStyle = {
-              position: 'absolute' as const,
-              width: RING_SIZE,
-              height: RING_SIZE,
-              borderRadius: RING_SIZE / 2,
-              borderWidth: RING_WIDTH,
-              borderTopColor: 'transparent',
-              borderRightColor: 'transparent',
-              borderBottomColor: 'transparent',
-              borderLeftColor: 'transparent',
-              ...((): object => {
-                const start = acc;
-                const end = acc + sweep;
-                return {
-                  borderTopColor: start < 90 || end >= 360 + start ? s.color : 'transparent',
-                  borderRightColor: end > 90 ? s.color : 'transparent',
-                  borderBottomColor: end > 180 ? s.color : 'transparent',
-                  borderLeftColor: end > 270 ? s.color : 'transparent',
-                  transform: [{ rotate: `${start - 45}deg` }],
-                };
-              })(),
-            };
-            acc += sweep;
-            return <View key={i} style={arcStyle} />;
-          });
-        })()}
-
-        {/* Hole overlay */}
-        <View
-          style={[styles.donutHole, { width: holeSize, height: holeSize, borderRadius: holeSize / 2, backgroundColor: themeBackground }]}
-        />
+            return (
+              <Circle
+                key={index}
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={R}
+                stroke={slice.color}
+                strokeWidth={RING_WIDTH}
+                strokeDasharray={`${strokeLength} ${C}`}
+                strokeDashoffset={strokeOffset}
+                fill="transparent"
+              />
+            );
+          })}
+        </Svg>
 
         {/* Center content */}
         <View style={styles.donutCenter}>
