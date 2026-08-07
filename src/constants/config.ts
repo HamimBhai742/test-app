@@ -14,8 +14,8 @@ const getDynamicLocalUrl = () => {
 };
 
 // Toggle between LOCAL development and PRODUCTION server by commenting/uncommenting:
-export const API_BASE_URL = getDynamicLocalUrl(); // For Local Development (Auto-resolves your computer's IP)
-// export const API_BASE_URL = 'http://52.221.243.198:5042/api/v1'; // For Production / Cloud Staging
+// export const API_BASE_URL = getDynamicLocalUrl(); // For Local Development (Auto-resolves your computer's IP)
+export const API_BASE_URL = 'http://52.221.243.198:5042/api/v1'; // For Production / Cloud Staging
 
 // Google OAuth Web Client ID for Authentication configuration.
 export const GOOGLE_WEB_CLIENT_ID = '673489189699-a6qgd0b9uuf1f1at8m5a7ao5nc358gc3.apps.googleusercontent.com';
