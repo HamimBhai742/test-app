@@ -28,14 +28,17 @@ const formatNum = (num: number) => {
 
 // ─── Add Due Modal ────────────────────────────────────────────────────────────
 
-function AddDueModal({
+
+function AddEditDueModal({
   visible,
   onClose,
   onSave,
+  initialDue,
 }: {
   visible: boolean;
   onClose: () => void;
   onSave: (item: Omit<DueItem, 'id' | 'isSettled' | 'createdAt'>) => void;
+  initialDue?: DueItem;
 }) {
   const theme = useTheme();
   const { language } = useLanguage();
@@ -47,6 +50,25 @@ function AddDueModal({
   const [type, setType] = useState<'receivable' | 'payable'>('receivable');
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
+
+  // Prefill fields when editing an existing due record
+  React.useEffect(() => {
+    if (initialDue) {
+      setPersonName(initialDue.personName);
+      setPhone(initialDue.phone || '');
+      setAmount(initialDue.amount.toString());
+      setType(initialDue.type);
+      setDueDate(initialDue.dueDate || '');
+      setNote(initialDue.note || '');
+    } else {
+      setPersonName('');
+      setPhone('');
+      setAmount('');
+      setType('receivable');
+      setDueDate('');
+      setNote('');
+    }
+  }, [initialDue, visible]);
 
   const handleSave = () => {
     if (!personName.trim()) return;
@@ -62,12 +84,14 @@ function AddDueModal({
       dueDate: dueDate.trim() || undefined,
     });
 
-    setPersonName('');
-    setPhone('');
-    setAmount('');
-    setType('receivable');
-    setDueDate('');
-    setNote('');
+    if (!initialDue) {
+      setPersonName('');
+      setPhone('');
+      setAmount('');
+      setType('receivable');
+      setDueDate('');
+      setNote('');
+    }
     onClose();
   };
 
@@ -83,7 +107,11 @@ function AddDueModal({
             onPress={Keyboard.dismiss}
           >
             <View style={[styles.modalHandle, { backgroundColor: theme.backgroundSelected }]} />
-            <Text style={[styles.modalTitle, { color: theme.text }]}>{t.addDueModalTitle}</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              {initialDue
+                ? (language === 'bn' ? 'দেনা-পাওনা এডিট করুন' : 'Edit Due/Debt')
+                : t.addDueModalTitle}
+            </Text>
 
             {/* Type Selector (Receivable vs Payable) */}
             <View style={styles.typeSelectorRow}>
@@ -193,10 +221,30 @@ export default function DuesScreen() {
   const { language } = useLanguage();
   const t = translations[language];
 
-  const { dues, totalReceivable, totalPayable, netBalance, addDue, settleDue, deleteDue } = useDues();
+  const { dues, totalReceivable, totalPayable, netBalance, addDue, settleDue, deleteDue, updateDue } = useDues();
 
   const [activeTab, setActiveTab] = useState<'all' | 'receivable' | 'payable' | 'settled'>('all');
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingDue, setEditingDue] = useState<DueItem | undefined>(undefined);
+
+  const handleOpenAddModal = () => {
+    setEditingDue(undefined);
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setEditingDue(undefined);
+    setModalVisible(false);
+  };
+
+  const handleSaveDue = async (item: Omit<DueItem, 'id' | 'isSettled' | 'createdAt'>) => {
+    if (editingDue) {
+      await updateDue(editingDue.id, item);
+    } else {
+      await addDue(item);
+    }
+  };
+
 
   // Filter dues according to active tab
   const filteredDues = useMemo(() => {
@@ -269,7 +317,7 @@ export default function DuesScreen() {
 
           <TouchableOpacity
             style={styles.addIconBtn}
-            onPress={() => setModalVisible(true)}
+            onPress={handleOpenAddModal}
             activeOpacity={0.75}
           >
             <Feather name="plus" size={20} color="#FFFFFF" />
@@ -424,11 +472,15 @@ export default function DuesScreen() {
                 <View style={styles.dueCardActions}>
                   {!item.isSettled ? (
                     <TouchableOpacity
-                      style={styles.waBtn}
-                      onPress={() => handleWhatsAppReminder(item)}
+                      style={styles.editBtn}
+                      onPress={() => {
+                        setEditingDue(item);
+                        setModalVisible(true);
+                      }}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.waBtnText}>{t.waReminderBtn}</Text>
+                      <Feather name="edit-2" size={12} color="#FFF" />
+                      <Text style={styles.editBtnText}>{language === 'bn' ? 'এডিট' : 'Edit'}</Text>
                     </TouchableOpacity>
                   ) : null}
 
@@ -460,11 +512,12 @@ export default function DuesScreen() {
 
       </View>
 
-      {/* Add Due Modal */}
-      <AddDueModal
+      {/* Add / Edit Due Modal */}
+      <AddEditDueModal
         visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSave={addDue}
+        onClose={handleCloseModal}
+        onSave={handleSaveDue}
+        initialDue={editingDue}
       />
     </ScrollView>
   );
@@ -638,6 +691,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   waBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  editBtn: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  editBtnText: {
     color: '#FFF',
     fontSize: 12,
     fontWeight: '700',

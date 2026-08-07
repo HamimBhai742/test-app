@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { usePoints } from './PointsContext';
 import { useLanguage } from './LanguageContext';
 import { translations } from '@/constants/translations';
+import { API_BASE_URL } from '@/constants/config';
 
 export interface SavingsLog {
   id: string;
@@ -38,6 +40,29 @@ const STORAGE_KEY = '@hisabkitab_goals';
 
 const GoalContext = createContext<GoalContextType | undefined>(undefined);
 
+const getApiBaseUrl = () => {
+  return API_BASE_URL;
+};
+
+const getAuthToken = async () => {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem('hisab_kitab_auth_token') || localStorage.getItem('token');
+      }
+    } else {
+      try {
+        return await SecureStore.getItemAsync('hisab_kitab_auth_token');
+      } catch {
+        return await AsyncStorage.getItem('hisab_kitab_auth_token');
+      }
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+};
+
 export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [goals, setGoals] = useState<GoalItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -48,6 +73,35 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Load goals
   const loadGoals = async () => {
     setIsLoading(true);
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        const response = await fetch(`${getApiBaseUrl()}/goals`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && Array.isArray(json.data)) {
+            setGoals(json.data);
+            const value = JSON.stringify(json.data);
+            if (Platform.OS === 'web') {
+              if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
+            } else {
+              await AsyncStorage.setItem(STORAGE_KEY, value);
+            }
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Backend fetch goals failed, using local:', e);
+    }
+
+    // Fallback to local storage
     try {
       let stored: string | null = null;
       if (Platform.OS === 'web') {
@@ -72,8 +126,8 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loadGoals();
   }, []);
 
-  // Save goals
-  const saveGoals = async (updated: GoalItem[]) => {
+  // Local helper to update state & storage
+  const saveGoalsLocal = async (updated: GoalItem[]) => {
     setGoals(updated);
     try {
       const value = JSON.stringify(updated);
@@ -85,16 +139,16 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await AsyncStorage.setItem(STORAGE_KEY, value);
       }
     } catch (e) {
-      console.warn('Failed to save goals:', e);
+      console.warn('Failed to save goals locally:', e);
     }
   };
 
   const addGoal = async (name: string, targetAmount: number, description?: string) => {
-    // Automatically calculate reward points as 1% of target savings amount (minimum 10 points)
     const pointsAwarded = Math.max(10, Math.floor(targetAmount / 100));
+    const tempId = `temp_${Date.now()}`;
 
     const newGoal: GoalItem = {
-      id: Date.now().toString(),
+      id: tempId,
       name,
       targetAmount,
       description,
@@ -104,12 +158,70 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       history: [],
     };
     const updated = [newGoal, ...goals];
-    await saveGoals(updated);
+    await saveGoalsLocal(updated);
+
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        const response = await fetch(`${getApiBaseUrl()}/goals`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name,
+            targetAmount,
+            description,
+            pointsAwarded,
+            createdAt: newGoal.createdAt,
+          }),
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && json.data) {
+            const serverId = json.data.id || json.data._id;
+            setGoals((prev) => {
+              const reconciled = prev.map((g) =>
+                g.id === tempId ? { ...g, id: serverId } : g
+              );
+              const value = JSON.stringify(reconciled);
+              if (Platform.OS === 'web') {
+                if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
+              } else {
+                AsyncStorage.setItem(STORAGE_KEY, value).catch(() => {});
+              }
+              return reconciled;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Backend addGoal failed, saved locally:', e);
+    }
   };
 
   const deleteGoal = async (id: string) => {
     const updated = goals.filter((g) => g.id !== id);
-    await saveGoals(updated);
+    await saveGoalsLocal(updated);
+
+    if (id.startsWith('temp_')) return;
+
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        await fetch(`${getApiBaseUrl()}/goals/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn('Backend deleteGoal failed, deleted locally:', e);
+    }
   };
 
   const updateGoal = async (id: string, name: string, targetAmount: number, description?: string) => {
@@ -121,8 +233,6 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const saved = goal.history.reduce((sum, log) => sum + log.amount, 0);
         const reachedTarget = saved >= targetAmount;
         const newlyCompleted = reachedTarget && !goal.isCompleted;
-
-        // Recalculate automatic points
         const pointsAwarded = Math.max(10, Math.floor(targetAmount / 100));
 
         if (newlyCompleted) {
@@ -142,7 +252,7 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return goal;
     });
 
-    await saveGoals(updated);
+    await saveGoalsLocal(updated);
 
     if (goalCompletedAward && awardedPointsAmount > 0) {
       await addPoints(awardedPointsAmount);
@@ -153,11 +263,38 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         [{ text: 'OK' }]
       );
     }
+
+    if (id.startsWith('temp_')) return;
+
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        const targetGoal = updated.find((g) => g.id === id);
+        if (targetGoal) {
+          await fetch(`${getApiBaseUrl()}/goals/${id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              name,
+              targetAmount,
+              description,
+              isCompleted: targetGoal.isCompleted,
+            }),
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Backend updateGoal failed, updated locally:', e);
+    }
   };
 
   const addSavings = async (goalId: string, amount: number, note?: string, date?: string) => {
+    const tempLogId = `temp_log_${Date.now()}`;
     const newLog: SavingsLog = {
-      id: Date.now().toString(),
+      id: tempLogId,
       amount,
       date: date || new Date().toISOString().split('T')[0],
       note,
@@ -187,19 +324,55 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return goal;
     });
 
-    await saveGoals(updated);
+    await saveGoalsLocal(updated);
 
     if (goalCompletedAward && awardedPointsAmount > 0) {
-      // Award reward points
       await addPoints(awardedPointsAmount);
-      
-      // Congratulate user
       const msg = t.goalCompletedAlert.replace('{points}', awardedPointsAmount.toString());
       Alert.alert(
         language === 'bn' ? '🎉 অভিনন্দন!' : '🎉 Congratulations!',
         msg,
         [{ text: 'OK' }]
       );
+    }
+
+    if (goalId.startsWith('temp_')) return;
+
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        const response = await fetch(`${getApiBaseUrl()}/goals/${goalId}/savings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(newLog),
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && json.data) {
+            const serverLogs = json.data.history;
+            if (Array.isArray(serverLogs)) {
+              setGoals((prev) => {
+                const reconciled = prev.map((g) =>
+                  g.id === goalId ? { ...g, history: serverLogs } : g
+                );
+                const value = JSON.stringify(reconciled);
+                if (Platform.OS === 'web') {
+                  if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
+                } else {
+                  AsyncStorage.setItem(STORAGE_KEY, value).catch(() => {});
+                }
+                return reconciled;
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Backend addSavings failed, saved locally:', e);
     }
   };
 
@@ -219,7 +392,24 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return goal;
     });
 
-    await saveGoals(updated);
+    await saveGoalsLocal(updated);
+
+    if (goalId.startsWith('temp_') || savingsLogId.startsWith('temp_log_')) return;
+
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        await fetch(`${getApiBaseUrl()}/goals/${goalId}/savings/${savingsLogId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn('Backend deleteSavings failed, deleted locally:', e);
+    }
   };
 
   const updateSavings = async (goalId: string, savingsLogId: string, amount: number, note?: string, date?: string) => {
@@ -258,7 +448,7 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return goal;
     });
 
-    await saveGoals(updated);
+    await saveGoalsLocal(updated);
 
     if (goalCompletedAward && awardedPointsAmount > 0) {
       await addPoints(awardedPointsAmount);
@@ -268,6 +458,28 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         msg,
         [{ text: 'OK' }]
       );
+    }
+
+    if (goalId.startsWith('temp_') || savingsLogId.startsWith('temp_log_')) return;
+
+    try {
+      const token = await getAuthToken();
+      if (token) {
+        await fetch(`${getApiBaseUrl()}/goals/${goalId}/savings/${savingsLogId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount,
+            note,
+            date: date || new Date().toISOString().split('T')[0],
+          }),
+        });
+      }
+    } catch (e) {
+      console.warn('Backend updateSavings failed, updated locally:', e);
     }
   };
 
@@ -296,3 +508,4 @@ export const useGoals = () => {
   }
   return context;
 };
+

@@ -27,6 +27,7 @@ interface DueContextType {
   addDue: (item: Omit<DueItem, 'id' | 'isSettled' | 'createdAt'>) => Promise<void>;
   settleDue: (id: string) => Promise<void>;
   deleteDue: (id: string) => Promise<void>;
+  updateDue: (id: string, item: Partial<Omit<DueItem, 'id' | 'createdAt'>>) => Promise<void>;
   refreshDues: () => Promise<void>;
 }
 
@@ -196,6 +197,36 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateDue = async (id: string, updatedFields: Partial<Omit<DueItem, 'id' | 'createdAt'>>) => {
+    const updated = dues.map((d) => (d.id === id ? { ...d, ...updatedFields } : d));
+    saveLocal(updated);
+
+    // Cancel old reminder and schedule new reminder if dueDate or details changed
+    const targetDue = updated.find((d) => d.id === id);
+    if (targetDue) {
+      cancelDueReminder(id);
+      if (targetDue.dueDate && !targetDue.isSettled) {
+        scheduleDueReminder(id, targetDue.personName, targetDue.amount, targetDue.dueDate, targetDue.type);
+      }
+    }
+
+    if (id.startsWith('temp_')) return;
+
+    try {
+      const token = await getAuthToken();
+      await fetch(`${getApiBaseUrl()}/dues/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(updatedFields),
+      });
+    } catch (e) {
+      console.warn('Backend update due failed, updated locally:', e);
+    }
+  };
+
   const totalReceivable = dues
     .filter((d) => d.type === 'receivable' && !d.isSettled)
     .reduce((sum, d) => sum + d.amount, 0);
@@ -217,6 +248,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
         addDue,
         settleDue,
         deleteDue,
+        updateDue,
         refreshDues: fetchDues,
       }}
     >
