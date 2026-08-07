@@ -380,13 +380,6 @@ export default function ReportScreen() {
               <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>{t.monthlyReportEyebrow}</Text>
               <ThemedText style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>{t.monthlyReportTitle}</ThemedText>
             </View>
-            <TouchableOpacity
-              style={styles.addIconBtn}
-              onPress={() => setPdfModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Feather name="file-text" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -400,13 +393,6 @@ export default function ReportScreen() {
             </ThemedText>
           </ThemedView>
         </View>
-
-        <PDFExportModal
-          visible={pdfModalVisible}
-          onClose={() => setPdfModalVisible(false)}
-          transactions={transactions}
-          userName={user?.name}
-        />
       </View>
     );
   }
@@ -664,7 +650,18 @@ export default function ReportScreen() {
       <PDFExportModal
         visible={pdfModalVisible}
         onClose={() => setPdfModalVisible(false)}
-        transactions={transactions}
+        transactions={
+          selected
+            ? transactions.filter((tx) => {
+                if (!tx.date) return false;
+                const parts = tx.date.split('-');
+                if (parts.length < 3) return false;
+                const txY = Number(parts[0]);
+                const txM = Number(parts[1]);
+                return txY === selected.year && txM === selected.month;
+              })
+            : transactions
+        }
         userName={user?.name}
         currentMonthSummary={
           selected

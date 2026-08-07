@@ -58,7 +58,7 @@ export function PDFExportModal({
   const savRate = totalInc > 0 ? Math.round((netSav / totalInc) * 100) : 0;
 
   const summaryToUse: PDFStatementSummary = currentMonthSummary || {
-    monthName: 'চলতি মাস',
+    monthName: language === 'bn' ? 'চলতি মাস' : 'Current Month',
     year: new Date().getFullYear(),
     totalIncome: totalInc,
     totalExpense: totalExp,
@@ -234,11 +234,10 @@ export function PDFExportModal({
           {/* Action Buttons */}
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              style={[styles.downloadBtn, isGenerating && { opacity: 0.8 }]}
+              style={[styles.downloadBtn, isGenerating && { opacity: 0.7 }]}
               onPress={handleDownloadPDF}
               disabled={isGenerating}
               activeOpacity={0.85}
-              style={[styles.downloadBtn, isGenerating && { opacity: 0.7 }]}
             >
               {isGenerating ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

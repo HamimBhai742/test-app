@@ -41,7 +41,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { themeMode, setThemeMode } = useThemeMode();
   // useTransactions কাস্টম হুক ব্যবহার করে ব্যালেন্স, মোট আয়, মোট ব্যয় এবং ট্রানজেকশন ডেটা আনা হচ্ছে।
-  const { transactions, totalBalance, totalIncome, totalExpenses, addTransaction, deleteTransaction } = useTransactions();
+  const { transactions, totalBalance, totalIncome, totalExpenses, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
   const { claimDailyTxReward } = usePoints();
 
   // নতুন লেনদেন যোগ করার পপ-আপ (Modal) দেখানোর জন্য স্টেট।
@@ -60,6 +60,9 @@ export default function HomeScreen() {
   const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
   const [newCatName, setNewCatName] = useState<string>('');
 
+  // Edit transaction state
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+
   // Load custom categories from AsyncStorage on mount
   useEffect(() => {
     AsyncStorage.getItem(CUSTOM_CATS_KEY).then((stored) => {
@@ -71,9 +74,7 @@ export default function HomeScreen() {
 
   // Persist custom categories whenever they change
   useEffect(() => {
-    if (customCategories.length > 0) {
-      AsyncStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(customCategories)).catch(() => {});
-    }
+    AsyncStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(customCategories)).catch(() => {});
   }, [customCategories]);
 
 
@@ -110,6 +111,26 @@ export default function HomeScreen() {
     setShowCustomInput(false);
   };
 
+  // Open modal for editing existing transaction
+  const handleEditTransaction = (tx: Transaction) => {
+    setEditingTx(tx);
+    setTitle(tx.title);
+    setAmount(tx.amount.toString());
+    setType(tx.type);
+    setCategory(tx.category);
+    setTxDate(tx.date);
+    setModalVisible(true);
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setAmount('');
+    setType('expense');
+    setCategory('Food');
+    setTxDate(new Date().toISOString().split('T')[0]);
+    setEditingTx(null);
+  };
+
   // ফর্ম সাবমিট করার হ্যান্ডলার ফাংশন।
   const handleAddTransaction = () => {
     // শিরোনাম ফাকা আছে কিনা যাচাই করা হচ্ছে।
@@ -129,24 +150,27 @@ export default function HomeScreen() {
     // Validate date format YYYY-MM-DD
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     const finalDate = txDate && dateRegex.test(txDate) ? txDate : new Date().toISOString().split('T')[0];
-    addTransaction({
+
+    const txPayload = {
       title: title.trim(),
       amount: parsedAmount,
       type,
       category,
       date: finalDate,
-    });
+    };
 
-    // দৈনিক প্রথম লেনদেন সংরক্ষণ বোনাস ক্লেম করা হচ্ছে।
-    claimDailyTxReward().catch(() => {});
+    if (editingTx) {
+      // Update existing transaction
+      updateTransaction(editingTx.id, txPayload);
+    } else {
+      addTransaction(txPayload);
+      // দৈনিক প্রথম লেনদেন সংরক্ষণ বোনাস ক্লেম করা হচ্ছে।
+      claimDailyTxReward().catch(() => {});
+    }
 
     // ফর্ম রিসেট করা হচ্ছে।
-    setTitle('');
-    setAmount('');
-    setType('expense');
-    setCategory('Food');
-    setTxDate(new Date().toISOString().split('T')[0]); // Reset date to today
-    setModalVisible(false); // পপ-আপ বা মডাল বন্ধ করা হচ্ছে।
+    resetForm();
+    setModalVisible(false);
   };
 
   const handleDeleteTransaction = (id: string, itemTitle: string) => {
@@ -315,6 +339,15 @@ export default function HomeScreen() {
                       </ThemedText>
                     </View>
 
+                    {/* Edit button */}
+                    <TouchableOpacity
+                      onPress={() => handleEditTransaction(tx)}
+                      style={{ padding: 6, opacity: 0.8 }}
+                      activeOpacity={0.6}
+                    >
+                      <ThemedText style={{ fontSize: 14 }}>✏️</ThemedText>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                       onPress={() => handleDeleteTransaction(tx.id, tx.title)}
                       style={{ padding: 6, opacity: 0.8 }}
@@ -343,8 +376,8 @@ export default function HomeScreen() {
               >
                 <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '700' }}>
                   {showAllTransactions
-                    ? `↑ কম দেখুন`
-                    : `↓ সব দেখুন (${transactions.length}টি)`}
+                    ? t.showLessTx
+                    : t.showAllTx.replace('{count}', transactions.length.toString())}
                 </ThemedText>
               </TouchableOpacity>
             )}
@@ -357,7 +390,7 @@ export default function HomeScreen() {
         animationType="slide"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => { setModalVisible(false); resetForm(); }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
@@ -368,8 +401,10 @@ export default function HomeScreen() {
               <ThemedView type="backgroundElement" style={styles.modalView}>
                 {/* মডাল হেডার */}
                 <View style={styles.modalHeader}>
-                  <ThemedText type="smallBold" style={{ fontSize: 18 }}>{t.addNewTx}</ThemedText>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                  <ThemedText type="smallBold" style={{ fontSize: 18 }}>
+                    {editingTx ? t.editTxTitle : t.addNewTx}
+                  </ThemedText>
+                  <TouchableOpacity onPress={() => { setModalVisible(false); resetForm(); }} style={styles.closeButton}>
                     <ThemedText type="smallBold" themeColor="textSecondary">{t.close}</ThemedText>
                   </TouchableOpacity>
                 </View>

@@ -12,6 +12,7 @@ import {
   Keyboard,
   Linking,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';
@@ -431,8 +432,8 @@ export default function DuesScreen() {
                       {item.isSettled
                         ? t.settledBadge
                         : item.type === 'receivable'
-                        ? '🟢 পাওনা (পাবো)'
-                        : '🔴 দেনা (দেবো)'}
+                        ? t.dueReceivableBadge
+                        : t.duePayableBadge}
                     </Text>
                   </View>
                 </View>
@@ -499,7 +500,20 @@ export default function DuesScreen() {
 
                   <TouchableOpacity
                     style={styles.deleteBtn}
-                    onPress={() => deleteDue(item.id)}
+                    onPress={() => {
+                      Alert.alert(
+                        t.deleteDueTitle,
+                        t.deleteDueConfirm,
+                        [
+                          { text: t.cancelBtn, style: 'cancel' },
+                          {
+                            text: t.deleteDueConfirmBtn,
+                            style: 'destructive',
+                            onPress: () => deleteDue(item.id),
+                          },
+                        ]
+                      );
+                    }}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.deleteBtnText}>🗑️</Text>

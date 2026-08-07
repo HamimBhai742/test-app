@@ -279,8 +279,9 @@ export default function StatsScreen() {
     Entertainment: colors.pink,
     Transport: colors.success,
     Health: colors.danger,
-    Education: colors.purple,
+    Education: colors.orange,
     Bills: '#14B8A6',
+    Salary: colors.success,
     Others: colors.slate,
   };
 
@@ -393,10 +394,10 @@ export default function StatsScreen() {
 
       const monthlyAmounts = Array(12).fill(0);
       const currentYear = now.getFullYear();
-      const yearExpenses = transactions.filter((tx) => tx.type === 'expense' && new Date(tx.date).getFullYear() === currentYear);
+      const yearExpenses = transactions.filter((tx) => tx.type === 'expense' && parseLocalDate(tx.date).getFullYear() === currentYear);
 
       yearExpenses.forEach((tx) => {
-        const txDate = new Date(tx.date);
+        const txDate = parseLocalDate(tx.date);
         if (!isNaN(txDate.getTime())) {
           const month = txDate.getMonth();
           if (month >= 0 && month < 12) {
@@ -418,7 +419,7 @@ export default function StatsScreen() {
 
       const allExpenses = transactions.filter((tx) => tx.type === 'expense');
       allExpenses.forEach((tx) => {
-        const txDate = new Date(tx.date);
+        const txDate = parseLocalDate(tx.date);
         if (!isNaN(txDate.getTime())) {
           const year = txDate.getFullYear();
           const yearIdx = years.indexOf(year);
@@ -433,6 +434,42 @@ export default function StatsScreen() {
         amount: amt,
         color: amt > 0 ? colors.primary : 'rgba(150,150,150,0.12)',
       }));
+    }
+
+    // ── Trend vs previous period ─────────────────────────────────────────────
+    let trendPct = 0;
+    let previousPeriodExp = 0;
+
+    if (selectedPeriod === 'weekly') {
+      const prevExpenses = transactions.filter((tx) => {
+        if (!tx.date || tx.type !== 'expense') return false;
+        const txDate = parseLocalDate(tx.date);
+        const txStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
+        const diffDays = Math.round((todayStart.getTime() - txStart.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays >= 7 && diffDays <= 13;
+      });
+      previousPeriodExp = prevExpenses.reduce((acc, tx) => acc + tx.amount, 0);
+    } else if (selectedPeriod === 'monthly') {
+      const prevY = todayM === 0 ? todayY - 1 : todayY;
+      const prevM = todayM === 0 ? 11 : todayM - 1;
+      const prevExpenses = transactions.filter((tx) => {
+        if (!tx.date || tx.type !== 'expense') return false;
+        const txDate = parseLocalDate(tx.date);
+        return txDate.getFullYear() === prevY && txDate.getMonth() === prevM;
+      });
+      previousPeriodExp = prevExpenses.reduce((acc, tx) => acc + tx.amount, 0);
+    } else {
+      const prevYearExpenses = transactions.filter((tx) => {
+        if (!tx.date || tx.type !== 'expense') return false;
+        return parseLocalDate(tx.date).getFullYear() === todayY - 1;
+      });
+      previousPeriodExp = prevYearExpenses.reduce((acc, tx) => acc + tx.amount, 0);
+    }
+
+    if (previousPeriodExp > 0) {
+      trendPct = Math.round(((totalExp - previousPeriodExp) / previousPeriodExp) * 100);
+    } else if (totalExp > 0) {
+      trendPct = 100;
     }
 
     const maxWeekly = Math.max(...trendData.map((d) => d.amount), 1);
@@ -453,6 +490,7 @@ export default function StatsScreen() {
       avgExpense,
       weeklyTrend: trendData,
       maxWeekly,
+      trendPct,
     };
   }, [transactions, selectedPeriod, language]);
 
@@ -539,8 +577,12 @@ export default function StatsScreen() {
                 {t.totalOutflow}
               </Text>
               <View style={styles.trendBadge}>
-                <Text style={styles.trendArrow}>▲</Text>
-                <Text style={styles.trendText}>+১২%</Text>
+                <Text style={[styles.trendArrow, { color: expenseStats.trendPct >= 0 ? '#EF4444' : '#10B981' }]}>
+                  {expenseStats.trendPct >= 0 ? '▲' : '▼'}
+                </Text>
+                <Text style={[styles.trendText, { color: expenseStats.trendPct >= 0 ? '#EF4444' : '#10B981' }]}>
+                  {expenseStats.trendPct >= 0 ? '+' : ''}{expenseStats.trendPct}%
+                </Text>
               </View>
             </View>
 

@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { triggerBudgetWarning } from '@/services/notificationService';
 import { API_BASE_URL } from '@/constants/config';
+import { DEFAULT_BUDGETS as SHARED_DEFAULT_BUDGETS } from '@/constants/budgetDefaults';
 
 export interface Transaction {
   id: string;
@@ -22,6 +23,7 @@ interface TransactionContextType {
   totalIncome: number;
   totalExpenses: number;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  updateTransaction: (id: string, transaction: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   deleteAllTransactions: () => Promise<void>;
   refreshTransactions: () => Promise<void>;
@@ -121,7 +123,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
         Bills: 1800,
         Others: 1000,
       };
-      const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : defaultBudgets;
+      const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : SHARED_DEFAULT_BUDGETS;
 
       // 2. Filter transactions for the current month's expenses
       const getMonthKey = (dateStr?: string) => {
@@ -216,7 +218,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
         Bills: 1800,
         Others: 1000,
       };
-      const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : defaultBudgets;
+      const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : SHARED_DEFAULT_BUDGETS;
 
       const getMonthKey = (dateStr?: string) => {
         if (!dateStr) return '';
@@ -312,6 +314,42 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Update Transaction in Backend API & MongoDB
+  const updateTransaction = async (id: string, updatedTx: Omit<Transaction, 'id'>) => {
+    // Optimistic UI update
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...updatedTx, id } : t))
+    );
+
+    try {
+      const token = await getAuthToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`${getApiBaseUrl()}/transactions/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(updatedTx),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success && data.data) {
+        const savedTx: Transaction = {
+          id: data.data.id || data.data._id,
+          title: data.data.title,
+          amount: Number(data.data.amount),
+          type: data.data.type,
+          category: data.data.category || 'Others',
+          date: data.data.date ||
+            (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : new Date().toISOString().split('T')[0]),
+        };
+        setTransactions((prev) => prev.map((t) => (t.id === id ? savedTx : t)));
+      }
+    } catch (error) {
+      console.warn('Error updating transaction:', error);
+    }
+  };
+
   // Delete Transaction from Backend API & MongoDB
   const deleteTransaction = async (id: string) => {
     const updatedTransactions = transactions.filter((t) => t.id !== id);
@@ -391,6 +429,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
         totalIncome: stats.totalIncome,
         totalExpenses: stats.totalExpenses,
         addTransaction,
+        updateTransaction,
         deleteTransaction,
         deleteAllTransactions,
         refreshTransactions: fetchTransactions,

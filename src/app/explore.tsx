@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Pressable,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -288,11 +289,15 @@ function BudgetCard({
   budget,
   spent,
   onEdit,
+  onDelete,
+  isCustom,
 }: {
   category: CategoryItem;
   budget: number;
   spent: number;
   onEdit: () => void;
+  onDelete?: () => void;
+  isCustom?: boolean;
 }) {
   const theme = useTheme();
   const { language } = useLanguage();
@@ -375,9 +380,23 @@ function BudgetCard({
           <Text style={[styles.budgetTotal, { color: theme.text }]}>
             TK {formatNum(budget)}
           </Text>
-          <Text style={[styles.budgetEditHint, { color: theme.textSecondary }]}>
-            {t.tapToEditCue}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+            <Text style={[styles.budgetEditHint, { color: theme.textSecondary }]}>
+              {t.tapToEditCue}
+            </Text>
+            {isCustom && onDelete && (
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onDelete();
+                }}
+                style={{ padding: 4 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={{ fontSize: 14 }}>🗑️</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -413,7 +432,17 @@ export default function BudgetScreen() {
           setBudgets(JSON.parse(storedBudgets));
         }
         if (storedCategories) {
-          setCategoriesList(JSON.parse(storedCategories));
+          const parsed = JSON.parse(storedCategories);
+          if (Array.isArray(parsed)) {
+            const validated: CategoryItem[] = parsed.map((c: any) => ({
+              key: c.key || c.label || 'Unknown',
+              label: c.label || c.key || 'Unknown',
+              emoji: c.emoji || '🏷️',
+              color: c.color || '#64748B',
+              defaultBudget: typeof c.defaultBudget === 'number' ? c.defaultBudget : 1000,
+            }));
+            setCategoriesList(validated);
+          }
         }
       } catch (error) {
         console.warn('Error loading budgets/categories from AsyncStorage:', error);
@@ -510,6 +539,36 @@ export default function BudgetScreen() {
       return updated;
     });
   };
+
+  const handleDeleteCategory = (catKey: string) => {
+    Alert.alert(
+      language === 'bn' ? 'ক্যাটাগরি মুছুন' : 'Delete Category',
+      language === 'bn'
+        ? `"${catKey}" ক্যাটাগরিটি মুছে ফেলবেন?`
+        : `Delete "${catKey}" category?`,
+      [
+        { text: t.cancelBtn, style: 'cancel' },
+        {
+          text: t.deleteBtn,
+          style: 'destructive',
+          onPress: () => {
+            setCategoriesList((prev) => {
+              const updated = prev.filter((c) => c.key !== catKey);
+              AsyncStorage.setItem('hisabkitab_categories', JSON.stringify(updated)).catch(() => {});
+              return updated;
+            });
+            setBudgets((prev) => {
+              const updated = { ...prev };
+              delete updated[catKey];
+              AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(updated)).catch(() => {});
+              return updated;
+            });
+          },
+        },
+      ]
+    );
+  };
+
 
   const summaryStatusColor =
     summary.overBudgetCount > 0
@@ -646,15 +705,20 @@ export default function BudgetScreen() {
 
         {/* ── Budget Cards ── */}
         <View style={styles.cardsContainer}>
-          {categoriesList.map((cat) => (
-            <BudgetCard
-              key={cat.key}
-              category={cat}
-              budget={budgets[cat.key] ?? 0}
-              spent={spentByCategory[cat.key] ?? 0}
-              onEdit={() => handleEdit(cat)}
-            />
-          ))}
+          {categoriesList.map((cat) => {
+            const isCustom = !DEFAULT_CATEGORIES.some((d) => d.key === cat.key);
+            return (
+              <BudgetCard
+                key={cat.key}
+                category={cat}
+                budget={budgets[cat.key] ?? 0}
+                spent={spentByCategory[cat.key] ?? 0}
+                onEdit={() => handleEdit(cat)}
+                isCustom={isCustom}
+                onDelete={isCustom ? () => handleDeleteCategory(cat.key) : undefined}
+              />
+            );
+          })}
         </View>
 
         {/* ── Footer tip ── */}

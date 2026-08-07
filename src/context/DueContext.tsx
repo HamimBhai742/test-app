@@ -68,6 +68,9 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
       } catch (e) {}
+    } else {
+      // Mobile — persist to AsyncStorage
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items)).catch(() => {});
     }
   };
 
@@ -84,7 +87,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const json = await response.json();
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        if (json.success && Array.isArray(json.data)) {
           saveLocal(json.data);
           setIsLoading(false);
           return;
@@ -98,6 +101,12 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) setDues(JSON.parse(stored));
+      } catch (e) {}
+    } else {
+      // Mobile (iOS/Android) — use AsyncStorage
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) setDues(JSON.parse(stored));
       } catch (e) {}
     }
