@@ -1926,14 +1926,18 @@ export default function ProfileScreen() {
                 {t.aboutDesc}
               </ThemedText>
 
-              <View style={{ backgroundColor: theme.background, borderRadius: 16, padding: 16, gap: 10, marginBottom: 20, borderWidth: 1, borderColor: theme.backgroundSelected }}>
-                <ThemedText type="smallBold" style={{ fontSize: 13 }}>⚡ মূল ফিচারসমূহ:</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">• 📊 প্রাত্যহিক আয়-ব্যয় এন্ট্রি ও বাজেট প্ল্যান</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">• 📝 দেনা-পাওনার খাতা ও ১-ট্যাপ WhatsApp রিমাইন্ডার</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">• 📱 বিকাশ, নগদ ও ব্যাংক SMS পার্সিং</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">• 📄 প্রফেশনাল PDF স্টেটমেন্ট ও মেমো এক্সপোর্ট</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">• 🔒 পিন ও বায়োমেট্রিক ফিঙ্গারপ্রিন্ট লক</ThemedText>
-              </View>
+              <ScrollView style={{ maxHeight: 220, backgroundColor: theme.background, borderRadius: 16, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: theme.backgroundSelected }}>
+                <ThemedText type="smallBold" style={{ fontSize: 13, marginBottom: 6 }}>⚡ আমাদের সেবাসমূহ (Our Services):</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📊 **আয়-ব্যয় ট্র্যাকিং:** সহজে আয় ও খরচের হিসাব এন্ট্রি এবং ক্যাটাগরি অনুযায়ী পর্যবেক্ষণ।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📝 **স্মার্ট বাজেট প্ল্যানার:** ক্যাটাগরি লিমিট সেট করে খরচ পূর্ণ নিয়ন্ত্রণে রাখার সুবিধা।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🪙 **রিওয়ার্ড পয়েন্ট ও লিডারবোর্ড:** দৈনিক লগইন ও হিসাব লিখে রিওয়ার্ড কয়েন অর্জন এবং র‍্যাঙ্কিং লড়াই।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🤝 **দেনা-পাওনার ডিজিটাল খাতা:** দেনা ও পাওনার হিসাব রাখা এবং ১-ক্লিকে WhatsApp রিমাইন্ডার পাঠানো।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🎯 **সঞ্চয় লক্ষ্য (Savings Goals):** নিজের ভবিষ্যৎ লক্ষ্য নির্ধারণ করে সঞ্চয়ের অগ্রগতি ট্র্যাক করা।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📈 **বিনিয়োগ ট্র্যাকার (Investments):** বিভিন্ন ব্যবসা বা প্রজেক্টে করা বিনিয়োগ এবং লাভ-ক্ষতি পর্যবেক্ষণ।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📱 **মোবাইল SMS পার্সিং:** বিকাশ, নগদ ও ব্যাংক SMS থেকে অটোমেটিক ট্রানজেকশন এন্ট্রি।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📄 **PDF স্টেটমেন্ট ও মেমো:** যেকোনো মাসের রিপোর্ট প্রফেশনাল মেমো বা শিট আকারে ডাউনলোড।</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🔒 **উচ্চ নিরাপত্তা:** ক্লাউড ডেটা ব্যাকআপ ও বায়োমেট্রিক পিন লক সিকিউরিটি।</ThemedText>
+              </ScrollView>
 
               <TouchableOpacity
                 style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16 }]}
