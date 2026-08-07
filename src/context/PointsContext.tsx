@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import { useLanguage } from './LanguageContext';
+import { useAuth } from './AuthContext';
+import { API_BASE_URL } from '@/constants/config';
+import { triggerPointsNotification } from '@/services/notificationService';
 
 export interface LeaderboardUser {
   id: string;
@@ -21,48 +22,16 @@ interface PointsContextType {
   claimDailyOpenReward: () => Promise<boolean>;
   claimDailyTxReward: () => Promise<boolean>;
   getLeaderboard: () => LeaderboardUser[];
+  leaderboard: LeaderboardUser[];
+  isLeaderboardLoading: boolean;
+  fetchLeaderboard: () => Promise<void>;
   addPoints: (amount: number) => Promise<void>;
 }
 
-const STORAGE_KEY_POINTS = 'hisab_kitab_user_points';
-const STORAGE_KEY_DAILY_LOGIN_DATE = 'hisab_kitab_last_login_reward_date';
-const STORAGE_KEY_DAILY_TX_DATE = 'hisab_kitab_last_tx_reward_date';
-
 const PointsContext = createContext<PointsContextType | undefined>(undefined);
 
-// Safe storage helpers
-const getItem = async (key: string): Promise<string | null> => {
-  try {
-    if (Platform.OS === 'web') {
-      return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
-    }
-    try {
-      const val = await SecureStore.getItemAsync(key);
-      if (val !== null) return val;
-    } catch {}
-    return await AsyncStorage.getItem(key);
-  } catch (e) {
-    return null;
-  }
-};
-
-const setItem = async (key: string, value: string) => {
-  try {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') localStorage.setItem(key, value);
-    } else {
-      try {
-        await SecureStore.setItemAsync(key, value);
-      } catch {
-        await AsyncStorage.setItem(key, value);
-      }
-    }
-  } catch (e) {}
-};
-
 const getTodayDateString = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return new Date().toISOString().split('T')[0];
 };
 
 export const getBadgeForPoints = (pts: number, lang: string = 'bn'): string => {
@@ -83,86 +52,198 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
   const [points, setPoints] = useState<number>(50);
   const [dailyLoginEarnedToday, setDailyLoginEarnedToday] = useState<boolean>(false);
   const [dailyTxEarnedToday, setDailyTxEarnedToday] = useState<boolean>(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
+  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState<boolean>(false);
   const { language } = useLanguage();
+  const { user, token, refreshUser } = useAuth();
 
+  const getApiBaseUrl = () => {
+    return API_BASE_URL;
+  };
+
+  // Sync points and claim statuses from user object when it changes
   useEffect(() => {
-    const initPointsSystem = async () => {
+    if (user) {
+      setPoints(user.points ?? 50);
+
       const today = getTodayDateString();
-
-      // Load points
-      const storedPoints = await getItem(STORAGE_KEY_POINTS);
-      let currentPts = 50;
-      if (storedPoints !== null) {
-        currentPts = parseInt(storedPoints, 10) || 50;
-        setPoints(currentPts);
+      if (user.lastLoginRewardClaimedAt) {
+        const lastClaimed = user.lastLoginRewardClaimedAt.toString().split('T')[0];
+        setDailyLoginEarnedToday(today === lastClaimed);
       } else {
-        await setItem(STORAGE_KEY_POINTS, '50');
+        setDailyLoginEarnedToday(false);
       }
 
-      // Check daily login reward date
-      const lastLoginDate = await getItem(STORAGE_KEY_DAILY_LOGIN_DATE);
-      if (lastLoginDate === today) {
-        setDailyLoginEarnedToday(true);
-      } else {
-        // Auto-award 10 points for opening app today
-        currentPts += 10;
-        setPoints(currentPts);
-        setDailyLoginEarnedToday(true);
-        await setItem(STORAGE_KEY_POINTS, currentPts.toString());
-        await setItem(STORAGE_KEY_DAILY_LOGIN_DATE, today);
-      }
-
-      // Check daily transaction reward date
-      const lastTxDate = await getItem(STORAGE_KEY_DAILY_TX_DATE);
-      if (lastTxDate === today) {
-        setDailyTxEarnedToday(true);
+      if (user.lastTxRewardClaimedAt) {
+        const lastClaimed = user.lastTxRewardClaimedAt.toString().split('T')[0];
+        setDailyTxEarnedToday(today === lastClaimed);
       } else {
         setDailyTxEarnedToday(false);
       }
+    } else {
+      setPoints(50);
+      setDailyLoginEarnedToday(false);
+      setDailyTxEarnedToday(false);
+    }
+  }, [user]);
+
+  // Securely auto-claim login reward on startup/auth if not claimed today
+  useEffect(() => {
+    const autoClaimLoginReward = async () => {
+      if (!user || !token) return;
+
+      const today = getTodayDateString();
+      let lastClaimed = '';
+      if (user.lastLoginRewardClaimedAt) {
+        lastClaimed = user.lastLoginRewardClaimedAt.toString().split('T')[0];
+      }
+
+      if (lastClaimed !== today && !dailyLoginEarnedToday) {
+        try {
+          const response = await fetch(`${getApiBaseUrl()}/user/me/claim-daily-login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              setPoints(data.data.points);
+              setDailyLoginEarnedToday(true);
+              await refreshUser();
+              triggerPointsNotification(10, 'login');
+            }
+          }
+        } catch (e) {
+          console.warn('Error auto-claiming login reward:', e);
+        }
+      }
     };
 
-    initPointsSystem();
-  }, []);
+    autoClaimLoginReward();
+  }, [user, token]);
 
-  // Claim Daily Open Reward
+  // Fetch dynamic leaderboard from server
+  const fetchLeaderboard = async () => {
+    if (!token) return;
+    setIsLeaderboardLoading(true);
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/user/leaderboard`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          const formatted: LeaderboardUser[] = data.data.map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            avatar: u.avatar || undefined,
+            points: u.points,
+            badge: getBadgeForPoints(u.points, language),
+            isCurrentUser: u.id === user?.id,
+          }));
+          setLeaderboard(formatted);
+        }
+      }
+    } catch (e) {
+      console.warn('Error fetching leaderboard:', e);
+    } finally {
+      setIsLeaderboardLoading(false);
+    }
+  };
+
+  // Fetch initial leaderboard if token is present
+  useEffect(() => {
+    if (token) {
+      fetchLeaderboard();
+    }
+  }, [token]);
+
+  // Claim Daily Open Reward (Button Click Fallback)
   const claimDailyOpenReward = async (): Promise<boolean> => {
-    const today = getTodayDateString();
-    if (dailyLoginEarnedToday) return false;
-
-    const newPts = points + 10;
-    setPoints(newPts);
-    setDailyLoginEarnedToday(true);
-    await setItem(STORAGE_KEY_POINTS, newPts.toString());
-    await setItem(STORAGE_KEY_DAILY_LOGIN_DATE, today);
-    return true;
+    if (!token) return false;
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/user/me/claim-daily-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setPoints(data.data.points);
+          setDailyLoginEarnedToday(true);
+          await refreshUser();
+          triggerPointsNotification(10, 'login');
+          // Refresh leaderboard to sync rankings
+          fetchLeaderboard();
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
   };
 
   // Claim Daily Transaction Reward
   const claimDailyTxReward = async (): Promise<boolean> => {
-    const today = getTodayDateString();
-    if (dailyTxEarnedToday) return false;
-
-    const newPts = points + 10;
-    setPoints(newPts);
-    setDailyTxEarnedToday(true);
-    await setItem(STORAGE_KEY_POINTS, newPts.toString());
-    await setItem(STORAGE_KEY_DAILY_TX_DATE, today);
-    return true;
+    if (!token) return false;
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/user/me/claim-daily-tx`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setPoints(data.data.points);
+          setDailyTxEarnedToday(true);
+          await refreshUser();
+          triggerPointsNotification(10, 'transaction');
+          // Refresh leaderboard to sync rankings
+          fetchLeaderboard();
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
   };
 
-  // Community Leaderboard Data Generator
-  const getLeaderboard = (): LeaderboardUser[] => {
-    const mockCommunity: LeaderboardUser[] = [
-      { id: '1', name: language === 'bn' ? 'হামিম আহমেদ' : 'Hamim Ahmed', points: Math.max(points + 120, 520), badge: getBadgeForPoints(Math.max(points + 120, 520), language) },
-      { id: '2', name: language === 'bn' ? 'তানভীর হাসান' : 'Tanvir Hasan', points: 430, badge: getBadgeForPoints(430, language) },
-      { id: '3', name: language === 'bn' ? 'সাকিব রহমান' : 'Sakib Rahman', points: 340, badge: getBadgeForPoints(340, language) },
-      { id: '4', name: language === 'bn' ? 'আপনি' : 'You', points: points, badge: getBadgeForPoints(points, language), isCurrentUser: true },
-      { id: '5', name: language === 'bn' ? 'রফিক উদ্দিন' : 'Rafiq Uddin', points: Math.max(points - 20, 80), badge: getBadgeForPoints(Math.max(points - 20, 80), language) },
-      { id: '6', name: language === 'bn' ? 'আরিফ হোসেন' : 'Arif Hossain', points: 60, badge: getBadgeForPoints(60, language) },
-    ];
+  const addPoints = async (amount: number): Promise<void> => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/user/me/add-points`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ amount }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setPoints(data.data.points);
+          await refreshUser();
+          triggerPointsNotification(amount, 'goal');
+          fetchLeaderboard();
+        }
+      }
+    } catch (e) {}
+  };
 
-    // Sort descending by points
-    return mockCommunity.sort((a, b) => b.points - a.points);
+  const getLeaderboard = (): LeaderboardUser[] => {
+    return leaderboard;
   };
 
   return (
@@ -175,11 +256,10 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
         claimDailyOpenReward,
         claimDailyTxReward,
         getLeaderboard,
-        addPoints: async (amount: number) => {
-          const newPts = points + amount;
-          setPoints(newPts);
-          await setItem(STORAGE_KEY_POINTS, newPts.toString());
-        },
+        leaderboard,
+        isLeaderboardLoading,
+        fetchLeaderboard,
+        addPoints,
       }}
     >
       {children}

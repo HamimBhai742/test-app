@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -25,7 +26,19 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
   const { language } = useLanguage();
   const t = translations[language];
   const { user } = useAuth();
-  const { points, userBadge, dailyLoginEarnedToday, dailyTxEarnedToday, getLeaderboard } = usePoints();
+  const {
+    points,
+    userBadge,
+    dailyLoginEarnedToday,
+    dailyTxEarnedToday,
+    getLeaderboard,
+    fetchLeaderboard,
+    isLeaderboardLoading,
+  } = usePoints();
+
+  React.useEffect(() => {
+    fetchLeaderboard();
+  }, []);
 
   const handleBack = () => {
     if (onBack) {
@@ -154,51 +167,62 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
           </View>
 
           <View style={styles.leaderboardList}>
-            {leaderboardList.map((item, index) => {
-              const rank = index + 1;
-              const isTop1 = rank === 1;
-              const isTop2 = rank === 2;
-              const isTop3 = rank === 3;
+            {isLeaderboardLoading && leaderboardList.length === 0 ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#208AEF" />
+                <Text style={{ marginTop: 12, color: theme.textSecondary }}>লোড হচ্ছে...</Text>
+              </View>
+            ) : leaderboardList.length === 0 ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <Text style={{ color: theme.textSecondary }}>কোনো ইউজার পাওয়া যায়নি</Text>
+              </View>
+            ) : (
+              leaderboardList.map((item, index) => {
+                const rank = index + 1;
+                const isTop1 = rank === 1;
+                const isTop2 = rank === 2;
+                const isTop3 = rank === 3;
 
-              return (
-                <ThemedView
-                  key={item.id}
-                  type="backgroundElement"
-                  style={[
-                    styles.rankRowCard,
-                    item.isCurrentUser && { borderColor: '#208AEF', borderWidth: 2, backgroundColor: 'rgba(32, 138, 239, 0.12)' },
-                  ]}
-                >
-                  <View style={styles.rankLeft}>
-                    <View
-                      style={[
-                        styles.rankBadgeCircle,
-                        isTop1 && { backgroundColor: '#FEF08A' },
-                        isTop2 && { backgroundColor: '#E2E8F0' },
-                        isTop3 && { backgroundColor: '#FFEDD5' },
-                      ]}
-                    >
-                      <Text style={styles.rankBadgeText}>
-                        {isTop1 ? '🥇' : isTop2 ? '🥈' : isTop3 ? '🥉' : `#${rank}`}
-                      </Text>
+                return (
+                  <ThemedView
+                    key={item.id}
+                    type="backgroundElement"
+                    style={[
+                      styles.rankRowCard,
+                      item.isCurrentUser && { borderColor: '#208AEF', borderWidth: 2, backgroundColor: 'rgba(32, 138, 239, 0.12)' },
+                    ]}
+                  >
+                    <View style={styles.rankLeft}>
+                      <View
+                        style={[
+                          styles.rankBadgeCircle,
+                          isTop1 && { backgroundColor: '#FEF08A' },
+                          isTop2 && { backgroundColor: '#E2E8F0' },
+                          isTop3 && { backgroundColor: '#FFEDD5' },
+                        ]}
+                      >
+                        <Text style={styles.rankBadgeText}>
+                          {isTop1 ? '🥇' : isTop2 ? '🥈' : isTop3 ? '🥉' : `#${rank}`}
+                        </Text>
+                      </View>
+
+                      <View>
+                        <Text style={[styles.rankItemName, { color: theme.text, fontWeight: item.isCurrentUser ? '800' : '600' }]}>
+                          {item.name} {item.isCurrentUser ? ` (${language === 'bn' ? 'আপনি' : 'You'})` : ''}
+                        </Text>
+                        <Text style={[styles.rankItemBadgeLabel, { color: theme.textSecondary }]}>
+                          {item.badge}
+                        </Text>
+                      </View>
                     </View>
 
-                    <View>
-                      <Text style={[styles.rankItemName, { color: theme.text, fontWeight: item.isCurrentUser ? '800' : '600' }]}>
-                        {item.name} {item.isCurrentUser ? ` (${language === 'bn' ? 'আপনি' : 'You'})` : ''}
-                      </Text>
-                      <Text style={[styles.rankItemBadgeLabel, { color: theme.textSecondary }]}>
-                        {item.badge}
-                      </Text>
+                    <View style={styles.rankRight}>
+                      <Text style={styles.rankPointsVal}>⭐ {item.points}</Text>
                     </View>
-                  </View>
-
-                  <View style={styles.rankRight}>
-                    <Text style={styles.rankPointsVal}>⭐ {item.points}</Text>
-                  </View>
-                </ThemedView>
-              );
-            })}
+                  </ThemedView>
+                );
+              })
+            )}
           </View>
         </View>
       </ScrollView>

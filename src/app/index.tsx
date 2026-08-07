@@ -25,6 +25,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
+import { usePoints } from '@/context/PointsContext';
 
 const formatNumber = (num: number) => {
   const parts = num.toString().split('.');
@@ -37,6 +38,7 @@ export default function HomeScreen() {
   const { themeMode, setThemeMode } = useThemeMode();
   // useTransactions কাস্টম হুক ব্যবহার করে ব্যালেন্স, মোট আয়, মোট ব্যয় এবং ট্রানজেকশন ডেটা আনা হচ্ছে।
   const { transactions, totalBalance, totalIncome, totalExpenses, addTransaction, deleteTransaction } = useTransactions();
+  const { claimDailyTxReward } = usePoints();
 
   // নতুন লেনদেন যোগ করার পপ-আপ (Modal) দেখানোর জন্য স্টেট।
   const [modalVisible, setModalVisible] = useState(false);
@@ -107,6 +109,9 @@ export default function HomeScreen() {
       category,
       date: new Date().toISOString().split('T')[0], // আজকের তারিখ (YYYY-MM-DD) সেট করা হচ্ছে।
     });
+
+    // দৈনিক প্রথম লেনদেন সংরক্ষণ বোনাস ক্লেম করা হচ্ছে।
+    claimDailyTxReward().catch(() => {});
 
     // ফর্ম রিসেট করা হচ্ছে।
     setTitle('');

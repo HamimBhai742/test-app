@@ -14,6 +14,9 @@ export interface User {
   avatar?: string;
   role?: string;
   provider?: string;
+  points?: number;
+  lastLoginRewardClaimedAt?: string | Date;
+  lastTxRewardClaimedAt?: string | Date;
 }
 
 interface AuthResponse {
@@ -39,6 +42,7 @@ interface AuthContextType {
   updateProfile: (data: { name?: string; avatar?: string }) => Promise<AuthResponse>;
   uploadAvatarImage: (base64Image: string) => Promise<{ success: boolean; url?: string; message?: string }>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -141,6 +145,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (storedToken) {
           setToken(storedToken);
           syncPushTokenWithServer(storedToken);
+
+          // Fetch fresh user profile from server to sync points and claims
+          try {
+            const response = await fetch(`${getApiBaseUrl()}/user/me`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${storedToken}`,
+              },
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success && data.data) {
+                setUser(data.data);
+                await setStorageItem(STORAGE_KEY_USER, JSON.stringify(data.data));
+              }
+            }
+          } catch (profileErr) {
+            console.warn('Error syncing profile on startup:', profileErr);
+          }
         }
       } catch (e) {
         console.warn('Session restoration error:', e);
@@ -443,6 +467,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Refresh user details from server to keep local state up to date
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/user/me`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          saveSession(data.data);
+        }
+      }
+    } catch (e) {
+      console.warn('Error refreshing user profile:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -457,6 +503,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateProfile,
         uploadAvatarImage,
         logout,
+        refreshUser,
       }}
     >
       {children}

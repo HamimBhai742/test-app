@@ -356,3 +356,44 @@ export const scheduleFiveSecondTestNotification = async (): Promise<boolean> => 
   } catch (e) {}
   return false;
 };
+
+/**
+ * Trigger push notification when reward points are successfully claimed
+ */
+export const triggerPointsNotification = async (
+  pointsClaimed: number,
+  type: 'login' | 'transaction' | 'goal'
+): Promise<void> => {
+  if (Platform.OS === 'web' || !Notifications) return;
+
+  try {
+    const settings = await getNotificationSettings();
+    if (!settings.dailyEnabled) return;
+
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) return;
+
+    let title = 'রিওয়ার্ড পয়েন্ট যুক্ত হয়েছে! 🎉';
+    let body = '';
+
+    if (type === 'login') {
+      body = `দৈনিক অ্যাপ ওপেন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+    } else if (type === 'transaction') {
+      body = `দৈনিক হিসাব সংরক্ষণ করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+    } else {
+      body = `লক্ষ্য অর্জন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+    }
+
+    if (typeof Notifications.scheduleNotificationAsync === 'function') {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          data: { type: 'points_claim', pointsClaimed },
+          sound: true,
+        },
+        trigger: null, // Trigger immediately
+      }).catch(() => {});
+    }
+  } catch (e) {}
+};
