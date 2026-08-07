@@ -345,11 +345,11 @@ export default function StatsScreen() {
 
         {/* ── Header ── */}
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>
               {t.expenseAnalyticsEyebrow}
             </Text>
-            <ThemedText style={styles.headerTitle}>{t.expenseAnalyticsTitle}</ThemedText>
+            <ThemedText style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>{t.expenseAnalyticsTitle}</ThemedText>
           </View>
           <View style={[styles.liveDotBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
             <View style={styles.liveDot} />
@@ -677,7 +677,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 46,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   liveDotBg: {
     flexDirection: 'row',
