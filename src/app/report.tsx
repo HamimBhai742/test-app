@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -298,7 +298,10 @@ export default function ReportScreen() {
   const monthlyData = useMemo<MonthData[]>(() => {
     const map: Record<string, { income: number; expense: number; count: number }> = {};
     transactions.forEach((tx) => {
-      const [y, m] = tx.date.split('-');
+      if (!tx.date) return; // Guard: skip transactions with missing date
+      const parts = tx.date.split('-');
+      if (parts.length < 2) return;
+      const [y, m] = parts;
       const key = `${y}-${m}`;
       if (!map[key]) map[key] = { income: 0, expense: 0, count: 0 };
       if (tx.type === 'income') map[key].income += tx.amount;
@@ -327,9 +330,18 @@ export default function ReportScreen() {
       });
   }, [transactions, t]);
 
-  const [selectedKey, setSelectedKey] = useState<string | null>(
-    monthlyData.length > 0 ? monthlyData[0].key : null
-  );
+  // Auto-select most recent month when data first loads (fixes stale-null bug)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (monthlyData.length > 0) {
+      setSelectedKey((prev) => {
+        // Keep existing valid selection if it still exists in the data
+        if (prev && monthlyData.some((d) => d.key === prev)) return prev;
+        return monthlyData[0].key; // Default to most recent month
+      });
+    }
+  }, [monthlyData]);
+
 
   const selected = monthlyData.find((d) => d.key === selectedKey) ?? null;
   const maxCardVal = Math.max(...monthlyData.map((d) => Math.max(d.income, d.expense)), 1);

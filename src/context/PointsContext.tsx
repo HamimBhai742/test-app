@@ -107,10 +107,13 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   // Securely auto-claim login reward on startup/auth if not claimed today
+  // Use a ref to prevent double-claiming in the same session
+  const hasAttemptedLoginClaim = React.useRef(false);
   useEffect(() => {
-    const autoClaimLoginReward = async () => {
-      if (!user || !token) return;
+    // Only run when user+token are available, and only once per session
+    if (!user || !token || hasAttemptedLoginClaim.current) return;
 
+    const autoClaimLoginReward = async () => {
       const today = getTodayDateString();
       let lastClaimed = '';
       if (user.lastLoginRewardClaimedAt) {
@@ -118,6 +121,7 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (lastClaimed !== today && !dailyLoginEarnedToday) {
+        hasAttemptedLoginClaim.current = true; // Mark as attempted before API call
         try {
           const response = await fetch(`${getApiBaseUrl()}/user/me/claim-daily-login`, {
             method: 'POST',
@@ -136,13 +140,16 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } catch (e) {
+          hasAttemptedLoginClaim.current = false; // Allow retry on network error
           console.warn('Error auto-claiming login reward:', e);
         }
+      } else {
+        hasAttemptedLoginClaim.current = true; // Already claimed, no need to retry
       }
     };
 
     autoClaimLoginReward();
-  }, [user, token, dailyLoginEarnedToday]);
+  }, [user, token]); // Removed dailyLoginEarnedToday from deps to prevent re-render loop
 
   // Fetch dynamic leaderboard from server
   const fetchLeaderboard = async () => {

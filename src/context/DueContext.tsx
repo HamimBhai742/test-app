@@ -108,9 +108,10 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addDue = async (item: Omit<DueItem, 'id' | 'isSettled' | 'createdAt'>) => {
+    const tempId = `temp_${Date.now()}`;
     const newItem: DueItem = {
       ...item,
-      id: Date.now().toString(),
+      id: tempId,
       isSettled: false,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -136,13 +137,26 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const json = await response.json();
         if (json.success && json.data) {
-          fetchDues();
+          const serverId: string = json.data.id || json.data._id || tempId;
+          // Replace temp ID with real server ID in local state
+          setDues((prev) => {
+            const reconciled = prev.map((d) =>
+              d.id === tempId ? { ...d, id: serverId } : d
+            );
+            // Also update the notification reminder to use the real server ID
+            if (newItem.dueDate && serverId !== tempId) {
+              cancelDueReminder(tempId);
+              scheduleDueReminder(serverId, newItem.personName, newItem.amount, newItem.dueDate, newItem.type);
+            }
+            return reconciled;
+          });
         }
       }
     } catch (e) {
       console.warn('Backend create due failed, saved locally:', e);
     }
   };
+
 
   const settleDue = async (id: string) => {
     const updated = dues.map((d) => (d.id === id ? { ...d, isSettled: !d.isSettled } : d));

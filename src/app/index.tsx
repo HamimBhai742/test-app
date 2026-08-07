@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -26,6 +26,10 @@ import { translations } from '@/constants/translations';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
 import { usePoints } from '@/context/PointsContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const CUSTOM_CATS_KEY = 'hisabkitab_custom_categories_home';
+
 
 const formatNumber = (num: number) => {
   const parts = num.toString().split('.');
@@ -48,11 +52,31 @@ export default function HomeScreen() {
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState<string>('Food');
+  // তারিখ ইনপুট — ডিফল্ট আজকের তারিখ
+  const [txDate, setTxDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Custom categories state created by user
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
   const [newCatName, setNewCatName] = useState<string>('');
+
+  // Load custom categories from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem(CUSTOM_CATS_KEY).then((stored) => {
+      if (stored) {
+        try { setCustomCategories(JSON.parse(stored)); } catch {}
+      }
+    });
+  }, []);
+
+  // Persist custom categories whenever they change
+  useEffect(() => {
+    if (customCategories.length > 0) {
+      AsyncStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(customCategories)).catch(() => {});
+    }
+  }, [customCategories]);
+
+
 
   // ক্যাটাগরির ডিকশনারি
   const { language } = useLanguage();
@@ -102,12 +126,15 @@ export default function HomeScreen() {
     }
 
     // নতুন ট্রানজেকশন যুক্ত করা হচ্ছে।
+    // Validate date format YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    const finalDate = txDate && dateRegex.test(txDate) ? txDate : new Date().toISOString().split('T')[0];
     addTransaction({
       title: title.trim(),
       amount: parsedAmount,
       type,
       category,
-      date: new Date().toISOString().split('T')[0], // আজকের তারিখ (YYYY-MM-DD) সেট করা হচ্ছে।
+      date: finalDate,
     });
 
     // দৈনিক প্রথম লেনদেন সংরক্ষণ বোনাস ক্লেম করা হচ্ছে।
@@ -118,6 +145,7 @@ export default function HomeScreen() {
     setAmount('');
     setType('expense');
     setCategory('Food');
+    setTxDate(new Date().toISOString().split('T')[0]); // Reset date to today
     setModalVisible(false); // পপ-আপ বা মডাল বন্ধ করা হচ্ছে।
   };
 
@@ -142,8 +170,11 @@ export default function HomeScreen() {
     }
   };
 
-  // সাম্প্রতিক ৫টি লেনদেন ফিল্টার করে বের করা হচ্ছে।
-  const recentTransactions = transactions.slice(0, 5);
+  // "আরও দেখুন" টগল স্টেট — ডিফল্টে সাম্প্রতিক ১০টি দেখায়
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const recentTransactions = showAllTransactions
+    ? transactions
+    : transactions.slice(0, 10);
 
   return (
     <ThemedView style={styles.container}>
@@ -295,6 +326,28 @@ export default function HomeScreen() {
                 </ThemedView>
               ))
             )}
+
+            {/* Show All / Show Less Button */}
+            {transactions.length > 10 && (
+              <TouchableOpacity
+                style={{
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  marginTop: 4,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: 'rgba(150,150,150,0.18)',
+                }}
+                onPress={() => setShowAllTransactions((prev) => !prev)}
+                activeOpacity={0.7}
+              >
+                <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '700' }}>
+                  {showAllTransactions
+                    ? `↑ কম দেখুন`
+                    : `↓ সব দেখুন (${transactions.length}টি)`}
+                </ThemedText>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -392,6 +445,51 @@ export default function HomeScreen() {
                         </Text>
                       </TouchableOpacity>
                     ))}
+                  </View>
+                </View>
+
+                {/* তারিখ ইনপুট */}
+                <View style={styles.inputContainer}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>
+                    📅 তারিখ (YYYY-MM-DD)
+                  </ThemedText>
+                  <TextInput
+                    style={[styles.textInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
+                    placeholder={new Date().toISOString().split('T')[0]}
+                    placeholderTextColor={theme.textSecondary}
+                    value={txDate}
+                    onChangeText={setTxDate}
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={10}
+                  />
+                  {/* Quick date shortcuts */}
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+                    {[
+                      { label: 'আজ', days: 0 },
+                      { label: 'গতকাল', days: 1 },
+                      { label: '২ দিন আগে', days: 2 },
+                      { label: '৭ দিন আগে', days: 7 },
+                    ].map(({ label, days }) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - days);
+                      const val = d.toISOString().split('T')[0];
+                      return (
+                        <TouchableOpacity
+                          key={label}
+                          style={{
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            borderRadius: 10,
+                            backgroundColor: txDate === val ? theme.text : theme.backgroundSelected,
+                          }}
+                          onPress={() => setTxDate(val)}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: txDate === val ? theme.background : theme.text }}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
 

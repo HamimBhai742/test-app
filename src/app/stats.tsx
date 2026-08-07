@@ -264,6 +264,10 @@ export default function StatsScreen() {
     Utilities: t.catUtilities,
     Rent: t.catRent,
     Entertainment: t.catEntertainment,
+    Transport: t.catTransport,
+    Health: t.catHealth,
+    Education: t.catEducation,
+    Bills: t.catBills,
     Others: t.catOthers,
   };
 
@@ -273,6 +277,10 @@ export default function StatsScreen() {
     Utilities: colors.cyan,
     Rent: colors.primary,
     Entertainment: colors.pink,
+    Transport: colors.success,
+    Health: colors.danger,
+    Education: colors.purple,
+    Bills: '#14B8A6',
     Others: colors.slate,
   };
 
@@ -282,25 +290,50 @@ export default function StatsScreen() {
     Utilities: '⚡',
     Rent: '🏠',
     Entertainment: '🎬',
+    Transport: '🚗',
+    Health: '🏥',
+    Education: '🎓',
+    Bills: '🧾',
     Others: '🏷️',
   };
 
   const expenseStats = useMemo(() => {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayY = now.getFullYear();
+    const todayM = now.getMonth();
+    const todayD = now.getDate();
+    const todayStart = new Date(todayY, todayM, todayD);
+
+    // Parse YYYY-MM-DD as LOCAL time (avoids UTC midnight → previous day bug)
+    const parseLocalDate = (dateStr: string): Date => {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      }
+      return new Date(dateStr);
+    };
 
     const filteredTransactions = transactions.filter((tx) => {
-      const txDate = new Date(tx.date);
+      if (!tx.date) return false;
+      const txDate = parseLocalDate(tx.date);
       if (isNaN(txDate.getTime())) return false;
-      const diffTime = todayStart.getTime() - new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      const txY = txDate.getFullYear();
+      const txM = txDate.getMonth();
+      const txD = txDate.getDate();
+      const txStart = new Date(txY, txM, txD);
+
+      const diffDays = Math.round((todayStart.getTime() - txStart.getTime()) / (1000 * 60 * 60 * 24));
 
       if (selectedPeriod === 'weekly') {
-        return diffDays <= 7 && diffDays >= -1;
+        // Last 7 days including today and 1 day in future buffer
+        return diffDays <= 6 && diffDays >= 0;
       } else if (selectedPeriod === 'monthly') {
-        return diffDays <= 30 && diffDays >= -1;
+        // Current calendar month only
+        return txY === todayY && txM === todayM;
       } else {
-        return diffDays <= 365 && diffDays >= -1;
+        // Current calendar year only
+        return txY === todayY;
       }
     });
 

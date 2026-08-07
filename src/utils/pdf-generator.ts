@@ -311,37 +311,47 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
   const safeFilename = documentTitle.replace(/[^a-zA-Z0-9_\-]/g, '_');
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    // 1. Prioritize browser Print dialog for "Save as PDF" / "Print to PDF"
+    // Web: Open a new tab with the HTML and auto-trigger print dialog
+    // The print dialog lets users choose "Save as PDF" in all modern browsers
     try {
-      let iframe = document.getElementById('pdf-print-iframe') as HTMLIFrameElement;
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'pdf-print-iframe';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        document.body.appendChild(iframe);
-      }
+      // Inject auto-print script into the HTML content
+      const htmlWithPrint = htmlContent.replace(
+        '</body>',
+        `<script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+        </script></body>`
+      );
 
-      const doc = iframe.contentWindow?.document || iframe.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
+      const blob = new Blob([htmlWithPrint], { type: 'text/html;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const printWindow = window.open(blobUrl, '_blank');
+
+      if (!printWindow) {
+        // Popup blocked - fallback to direct download
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `${safeFilename}.html`;
+        document.body.appendChild(a);
+        a.click();
         setTimeout(() => {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-        }, 400);
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        }, 1500);
+        alert('ফাইলটি ডাউনলোড হচ্ছে। ব্রাউজারে খুলে Ctrl+P চেপে "Save as PDF" করুন।');
+      } else {
+        // Clean up blob URL after print window is opened
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       }
       return;
     } catch (e) {
-      console.warn('Iframe print error, falling back to direct html download:', e);
+      console.warn('Web PDF open error, falling back:', e);
     }
 
-    // Fallback: Direct HTML file download
+    // Last resort fallback: direct HTML blob download
     try {
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
       const blobUrl = URL.createObjectURL(blob);
@@ -354,12 +364,11 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
         document.body.removeChild(a);
         URL.revokeObjectURL(blobUrl);
       }, 1000);
-      return;
     } catch (e) {
       console.error('Direct download error:', e);
     }
   } else {
-    // 2. Native Mobile App (Android / iOS): Generate PDF, copy to a clean filename, and share
+    // Native Mobile App (Android / iOS): Generate PDF, copy to a clean filename, and share
     try {
       const pdf = await Print.printToFileAsync({ html: htmlContent });
       const filename = `${safeFilename}.pdf`;
@@ -382,7 +391,7 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
           return;
         }
       }
-      // Fallback if sharing is unavailable
+      // Fallback if sharing is unavailable — open native print dialog
       await Print.printAsync({ html: htmlContent });
     } catch (error) {
       console.warn('PDF export error:', error);

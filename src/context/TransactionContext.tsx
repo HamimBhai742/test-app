@@ -80,8 +80,10 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           title: item.title,
           amount: Number(item.amount),
           type: item.type,
-          category: item.category,
-          date: item.date,
+          category: item.category || 'Others',
+          // Fallback: use createdAt date if 'date' field is missing from server response
+          date: item.date ||
+            (item.createdAt ? item.createdAt.toString().split('T')[0] : new Date().toISOString().split('T')[0]),
         }));
         setTransactions(mappedTx);
       }
@@ -298,8 +300,10 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           title: data.data.title,
           amount: Number(data.data.amount),
           type: data.data.type,
-          category: data.data.category,
-          date: data.data.date,
+          category: data.data.category || 'Others',
+          // Fallback: use createdAt date if 'date' field is missing
+          date: data.data.date ||
+            (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : new Date().toISOString().split('T')[0]),
         };
         setTransactions((prev) => prev.map((t) => (t.id === tempId ? savedTx : t)));
       }

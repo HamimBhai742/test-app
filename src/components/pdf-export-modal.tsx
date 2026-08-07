@@ -238,11 +238,12 @@ export function PDFExportModal({
               onPress={handleDownloadPDF}
               disabled={isGenerating}
               activeOpacity={0.85}
+              style={[styles.downloadBtn, isGenerating && { opacity: 0.7 }]}
             >
               {isGenerating ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.downloadBtnText}>পিডিএফ সেভ হচ্ছে...</Text>
+                  <Text style={styles.downloadBtnText}>তৈরি হচ্ছে, অপেক্ষা করুন...</Text>
                 </View>
               ) : (
                 <Text style={styles.downloadBtnText}>{t.pdfDownloadBtn}</Text>

@@ -52,7 +52,10 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
 
   const leaderboardList = getLeaderboard();
   const currentUserRankIndex = leaderboardList.findIndex((item) => item.isCurrentUser);
-  const currentUserRank = currentUserRankIndex >= 0 ? currentUserRankIndex + 1 : 4;
+  // If user is found in leaderboard show their rank, else calculate based on points
+  const currentUserRank = currentUserRankIndex >= 0
+    ? currentUserRankIndex + 1
+    : leaderboardList.filter((item) => item.points > points).length + 1;
 
   // Badge thresholds
   const nextMilestone = points < 100 ? 100 : points < 300 ? 300 : points < 600 ? 600 : 1000;

@@ -37,9 +37,21 @@ const getStorageItem = async (key: string): Promise<string | null> => {
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
       return window.localStorage.getItem(key);
     }
+    // Primary: SecureStore (encrypted)
     const secureVal = await SecureStore.getItemAsync(key);
     if (secureVal !== null) return secureVal;
-    return await AsyncStorage.getItem(key);
+    // Migration fallback: read from AsyncStorage only once for existing users
+    // (AsyncStorage is unencrypted, so we immediately migrate to SecureStore)
+    const asyncVal = await AsyncStorage.getItem(key);
+    if (asyncVal !== null) {
+      // Migrate: save to SecureStore and delete from AsyncStorage
+      try {
+        await SecureStore.setItemAsync(key, asyncVal);
+        await AsyncStorage.removeItem(key);
+      } catch {}
+      return asyncVal;
+    }
+    return null;
   } catch (e) {
     return memoryStore[key] || null;
   }
@@ -52,12 +64,13 @@ const setStorageItem = async (key: string, value: string): Promise<void> => {
       window.localStorage.setItem(key, value);
       return;
     }
+    // Store ONLY in SecureStore (encrypted) — NOT in AsyncStorage (unencrypted)
     await SecureStore.setItemAsync(key, value);
-    await AsyncStorage.setItem(key, value);
   } catch (e) {
-    // Fail-safe memory fallback
+    // Fail-safe: memory-only fallback (already set above)
   }
 };
+
 
 export const SecurityProvider = ({ children }: { children: ReactNode }) => {
   const [savedPin, setSavedPin] = useState<string>('');

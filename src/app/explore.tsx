@@ -422,11 +422,24 @@ export default function BudgetScreen() {
     loadSavedData();
   }, []);
 
-  // Calculate actual spending per category from transactions
+  // Calculate actual spending per category — CURRENT MONTH ONLY
   const spentByCategory = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
     const map: Partial<Record<string, number>> = {};
     transactions
-      .filter((tx) => tx.type === 'expense')
+      .filter((tx) => {
+        if (tx.type !== 'expense') return false;
+        if (!tx.date) return false;
+        // Parse as local date to avoid UTC timezone mismatch
+        const parts = tx.date.split('-');
+        if (parts.length !== 3) return false;
+        const txYear = Number(parts[0]);
+        const txMonth = Number(parts[1]) - 1;
+        return txYear === currentYear && txMonth === currentMonth;
+      })
       .forEach((tx) => {
         map[tx.category] = (map[tx.category] ?? 0) + tx.amount;
       });
