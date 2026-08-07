@@ -53,30 +53,7 @@ const getAuthToken = async () => {
   return null;
 };
 
-const DEFAULT_DUES: DueItem[] = [
-  {
-    id: '1',
-    personName: 'রফিক হোসেন',
-    phone: '01712345678',
-    amount: 3000,
-    type: 'receivable',
-    note: 'বাজারের বাকির টাকা',
-    dueDate: '2026-08-10',
-    isSettled: false,
-    createdAt: '2026-07-28',
-  },
-  {
-    id: '2',
-    personName: 'মেস ম্যানেজার (তানভীর)',
-    phone: '01887654321',
-    amount: 1500,
-    type: 'payable',
-    note: 'জুলাই মাসের গ্যাস বিল',
-    dueDate: '2026-08-05',
-    isSettled: false,
-    createdAt: '2026-07-30',
-  },
-];
+const DEFAULT_DUES: DueItem[] = [];
 
 const DueContext = createContext<DueContextType | undefined>(undefined);
 

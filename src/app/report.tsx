@@ -357,17 +357,15 @@ export default function ReportScreen() {
   });
 
   if (monthlyData.length === 0) {
+    const topPad = contentPlatformStyle && 'paddingTop' in contentPlatformStyle ? contentPlatformStyle.paddingTop : insets.top;
     return (
-      <ScrollView
-        style={[styles.scrollView, { backgroundColor: theme.background }]}
-        contentInset={insets}
-        contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}
-      >
-        <ThemedView style={styles.container}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {/* Header with dynamic safe area top padding */}
+        <View style={[styles.container, { flexGrow: 0, paddingTop: topPad, paddingBottom: 0 }]}>
           <View style={styles.headerRow}>
-            <View>
+            <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>{t.monthlyReportEyebrow}</Text>
-              <ThemedText style={styles.headerTitle}>{t.monthlyReportTitle}</ThemedText>
+              <ThemedText style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>{t.monthlyReportTitle}</ThemedText>
             </View>
             <TouchableOpacity
               style={styles.addIconBtn}
@@ -377,14 +375,18 @@ export default function ReportScreen() {
               <Text style={styles.addIconBtnText}>📄</Text>
             </TouchableOpacity>
           </View>
-          <ThemedView type="backgroundElement" style={styles.emptyCard}>
+        </View>
+
+        {/* Center Empty Card View */}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: Spacing.four, paddingBottom: 100 }}>
+          <ThemedView type="backgroundElement" style={[styles.emptyCard, { width: '100%', maxWidth: 400 }]}>
             <Text style={styles.emptyEmoji}>📅</Text>
             <ThemedText style={styles.emptyTitle}>{t.noReportTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyDesc}>
               {t.noReportDesc}
             </ThemedText>
           </ThemedView>
-        </ThemedView>
+        </View>
 
         <PDFExportModal
           visible={pdfModalVisible}
@@ -392,7 +394,7 @@ export default function ReportScreen() {
           transactions={transactions}
           userName={user?.name}
         />
-      </ScrollView>
+      </View>
     );
   }
 
@@ -407,9 +409,9 @@ export default function ReportScreen() {
 
         {/* ── Header ── */}
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>{t.monthlyReportEyebrow}</Text>
-            <ThemedText style={styles.headerTitle}>{t.monthlyReportTitle}</ThemedText>
+            <ThemedText style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>{t.monthlyReportTitle}</ThemedText>
           </View>
           <TouchableOpacity
             style={styles.addIconBtn}
@@ -685,7 +687,7 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: Spacing.two },
   headerEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 2 },
-  headerTitle: { fontSize: 30, fontWeight: '800', lineHeight: 36 },
+  headerTitle: { fontSize: 30, fontWeight: '800', lineHeight: 46, paddingTop: 10, paddingBottom: 10 },
   pdfExportHeaderBtn: {
     backgroundColor: '#208AEF',
     paddingHorizontal: 14,
