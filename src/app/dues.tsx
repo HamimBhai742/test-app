@@ -259,11 +259,11 @@ export default function DuesScreen() {
 
         {/* ── Header ── */}
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={[styles.headerEyebrow, { color: theme.textSecondary }]}>
               {t.dueEyebrow}
             </Text>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>{t.dueLedgerTitle}</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>{t.dueLedgerTitle}</Text>
           </View>
 
           <TouchableOpacity
@@ -498,7 +498,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 46,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   addIconBtn: {
     width: 44,
