@@ -9,6 +9,7 @@ import {
   Vibration,
   TextInput,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useSecurity } from '@/context/SecurityContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -61,10 +62,40 @@ export function AppLockScreen() {
     return () => clearInterval(interval);
   }, [lockoutUntil]);
 
+  // Animations setup
+  const shakeAnim = React.useRef(new Animated.Value(0)).current;
+  const dotScales = React.useRef([
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+  ]).current;
+
+  const triggerShake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 12, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -12, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const animateDot = (index: number) => {
+    Animated.sequence([
+      Animated.timing(dotScales[index], { toValue: 1.45, duration: 80, useNativeDriver: true }),
+      Animated.spring(dotScales[index], { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }),
+    ]).start();
+  };
+
   const handleKeyPress = (numStr: string) => {
     if (lockoutRemaining > 0) return;
 
     if (pinInput.length < 4) {
+      const idx = pinInput.length;
+      animateDot(idx);
       const nextPin = pinInput + numStr;
       setPinInput(nextPin);
       setErrorMsg('');
@@ -74,6 +105,7 @@ export function AppLockScreen() {
           const success = verifyPin(nextPin);
           if (!success) {
             setErrorMsg(t.wrongPinError);
+            triggerShake();
             if (Platform.OS !== 'web') {
               Vibration.vibrate(250);
             }
@@ -87,6 +119,8 @@ export function AppLockScreen() {
   const handleDelete = () => {
     if (lockoutRemaining > 0) return;
     if (pinInput.length > 0) {
+      const idx = pinInput.length - 1;
+      dotScales[idx].setValue(1); // Reset scale
       setPinInput(pinInput.slice(0, -1));
       setErrorMsg('');
     }
@@ -156,21 +190,22 @@ export function AppLockScreen() {
         </View>
 
         {/* 4 PIN Indicator Dots */}
-        <View style={styles.dotsRow}>
+        <Animated.View style={[styles.dotsRow, { transform: [{ translateX: shakeAnim }] }]}>
           {[0, 1, 2, 3].map((index) => {
             const isFilled = pinInput.length > index;
             return (
-              <View
+              <Animated.View
                 key={index}
                 style={[
                   styles.dot,
                   isFilled && styles.dotFilled,
                   (errorMsg || isLockedOut) && styles.dotError,
+                  { transform: [{ scale: dotScales[index] }] }
                 ]}
               />
             );
           })}
-        </View>
+        </Animated.View>
 
         {/* Keypad Grid */}
         <View style={[styles.keypadContainer, isLockedOut && { opacity: 0.4 }]}>

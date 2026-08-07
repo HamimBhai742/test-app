@@ -14,6 +14,8 @@ import {
   Switch,
   Linking,
   Text,
+  Animated,
+  Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -80,6 +82,35 @@ export default function ProfileScreen() {
   const [pinInputTemp, setPinInputTemp] = useState<string>('');
   const [firstPin, setFirstPin] = useState<string>('');
   const [pinModalError, setPinModalError] = useState<string>('');
+
+  // PIN Input Animation variables
+  const modalShakeAnim = React.useRef(new Animated.Value(0)).current;
+  const modalCellScales = React.useRef([
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+  ]).current;
+  const pinTextInputRef = React.useRef<any>(null);
+
+  const triggerModalShake = () => {
+    Animated.sequence([
+      Animated.timing(modalShakeAnim, { toValue: 12, duration: 40, useNativeDriver: true }),
+      Animated.timing(modalShakeAnim, { toValue: -12, duration: 40, useNativeDriver: true }),
+      Animated.timing(modalShakeAnim, { toValue: 10, duration: 40, useNativeDriver: true }),
+      Animated.timing(modalShakeAnim, { toValue: -10, duration: 40, useNativeDriver: true }),
+      Animated.timing(modalShakeAnim, { toValue: 8, duration: 40, useNativeDriver: true }),
+      Animated.timing(modalShakeAnim, { toValue: -8, duration: 40, useNativeDriver: true }),
+      Animated.timing(modalShakeAnim, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const animateModalCell = (index: number) => {
+    Animated.sequence([
+      Animated.timing(modalCellScales[index], { toValue: 1.35, duration: 70, useNativeDriver: true }),
+      Animated.spring(modalCellScales[index], { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }),
+    ]).start();
+  };
 
   // Info Modals (About, Contact, Privacy, Google Auth, Leaderboard)
   const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
@@ -1839,16 +1870,53 @@ export default function ProfileScreen() {
                 </View>
               ) : null}
 
+              {/* Custom Animated 4-Cell PIN Code Input Grid */}
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={() => pinTextInputRef.current?.focus()}
+                style={{ width: '100%', marginVertical: 18 }}
+              >
+                <Animated.View style={{ flexDirection: 'row', gap: 14, justifyContent: 'center', transform: [{ translateX: modalShakeAnim }] }}>
+                  {[0, 1, 2, 3].map((index) => {
+                    const hasVal = pinInputTemp.length > index;
+                    const isFocused = pinInputTemp.length === index;
+                    return (
+                      <Animated.View
+                        key={index}
+                        style={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: 14,
+                          borderWidth: 2,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: theme.backgroundElement,
+                          borderColor: isFocused ? '#208AEF' : (hasVal ? '#208AEF' : theme.textSecondary + '33'),
+                          transform: [{ scale: modalCellScales[index] }]
+                        }}
+                      >
+                        {hasVal ? (
+                          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: theme.text }} />
+                        ) : null}
+                      </Animated.View>
+                    );
+                  })}
+                </Animated.View>
+              </TouchableOpacity>
+
+              {/* Hidden text input to receive native keyboard entries */}
               <TextInput
-                style={[styles.inputField, { color: theme.text, backgroundColor: theme.backgroundElement, textAlign: 'center', fontSize: 24, letterSpacing: 8, marginVertical: 12 }]}
-                placeholder="••••"
-                placeholderTextColor={theme.textSecondary}
+                ref={pinTextInputRef}
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
                 keyboardType="numeric"
                 maxLength={4}
-                secureTextEntry
                 value={pinInputTemp}
                 onChangeText={(text) => {
-                  setPinInputTemp(text);
+                  const clean = text.replace(/[^0-9]/g, '');
+                  if (clean.length > pinInputTemp.length) {
+                    animateModalCell(pinInputTemp.length);
+                  }
+                  setPinInputTemp(clean);
                   setPinModalError('');
                 }}
                 autoFocus
@@ -1859,6 +1927,8 @@ export default function ProfileScreen() {
                 onPress={async () => {
                   if (pinInputTemp.length !== 4) {
                     setPinModalError('৪ ডিজিটের পিন কোড দিন');
+                    triggerModalShake();
+                    if (Platform.OS !== 'web') Vibration.vibrate(250);
                     return;
                   }
 
@@ -1870,6 +1940,8 @@ export default function ProfileScreen() {
                       setPinModalError('');
                     } else {
                       setPinModalError(t.wrongPinError);
+                      triggerModalShake();
+                      if (Platform.OS !== 'web') Vibration.vibrate(250);
                       setPinInputTemp('');
                     }
                     return;
@@ -1883,6 +1955,8 @@ export default function ProfileScreen() {
                       showToast(t.pinDisabledSuccess, 'success');
                     } else {
                       setPinModalError(t.wrongPinError);
+                      triggerModalShake();
+                      if (Platform.OS !== 'web') Vibration.vibrate(250);
                       setPinInputTemp('');
                     }
                     return;
@@ -1895,6 +1969,8 @@ export default function ProfileScreen() {
                   } else {
                     if (pinInputTemp !== firstPin) {
                       setPinModalError(t.wrongPinError);
+                      triggerModalShake();
+                      if (Platform.OS !== 'web') Vibration.vibrate(250);
                       setPinInputTemp('');
                       return;
                     }
