@@ -12,7 +12,12 @@
           "package_name": "com.hamimbhai.hisabkitab"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "673489189699-a6qgd0b9uuf1f1at8m5a7ao5nc358gc3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDX1VnqnrOunrYmcjgHtjk7NHA2gtuIcX0"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "673489189699-a6qgd0b9uuf1f1at8m5a7ao5nc358gc3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

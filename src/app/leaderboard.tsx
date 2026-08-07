@@ -18,6 +18,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { usePoints, getBadgeForPoints } from '@/context/PointsContext';
 import { useAuth } from '@/context/AuthContext';
+// @ts-ignore
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
   const theme = useTheme();
@@ -104,7 +106,9 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
               </View>
 
               <View style={styles.pointsPillBox}>
-                <Text style={styles.pointsPillVal}>⭐ {points}</Text>
+                <Text style={styles.pointsPillVal}>
+                  <FontAwesome5 name="coins" size={15} color="#EAB308" /> {points}
+                </Text>
                 <Text style={styles.pointsPillLbl}>{t.pointsPillLabel}</Text>
               </View>
             </View>
@@ -217,7 +221,9 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
                     </View>
 
                     <View style={styles.rankRight}>
-                      <Text style={styles.rankPointsVal}>⭐ {item.points}</Text>
+                      <Text style={styles.rankPointsVal}>
+                        <FontAwesome5 name="coins" size={13} color="#EAB308" /> {item.points}
+                      </Text>
                     </View>
                   </ThemedView>
                 );

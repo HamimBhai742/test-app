@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from './LanguageContext';
 import { useAuth } from './AuthContext';
 import { API_BASE_URL } from '@/constants/config';
@@ -85,6 +86,24 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
       setDailyLoginEarnedToday(false);
       setDailyTxEarnedToday(false);
     }
+  }, [user]);
+
+  // Show welcome points notification for new users on signup/first-login
+  useEffect(() => {
+    const triggerWelcomePointsNotification = async () => {
+      if (!user) return;
+      try {
+        const welcomed = await AsyncStorage.getItem('hisabkitab_welcomed_points');
+        if (!welcomed) {
+          await AsyncStorage.setItem('hisabkitab_welcomed_points', 'true');
+          // Trigger welcome points notification
+          triggerPointsNotification(user.points ?? 50, 'welcome');
+        }
+      } catch (e) {
+        console.warn('Error checking welcome points notification state:', e);
+      }
+    };
+    triggerWelcomePointsNotification();
   }, [user]);
 
   // Securely auto-claim login reward on startup/auth if not claimed today

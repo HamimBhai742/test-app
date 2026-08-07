@@ -362,7 +362,7 @@ export const scheduleFiveSecondTestNotification = async (): Promise<boolean> => 
  */
 export const triggerPointsNotification = async (
   pointsClaimed: number,
-  type: 'login' | 'transaction' | 'goal'
+  type: 'login' | 'transaction' | 'goal' | 'welcome'
 ): Promise<void> => {
   if (Platform.OS === 'web' || !Notifications) return;
 
@@ -380,6 +380,9 @@ export const triggerPointsNotification = async (
       body = `দৈনিক অ্যাপ ওপেন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
     } else if (type === 'transaction') {
       body = `দৈনিক হিসাব সংরক্ষণ করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+    } else if (type === 'welcome') {
+      title = 'স্বাগতম বোনাস পয়েন্ট! 🎁';
+      body = `নতুন ইউজার হিসেবে +${pointsClaimed} পয়েন্ট আপনার ওয়ালেটে যোগ করা হয়েছে।`;
     } else {
       body = `লক্ষ্য অর্জন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
     }
