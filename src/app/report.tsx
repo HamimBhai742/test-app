@@ -627,7 +627,7 @@ export default function ReportScreen() {
                 onPress={() => setPdfModalVisible(true)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.downloadStatementBtnText}>📄 এই মাসের PDF স্টেটমেন্ট ডাউনলোড করুন</Text>
+                <Text style={styles.downloadStatementBtnText}>{t.pdfDownloadThisMonthBtn}</Text>
               </TouchableOpacity>
             </View>
           </ThemedView>

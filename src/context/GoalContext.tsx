@@ -6,6 +6,7 @@ import { usePoints } from './PointsContext';
 import { useLanguage } from './LanguageContext';
 import { translations } from '@/constants/translations';
 import { API_BASE_URL } from '@/constants/config';
+import { getLocalDateString } from '@/utils/date';
 
 export interface SavingsLog {
   id: string;
@@ -154,7 +155,7 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       description,
       isCompleted: false,
       pointsAwarded,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getLocalDateString(),
       history: [],
     };
     const updated = [newGoal, ...goals];
@@ -296,7 +297,7 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const newLog: SavingsLog = {
       id: tempLogId,
       amount,
-      date: date || new Date().toISOString().split('T')[0],
+      date: date || getLocalDateString(),
       note,
     };
 
@@ -423,7 +424,7 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return {
               ...log,
               amount,
-              date: date || new Date().toISOString().split('T')[0],
+              date: date || getLocalDateString(),
               note,
             };
           }
@@ -474,7 +475,7 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           body: JSON.stringify({
             amount,
             note,
-            date: date || new Date().toISOString().split('T')[0],
+            date: date || getLocalDateString(),
           }),
         });
       }

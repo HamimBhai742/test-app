@@ -23,6 +23,7 @@ import { translations } from '@/constants/translations';
 import { useInvestments, InvestmentProject, InvestmentLog } from '@/context/InvestmentContext';
 import { CustomDatePicker } from '@/components/custom-date-picker';
 import { Feather } from '@expo/vector-icons';
+import { getLocalDateString } from '@/utils/date';
 
 const formatNum = (num: number) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -215,7 +216,7 @@ function AddLogModal({
   const { language } = useLanguage();
   const t = translations[language];
 
-  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const getTodayDate = () => getLocalDateString();
 
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');

@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { scheduleDueReminder, cancelDueReminder } from '@/services/notificationService';
 import { API_BASE_URL } from '@/constants/config';
+import { getLocalDateString } from '@/utils/date';
 
 export interface DueItem {
   id: string;
@@ -123,7 +124,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
       ...item,
       id: tempId,
       isSettled: false,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getLocalDateString(),
     };
 
     const updated = [newItem, ...dues];

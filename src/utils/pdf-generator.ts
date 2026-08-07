@@ -29,9 +29,10 @@ const formatNum = (num: number) => {
 
 export function generateMonthlyStatementHTML(
   summary: PDFStatementSummary,
-  transactions: PDFTransactionItem[]
+  transactions: PDFTransactionItem[],
+  t: any
 ): string {
-  const currentDate = new Date().toLocaleDateString('bn-BD', {
+  const currentDate = new Date().toLocaleDateString(t.language === 'en' ? 'en-US' : 'bn-BD', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -45,7 +46,7 @@ export function generateMonthlyStatementHTML(
       <td><span class="cat-badge">${tx.category}</span></td>
       <td class="tx-title">${tx.title}</td>
       <td class="type-badge-cell">
-        <span class="badge ${tx.type}">${tx.type === 'income' ? 'আয় (Income)' : 'ব্যয় (Expense)'}</span>
+        <span class="badge ${tx.type}">${tx.type === 'income' ? (t.income || 'আয়') : (t.expense || 'ব্যয়')}</span>
       </td>
       <td class="amount ${tx.type}">
         ${tx.type === 'income' ? '+' : '-'} ৳ ${formatNum(tx.amount)}
@@ -57,7 +58,7 @@ export function generateMonthlyStatementHTML(
 
   return `
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="${t.language || 'bn'}">
 <head>
   <meta charset="UTF-8">
   <title>হিসাব কিতাব - ${summary.monthName} ${summary.year} স্টেটমেন্ট</title>
@@ -133,52 +134,52 @@ export function generateMonthlyStatementHTML(
       <div class="brand">
         <div class="brand-logo">💰</div>
         <div>
-          <div class="brand-name">হিসাব কিতাব</div>
-          <div class="brand-tagline">আপনার স্মার্ট ফিনান্সিয়াল ম্যানেজার</div>
+          <div class="brand-name">${t.appTitle || 'হিসাব কিতাব'}</div>
+          <div class="brand-tagline">${t.pdfStatementTagline}</div>
         </div>
       </div>
       <div class="doc-info">
-        <div class="doc-title">মাসিক স্টেটমেন্ট রিপোর্ট</div>
+        <div class="doc-title">${t.pdfStatementTitle}</div>
         <div class="doc-date">${summary.monthName} ${summary.year}</div>
       </div>
     </div>
 
     <!-- User Info -->
     <div class="user-banner">
-      <div>হিসাবগ্রহীতা: <span class="user-name">${summary.userName || 'গ্রাহক'}</span></div>
-      <div>রিপোর্ট তৈরির তারিখ: <span>${currentDate}</span></div>
+      <div>${t.pdfCustomerLabel}: <span class="user-name">${summary.userName || (t.language === 'en' ? 'Customer' : 'গ্রাহক')}</span></div>
+      <div>${t.pdfCreatedDate}: <span>${currentDate}</span></div>
     </div>
 
     <!-- Summary Grid -->
     <div class="summary-grid">
       <div class="summary-card income">
         <div class="card-val income">৳ ${formatNum(summary.totalIncome)}</div>
-        <div class="card-lbl">মোট আয়</div>
+        <div class="card-lbl">${t.totalInc}</div>
       </div>
       <div class="summary-card expense">
         <div class="card-val expense">৳ ${formatNum(summary.totalExpense)}</div>
-        <div class="card-lbl">মোট ব্যয়</div>
+        <div class="card-lbl">${t.totalExp}</div>
       </div>
       <div class="summary-card savings">
         <div class="card-val savings">৳ ${formatNum(summary.netSavings)}</div>
-        <div class="card-lbl">নিট সঞ্চয়</div>
+        <div class="card-lbl">${t.savings}</div>
       </div>
       <div class="summary-card rate">
         <div class="card-val rate">${summary.savingsRate}%</div>
-        <div class="card-lbl">সঞ্চয়ের হার</div>
+        <div class="card-lbl">${t.language === 'en' ? 'Savings Rate' : 'সঞ্চয়ের হার'}</div>
       </div>
     </div>
 
     <!-- Transactions Table -->
-    <div class="section-title">লেনদেনের বিস্তারিত বিবরণী (${transactions.length} টি এন্ট্রি)</div>
+    <div class="section-title">${t.language === 'en' ? 'Transaction Details' : 'লেনদেনের বিস্তারিত বিবরণী'} (${transactions.length} ${t.language === 'en' ? 'entries' : 'টি এন্ট্রি'})</div>
     <table>
       <thead>
         <tr>
-          <th>তারিখ</th>
-          <th>ক্যাটাগরি</th>
-          <th>বিবরণ / শিরোনাম</th>
-          <th>ধরন</th>
-          <th style="text-align: right;">পরিমাণ (TK)</th>
+          <th>${t.language === 'en' ? 'Date' : 'তারিখ'}</th>
+          <th>${t.language === 'en' ? 'Category' : 'ক্যাটাগরি'}</th>
+          <th>${t.language === 'en' ? 'Description' : 'বিবরণ / শিরোনাম'}</th>
+          <th>${t.language === 'en' ? 'Type' : 'ধরন'}</th>
+          <th style="text-align: right;">${t.amountLabel}</th>
         </tr>
       </thead>
       <tbody>
@@ -202,9 +203,18 @@ export function generateMonthlyStatementHTML(
 
 export function generateCashMemoHTML(
   tx: PDFTransactionItem,
-  userName?: string
+  userName?: string,
+  t?: any
 ): string {
-  const currentDate = new Date().toLocaleDateString('bn-BD', {
+  const tDict = t || {
+    language: 'bn',
+    amountLabel: 'পরিমাণ (TK)',
+    categoryLabel: 'ক্যাটাগরি',
+    type: 'ধরন',
+    income: 'আয়',
+    expense: 'ব্যয়',
+  };
+  const currentDate = new Date().toLocaleDateString(tDict.language === 'en' ? 'en-US' : 'bn-BD', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -212,10 +222,10 @@ export function generateCashMemoHTML(
 
   return `
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="${tDict.language || 'bn'}">
 <head>
   <meta charset="UTF-8">
-  <title>হিসাব কিতাব - ক্যাশ মেমো #${tx.id.slice(-6)}</title>
+  <title>Hisab Kitab - Cash Memo #${tx.id.slice(-6)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
     body { background-color: #f8fafc; color: #1e293b; padding: 40px; display: flex; justify-content: center; }
@@ -258,38 +268,38 @@ export function generateCashMemoHTML(
   <div class="memo-card">
     <div class="memo-header">
       <div class="logo">🧾</div>
-      <div class="title">হিসাব কিতাব মেমো</div>
+      <div class="title">${tDict.language === 'en' ? 'Hisab Kitab Memo' : 'হিসাব কিতাব মেমো'}</div>
       <div class="subtitle">Digital Cash Receipt</div>
     </div>
 
     <div class="info-row">
-      <div>রসিদ নম্বর: <span class="info-val">#${tx.id.slice(-6)}</span></div>
-      <div>তারিখ: <span class="info-val">${tx.date}</span></div>
+      <div>${tDict.language === 'en' ? 'Receipt No:' : 'রসিদ নম্বর:'} <span class="info-val">#${tx.id.slice(-6)}</span></div>
+      <div>${tDict.language === 'en' ? 'Date:' : 'তারিখ:'} <span class="info-val">${tx.date}</span></div>
     </div>
 
     <div class="details-box">
       <div class="detail-item">
-        <span class="detail-lbl">লেনদেনের বিবরণ:</span>
+        <span class="detail-lbl">${tDict.language === 'en' ? 'Description:' : 'লেনদেনের বিবরণ:'}</span>
         <span class="detail-val">${tx.title}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-lbl">ক্যাটাগরি:</span>
+        <span class="detail-lbl">${tDict.language === 'en' ? 'Category:' : 'ক্যাটাগরি:'}</span>
         <span class="detail-val">${tx.category}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-lbl">লেনদেনের ধরন:</span>
+        <span class="detail-lbl">${tDict.language === 'en' ? 'Transaction Type:' : 'লেনদেনের ধরন:'}</span>
         <span class="detail-val" style="color: ${tx.type === 'income' ? '#10b981' : '#ef4444'}">
-          ${tx.type === 'income' ? 'আয় (Income)' : 'ব্যয় (Expense)'}
+          ${tx.type === 'income' ? (tDict.income || 'আয়') : (tDict.expense || 'ব্যয়')}
         </span>
       </div>
       <div class="detail-item">
-        <span class="detail-lbl">হিসাবগ্রহীতা:</span>
-        <span class="detail-val">${userName || 'গ্রাহক'}</span>
+        <span class="detail-lbl">${tDict.language === 'en' ? 'Account Holder:' : 'হিসাবগ্রহীতা:'}</span>
+        <span class="detail-val">${userName || (tDict.language === 'en' ? 'Customer' : 'গ্রাহক')}</span>
       </div>
     </div>
 
     <div class="amount-box">
-      <div class="amount-lbl">মোট টাকার পরিমাণ</div>
+      <div class="amount-lbl">${tDict.amountLabel}</div>
       <div class="amount-val">৳ ${formatNum(tx.amount)}</div>
     </div>
 
@@ -299,7 +309,7 @@ export function generateCashMemoHTML(
 
     <div class="footer">
       Generated by Hisab Kitab Smart Finance Manager.<br>
-      ডিজিটাল মেমো প্রমাণপত্র হিসাবে সংরক্ষিত।
+      ${tDict.language === 'en' ? 'Saved as digital memo proof.' : 'ডিজিটাল মেমো প্রমাণপত্র হিসাবে সংরক্ষিত।'}
     </div>
   </div>
 </body>
@@ -307,7 +317,7 @@ export function generateCashMemoHTML(
   `;
 }
 
-export async function printOrDownloadPDF(htmlContent: string, documentTitle: string) {
+export async function printOrDownloadPDF(htmlContent: string, documentTitle: string, language: string = 'bn') {
   const safeFilename = documentTitle.replace(/[^a-zA-Z0-9_\-]/g, '_');
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -341,7 +351,9 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
           document.body.removeChild(a);
           URL.revokeObjectURL(blobUrl);
         }, 1500);
-        alert('ফাইলটি ডাউনলোড হচ্ছে। ব্রাউজারে খুলে Ctrl+P চেপে "Save as PDF" করুন।');
+        alert(language === 'bn'
+          ? 'ফাইলটি ডাউনলোড হচ্ছে। ব্রাউজারে খুলে Ctrl+P চেপে "Save as PDF" করুন।'
+          : 'File is downloading. Open in browser and press Ctrl+P to "Save as PDF".');
       } else {
         // Clean up blob URL after print window is opened
         setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);

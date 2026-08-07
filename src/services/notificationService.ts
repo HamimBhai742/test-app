@@ -293,11 +293,14 @@ export const registerForPushNotificationsAsync = async (): Promise<string | null
     const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
 
     // Get native device push token (FCM/APNs) to support direct Firebase Admin messaging on the server
-    if (Notifications && typeof Notifications.getDevicePushTokenAsync === 'function') {
+    // Restrict to Android as iOS requires native Firebase library setup to use FCM tokens, otherwise returns raw APNs tokens
+    if (Platform.OS === 'android' && Notifications && typeof Notifications.getDevicePushTokenAsync === 'function') {
       const deviceTokenData = await Notifications.getDevicePushTokenAsync().catch(() => null);
       if (deviceTokenData && deviceTokenData.data) {
         token = deviceTokenData.data;
       }
+    } else if (Platform.OS === 'ios') {
+      console.warn('iOS detected: Direct Firebase Admin Messaging requires native Firebase configuration. Using Expo Push Token fallback.');
     }
 
     // Secondary fallback to Expo Push Token if native FCM token is not returned (e.g. inside Expo Go)

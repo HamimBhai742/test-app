@@ -165,7 +165,7 @@ function AddEditDueModal({
             />
 
             {/* Amount */}
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>পরিমাণ (TK)</Text>
+            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t.amountLabel}</Text>
             <TextInput
               style={[styles.inputBox, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: type === 'receivable' ? '#10B981' : '#EF4444' }]}
               placeholder="5000"
@@ -268,9 +268,15 @@ export default function DuesScreen() {
 
     let message = '';
     if (item.type === 'receivable') {
-      message = `প্রিয় ${item.personName}, হিসাব কিতাব অ্যাপ থেকে জানাচ্ছি, আপনার কাছে ৳${formatNum(item.amount)} বকেয়া রয়েছে। ${item.note ? `(নোট: ${item.note})` : ''} অনুগ্রহ করে পরিশোধ করার জন্য অনুরোধ রইলো। ধন্যবাদ!`;
+      message = t.dueWaReceivableMsg
+        .replace('{name}', item.personName)
+        .replace('{amount}', formatNum(item.amount))
+        .replace('{note}', item.note ? `(${t.dueNoteLabel}: ${item.note})` : '');
     } else {
-      message = `প্রিয় ${item.personName}, হিসাব কিতাব অ্যাপ থেকে জানাচ্ছি, আপনার ৳${formatNum(item.amount)} দেনা রয়েছে। ${item.note ? `(নোট: ${item.note})` : ''} শীগ্রই পরিশোধ করা হবে। ধন্যবাদ!`;
+      message = t.dueWaPayableMsg
+        .replace('{name}', item.personName)
+        .replace('{amount}', formatNum(item.amount))
+        .replace('{note}', item.note ? `(${t.dueNoteLabel}: ${item.note})` : '');
     }
 
     const encodedMsg = encodeURIComponent(message);
@@ -464,7 +470,7 @@ export default function DuesScreen() {
 
                   {item.dueDate ? (
                     <Text style={[styles.dueDateText, { color: theme.textSecondary }]}>
-                      📅 তারিখ: {item.dueDate}
+                      {t.dueCreatedPrefix} {item.dueDate}
                     </Text>
                   ) : null}
                 </View>
@@ -481,7 +487,7 @@ export default function DuesScreen() {
                       activeOpacity={0.8}
                     >
                       <Feather name="edit-2" size={12} color="#FFF" />
-                      <Text style={styles.editBtnText}>{language === 'bn' ? 'এডিট' : 'Edit'}</Text>
+                      <Text style={styles.editBtnText}>{t.editTxBtn}</Text>
                     </TouchableOpacity>
                   ) : null}
 
@@ -494,7 +500,7 @@ export default function DuesScreen() {
                     activeOpacity={0.8}
                   >
                     <Text style={[styles.settleBtnText, { color: item.isSettled ? theme.text : '#FFF' }]}>
-                      {item.isSettled ? '🔄 পুনরায় চালু' : t.settleBtn}
+                      {item.isSettled ? t.dueReopenBtn : t.settleBtn}
                     </Text>
                   </TouchableOpacity>
 

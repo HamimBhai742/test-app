@@ -17,7 +17,7 @@ import { translations } from '@/constants/translations';
 import { useAuth } from '@/context/AuthContext';
 
 export function AppLockScreen() {
-  const { isLocked, lockoutUntil, failedAttempts, verifyPin, resetPinByRecovery } = useSecurity();
+  const { isLocked, lockoutUntil, failedAttempts, verifyPin, resetPinByRecovery, unlockApp } = useSecurity();
   const { language } = useLanguage();
   const t = translations[language];
   const { user } = useAuth();
@@ -160,6 +160,7 @@ export function AppLockScreen() {
     setRecoveryLoading(false);
 
     if (success) {
+      unlockApp(); // Automatically unlock lock screen after recovery PIN setup!
       setShowRecoveryModal(false);
       setRecoveryStep('request');
       setInputOtp('');

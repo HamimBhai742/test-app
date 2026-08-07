@@ -22,6 +22,7 @@ import {
   PDFTransactionItem,
   PDFStatementSummary,
 } from '@/utils/pdf-generator';
+import { getLocalDateString } from '@/utils/date';
 
 interface PDFExportModalProps {
   visible: boolean;
@@ -70,21 +71,22 @@ export function PDFExportModal({
   const handleDownloadPDF = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
-    const dateStr = new Date().toISOString().split('T')[0];
+    const dateStr = getLocalDateString();
     try {
       if (mode === 'statement') {
-        const html = generateMonthlyStatementHTML(summaryToUse, transactions);
+        const html = generateMonthlyStatementHTML(summaryToUse, transactions, t);
         await printOrDownloadPDF(
           html,
-          `Hisab_Kitab_Statement_${summaryToUse.monthName}_${summaryToUse.year}_${dateStr}`
+          `Hisab_Kitab_Statement_${summaryToUse.monthName}_${summaryToUse.year}_${dateStr}`,
+          language
         );
       } else if (mode === 'memo') {
         if (selectedTx) {
-          const html = generateCashMemoHTML(selectedTx, userName);
+          const html = generateCashMemoHTML(selectedTx, userName, t);
           const cleanTitle = selectedTx.title.replace(/[^a-zA-Z0-9_\-]/g, '_');
-          await printOrDownloadPDF(html, `Hisab_Kitab_Memo_${selectedTx.date}_${cleanTitle}`);
+          await printOrDownloadPDF(html, `Hisab_Kitab_Memo_${selectedTx.date}_${cleanTitle}`, language);
         } else {
-          alert('ক্যাশ মেমো তৈরির জন্য কমপক্ষে একটি লেনদেন থাকা প্রয়োজন।');
+          alert(t.pdfEmptyMemoAlert);
         }
       }
     } catch (e) {
@@ -97,9 +99,18 @@ export function PDFExportModal({
   const handleShareWhatsApp = () => {
     let message = '';
     if (mode === 'statement') {
-      message = `📄 *হিসাব কিতাব - ${summaryToUse.monthName} ${summaryToUse.year} মাসিক স্টেটমেন্ট*\n\n🟢 মোট আয়: ৳${summaryToUse.totalIncome.toLocaleString()}\n🔴 মোট ব্যয়: ৳${summaryToUse.totalExpense.toLocaleString()}\n🔵 নিট সঞ্চয়: ৳${summaryToUse.netSavings.toLocaleString()}\n📈 সঞ্চয়ের হার: ${summaryToUse.savingsRate}%\n\nপ্রফেশনাল ফাইন্যান্সিয়াল ট্র্যাকিং এর জন্য ধন্যবাদ!`;
+      message = language === 'bn'
+        ? `📄 *হিসাব কিতাব - ${summaryToUse.monthName} ${summaryToUse.year} মাসিক স্টেটমেন্ট*\n\n🟢 মোট আয়: ৳${summaryToUse.totalIncome.toLocaleString()}\n🔴 মোট ব্যয়: ৳${summaryToUse.totalExpense.toLocaleString()}\n🔵 নিট সঞ্চয়: ৳${summaryToUse.netSavings.toLocaleString()}\n📈 সঞ্চয়ের হার: ${summaryToUse.savingsRate}%\n\nপ্রফেশনাল ফাইন্যান্সিয়াল ট্র্যাকিং এর জন্য ধন্যবাদ!`
+        : `📄 *Hisab Kitab - ${summaryToUse.monthName} ${summaryToUse.year} Monthly Statement*\n\n🟢 Total Income: ৳${summaryToUse.totalIncome.toLocaleString()}\n🔴 Total Expense: ৳${summaryToUse.totalExpense.toLocaleString()}\n🔵 Net Savings: ৳${summaryToUse.netSavings.toLocaleString()}\n📈 Savings Rate: ${summaryToUse.savingsRate}%\n\nThank you for tracking your finances professionally!`;
     } else if (mode === 'memo' && selectedTx) {
-      message = `🧾 *হিসাব কিতাব - ক্যাশ মেমো রসিদ*\n\nবিবরণ: ${selectedTx.title}\nপরিমাণ: ৳${selectedTx.amount.toLocaleString()}\nক্যাটাগরি: ${selectedTx.category}\nধরন: ${selectedTx.type === 'income' ? 'আয় (Income)' : 'ব্যয় (Expense)'}\nতারিখ: ${selectedTx.date}\n\nস্ট্যাটাস: Verified Paid/Received ✓`;
+      message = language === 'bn'
+        ? `🧾 *হিসাব কিতাব - ক্যাশ মেমো রসিদ*\n\nবিবরণ: ${selectedTx.title}\nপরিমাণ: ৳${selectedTx.amount.toLocaleString()}\nক্যাটাগরি: ${selectedTx.category}\nধরন: ${selectedTx.type === 'income' ? 'আয় (Income)' : 'ব্যয় (Expense)'}\nতারিখ: ${selectedTx.date}\n\nস্ট্যাটাস: Verified Paid/Received ✓`
+        : `🧾 *Hisab Kitab - Cash Memo Receipt*\n\nDescription: ${selectedTx.title}\nAmount: ৳${selectedTx.amount.toLocaleString()}\nCategory: ${selectedTx.category}\nType: ${selectedTx.type === 'income' ? 'Income' : 'Expense'}\nDate: ${selectedTx.date}\n\nStatus: Verified Paid/Received ✓`;
+    }
+
+    if (!message) {
+      alert(t.pdfEmptyMemoAlert);
+      return;
     }
 
     const encodedMsg = encodeURIComponent(message);
@@ -157,7 +168,7 @@ export function PDFExportModal({
           {mode === 'statement' ? (
             <View style={[styles.previewCard, { backgroundColor: isDark ? '#1F2430' : '#F8FAFC', borderColor: isDark ? '#2D3548' : '#E2E8F0' }]}>
               <Text style={[styles.previewTitle, { color: theme.text }]}>
-                {summaryToUse.monthName} {summaryToUse.year} - রিপোর্ট সামারি
+                {summaryToUse.monthName} {summaryToUse.year} - {t.pdfReportSummary}
               </Text>
 
               <View style={styles.summaryStatsRow}>
@@ -165,26 +176,26 @@ export function PDFExportModal({
                   <Text style={[styles.statVal, { color: '#10B981' }]}>
                     ৳ {summaryToUse.totalIncome.toLocaleString()}
                   </Text>
-                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>মোট আয়</Text>
+                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>{t.totalInc}</Text>
                 </View>
 
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#EF4444' }]}>
                     ৳ {summaryToUse.totalExpense.toLocaleString()}
                   </Text>
-                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>মোট ব্যয়</Text>
+                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>{t.totalExp}</Text>
                 </View>
 
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#208AEF' }]}>
                     ৳ {summaryToUse.netSavings.toLocaleString()}
                   </Text>
-                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>নিট সঞ্চয়</Text>
+                  <Text style={[styles.statLbl, { color: theme.textSecondary }]}>{t.pdfNetSavings}</Text>
                 </View>
               </View>
 
               <Text style={[styles.txCountNote, { color: theme.textSecondary }]}>
-                মোট {transactions.length} টি লেনদেন এই রিপোর্টে যুক্ত করা হবে।
+                {t.pdfTotalTxCount.replace('{count}', transactions.length.toString())}
               </Text>
             </View>
           ) : null}
@@ -193,7 +204,7 @@ export function PDFExportModal({
           {mode === 'memo' ? (
             <View style={{ marginBottom: 16 }}>
               <Text style={[styles.selectorLabel, { color: theme.textSecondary }]}>
-                মেমো রসিদ তৈরির জন্য লেনদেন বাছুন:
+                {t.pdfMemoSelectLabel}
               </Text>
 
               <ScrollView style={{ maxHeight: 160 }} nestedScrollEnabled>
@@ -242,7 +253,7 @@ export function PDFExportModal({
               {isGenerating ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.downloadBtnText}>তৈরি হচ্ছে, অপেক্ষা করুন...</Text>
+                  <Text style={styles.downloadBtnText}>{t.pdfGeneratingText}</Text>
                 </View>
               ) : (
                 <Text style={styles.downloadBtnText}>{t.pdfDownloadBtn}</Text>

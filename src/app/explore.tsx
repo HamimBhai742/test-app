@@ -428,21 +428,61 @@ export default function BudgetScreen() {
       try {
         const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
         const storedCategories = await AsyncStorage.getItem('hisabkitab_categories');
-        if (storedBudgets) {
-          setBudgets(JSON.parse(storedBudgets));
-        }
+        const storedCustomCatsHome = await AsyncStorage.getItem('hisabkitab_custom_categories_home');
+
+        let loadedBudgets: BudgetMap = storedBudgets ? JSON.parse(storedBudgets) : { ...DEFAULT_BUDGETS };
+        let loadedCategories: CategoryItem[] = [];
+
         if (storedCategories) {
           const parsed = JSON.parse(storedCategories);
           if (Array.isArray(parsed)) {
-            const validated: CategoryItem[] = parsed.map((c: any) => ({
+            loadedCategories = parsed.map((c: any) => ({
               key: c.key || c.label || 'Unknown',
               label: c.label || c.key || 'Unknown',
               emoji: c.emoji || '🏷️',
               color: c.color || '#64748B',
               defaultBudget: typeof c.defaultBudget === 'number' ? c.defaultBudget : 1000,
             }));
-            setCategoriesList(validated);
           }
+        } else {
+          loadedCategories = [...DEFAULT_CATEGORIES];
+        }
+
+        // Auto-sync custom categories from Home screen
+        let parsedCustomCatsHome: string[] = [];
+        if (storedCustomCatsHome) {
+          try {
+            parsedCustomCatsHome = JSON.parse(storedCustomCatsHome);
+          } catch {}
+        }
+
+        let needsSaving = false;
+        if (Array.isArray(parsedCustomCatsHome)) {
+          parsedCustomCatsHome.forEach((catName) => {
+            if (catName && !loadedCategories.some((c) => c.key === catName)) {
+              const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+              const randomColor = colors[Math.floor(Math.random() * colors.length)];
+              loadedCategories.push({
+                key: catName,
+                label: catName,
+                emoji: '🏷️',
+                color: randomColor,
+                defaultBudget: 1000,
+              });
+              if (loadedBudgets[catName] === undefined) {
+                loadedBudgets[catName] = 1000;
+              }
+              needsSaving = true;
+            }
+          });
+        }
+
+        setBudgets(loadedBudgets);
+        setCategoriesList(loadedCategories);
+
+        if (needsSaving) {
+          await AsyncStorage.setItem('hisabkitab_categories', JSON.stringify(loadedCategories));
+          await AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(loadedBudgets));
         }
       } catch (error) {
         console.warn('Error loading budgets/categories from AsyncStorage:', error);

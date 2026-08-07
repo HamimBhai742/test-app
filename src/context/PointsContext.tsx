@@ -5,6 +5,7 @@ import { useLanguage } from './LanguageContext';
 import { useAuth } from './AuthContext';
 import { API_BASE_URL } from '@/constants/config';
 import { triggerPointsNotification } from '@/services/notificationService';
+import { getLocalDateString } from '@/utils/date';
 
 export interface LeaderboardUser {
   id: string;
@@ -32,7 +33,7 @@ interface PointsContextType {
 const PointsContext = createContext<PointsContextType | undefined>(undefined);
 
 const getTodayDateString = (): string => {
-  return new Date().toISOString().split('T')[0];
+  return getLocalDateString();
 };
 
 export const getBadgeForPoints = (pts: number, lang: string = 'bn'): string => {

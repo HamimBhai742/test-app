@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '@/constants/config';
+import { getLocalDateString } from '@/utils/date';
 
 export interface InvestmentLog {
   id: string;
@@ -142,7 +143,7 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
       name,
       targetBudget: targetBudget && targetBudget > 0 ? targetBudget : undefined,
       description,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getLocalDateString(),
       logs: [],
     };
     const updated = [newProject, ...investments];
@@ -254,7 +255,7 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
       id: tempLogId,
       title,
       amount,
-      date: date || new Date().toISOString().split('T')[0],
+      date: date || getLocalDateString(),
     };
 
     const updated = investments.map((project) => {

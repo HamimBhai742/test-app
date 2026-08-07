@@ -12,6 +12,7 @@ import {
   Keyboard,
   Text,
   Alert,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,6 +28,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
 import { usePoints } from '@/context/PointsContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocalDateString } from '@/utils/date';
 
 const CUSTOM_CATS_KEY = 'hisabkitab_custom_categories_home';
 
@@ -53,7 +55,7 @@ export default function HomeScreen() {
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState<string>('Food');
   // তারিখ ইনপুট — ডিফল্ট আজকের তারিখ
-  const [txDate, setTxDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [txDate, setTxDate] = useState<string>(getLocalDateString());
 
   // Custom categories state created by user
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -127,7 +129,7 @@ export default function HomeScreen() {
     setAmount('');
     setType('expense');
     setCategory('Food');
-    setTxDate(new Date().toISOString().split('T')[0]);
+    setTxDate(getLocalDateString());
     setEditingTx(null);
   };
 
@@ -149,7 +151,7 @@ export default function HomeScreen() {
     // নতুন ট্রানজেকশন যুক্ত করা হচ্ছে।
     // Validate date format YYYY-MM-DD
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    const finalDate = txDate && dateRegex.test(txDate) ? txDate : new Date().toISOString().split('T')[0];
+    const finalDate = txDate && dateRegex.test(txDate) ? txDate : getLocalDateString();
 
     const txPayload = {
       title: title.trim(),
@@ -174,18 +176,20 @@ export default function HomeScreen() {
   };
 
   const handleDeleteTransaction = (id: string, itemTitle: string) => {
+    const titleText = t.deleteTxTitle;
+    const confirmMsg = t.deleteTxConfirm.replace('{title}', itemTitle);
     if (Platform.OS === 'web') {
-      if (confirm(`আপনি কি "${itemTitle}" লেনদেনটি মুছে ফেলতে চান?`)) {
+      if (confirm(confirmMsg)) {
         deleteTransaction(id);
       }
     } else {
       Alert.alert(
-        'লেনদেন মুছে ফেলুন',
-        `আপনি কি "${itemTitle}" লেনদেনটি মুছে ফেলতে চান?`,
+        titleText,
+        confirmMsg,
         [
-          { text: 'বাতিল', style: 'cancel' },
+          { text: t.deleteTxCancel, style: 'cancel' },
           {
-            text: 'মুছে ফেলুন',
+            text: t.deleteTxConfirmBtn,
             style: 'destructive',
             onPress: () => deleteTransaction(id),
           },
@@ -203,165 +207,165 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* স্ক্রল ভিউ এর মাধ্যমে মোবাইলে কন্টেন্ট স্ক্রল করার সুবিধা দেওয়া হচ্ছে। */}
-        <ScrollView
+        <FlatList
+          data={recentTransactions}
+          keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-        >
-          {/* হেডার সেকশন */}
-          <ThemedView style={styles.header}>
-            <ThemedView>
-              <ThemedText type="small" themeColor="textSecondary">{t.dailyTracker}</ThemedText>
-              <ThemedText type="subtitle" style={styles.headerTitle}>{t.appTitle}</ThemedText>
-            </ThemedView>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {/* ডার্ক/লাইট থিম টগল বাটন */}
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
-                onPress={() => {
-                  setThemeMode((prev) => {
-                    if (prev === 'light') return 'dark';
-                    if (prev === 'dark') return 'system';
-                    return 'light';
-                  });
-                }}
-              >
-                <ThemedText style={{ fontSize: 16 }}>
-                  {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌗'}
-                </ThemedText>
-              </TouchableOpacity>
-              {/* নতুন লেনদেন যোগ করার কুইক বাটন */}
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: theme.text }]}
-                onPress={() => setModalVisible(true)}
-              >
-                <ThemedText style={{ color: theme.background, fontWeight: '700', fontSize: 20 }}>+</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </ThemedView>
-
-          {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
-          <ThemedView type="backgroundElement" style={styles.balanceCard}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
-              {t.totalBal}
-            </ThemedText>
-            <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
-              <Text style={{ fontSize: 18, fontWeight: '500' }}>TK </Text>{formatNumber(totalBalance)}
-            </ThemedText>
-
-            <View style={styles.cardDivider} />
-
-            {/* আয় ও ব্যয়ের তুলনামূলক সেকশন */}
-            <View style={styles.statsRow}>
-              <View style={styles.statColumn}>
-                <View style={styles.statDotContainer}>
-                  <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">{t.totalInc}</ThemedText>
-                </View>
-                <ThemedText style={styles.statAmountGreen}>
-                  <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalIncome)}
-                </ThemedText>
-              </View>
-
-              <View style={styles.statColumn}>
-                <View style={styles.statDotContainer}>
-                  <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">{t.totalExp}</ThemedText>
-                </View>
-                <ThemedText style={styles.statAmountRed}>
-                  <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalExpenses)}
-                </ThemedText>
-              </View>
-            </View>
-          </ThemedView>
-
-          {/* কুইক অ্যাকশন বাটন */}
-          <View style={styles.quickActionRow}>
-            <TouchableOpacity 
-              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
-              onPress={() => { setType('income'); setModalVisible(true); }}
-            >
-              <ThemedText style={styles.quickButtonText}>{t.addIncome}</ThemedText>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
-              onPress={() => { setType('expense'); setModalVisible(true); }}
-            >
-              <ThemedText style={styles.quickButtonText}>{t.addExpense}</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* সাম্প্রতিক লেনদেনের তালিকা (Recent Transactions) */}
-          <View style={styles.recentSection}>
-            <View style={styles.recentHeader}>
-              <ThemedText type="smallBold">{t.recentTx}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{t.last5}</ThemedText>
-            </View>
-
-            {recentTransactions.length === 0 ? (
-              <ThemedView type="backgroundElement" style={styles.emptyContainer}>
-                <ThemedText type="small" themeColor="textSecondary">{t.noTxYet}</ThemedText>
-              </ThemedView>
-            ) : (
-              recentTransactions.map((tx) => (
-                <ThemedView key={tx.id} type="backgroundElement" style={styles.transactionItem}>
-                  <View style={styles.txIconContainer}>
-                    <ThemedText style={styles.txIcon}>
-                      {tx.category === 'Food' && '🍔'}
-                      {tx.category === 'Shopping' && '🛒'}
-                      {tx.category === 'Utilities' && '⚡'}
-                      {tx.category === 'Rent' && '🏠'}
-                      {tx.category === 'Entertainment' && '🎬'}
-                      {tx.category === 'Salary' && '💼'}
-                      {tx.category === 'Transport' && '🚗'}
-                      {tx.category === 'Health' && '🏥'}
-                      {tx.category === 'Education' && '🎓'}
-                      {tx.category === 'Bills' && '🧾'}
-                      {!['Food','Shopping','Utilities','Rent','Entertainment','Salary','Transport','Health','Education','Bills'].includes(tx.category) && '🏷️'}
-                    </ThemedText>
-                  </View>
-                  
-                  <View style={styles.txInfo}>
-                    <ThemedText style={styles.txTitle}>{tx.title}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {categoryLabels[tx.category] || tx.category} • {tx.date}
-                    </ThemedText>
-                  </View>
-
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={styles.txAmountContainer}>
-                      <ThemedText style={[
-                        styles.txAmount,
-                        { color: tx.type === 'income' ? '#10B981' : '#EF4444' }
-                      ]}>
-                        {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(tx.amount)}
-                      </ThemedText>
-                    </View>
-
-                    {/* Edit button */}
-                    <TouchableOpacity
-                      onPress={() => handleEditTransaction(tx)}
-                      style={{ padding: 6, opacity: 0.8 }}
-                      activeOpacity={0.6}
-                    >
-                      <ThemedText style={{ fontSize: 14 }}>✏️</ThemedText>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => handleDeleteTransaction(tx.id, tx.title)}
-                      style={{ padding: 6, opacity: 0.8 }}
-                      activeOpacity={0.6}
-                    >
-                      <ThemedText style={{ fontSize: 16 }}>🗑️</ThemedText>
-                    </TouchableOpacity>
-                  </View>
+          ListHeaderComponent={
+            <>
+              {/* হেডার সেকশন */}
+              <ThemedView style={styles.header}>
+                <ThemedView>
+                  <ThemedText type="small" themeColor="textSecondary">{t.dailyTracker}</ThemedText>
+                  <ThemedText type="subtitle" style={styles.headerTitle}>{t.appTitle}</ThemedText>
                 </ThemedView>
-              ))
-            )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {/* ডার্ক/লাইট থিম টগল বাটন */}
+                  <TouchableOpacity
+                    style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
+                    onPress={() => {
+                      setThemeMode((prev) => {
+                        if (prev === 'light') return 'dark';
+                        if (prev === 'dark') return 'system';
+                        return 'light';
+                      });
+                    }}
+                  >
+                    <ThemedText style={{ fontSize: 16 }}>
+                      {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌗'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                  {/* নতুন লেনদেন যোগ করার কুইক বাটন */}
+                  <TouchableOpacity
+                    style={[styles.addButton, { backgroundColor: theme.text }]}
+                    onPress={() => setModalVisible(true)}
+                  >
+                    <ThemedText style={{ color: theme.background, fontWeight: '700', fontSize: 20 }}>+</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </ThemedView>
 
-            {/* Show All / Show Less Button */}
-            {transactions.length > 10 && (
+              {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
+              <ThemedView type="backgroundElement" style={styles.balanceCard}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
+                  {t.totalBal}
+                </ThemedText>
+                <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
+                  <Text style={{ fontSize: 18, fontWeight: '500' }}>TK </Text>{formatNumber(totalBalance)}
+                </ThemedText>
+
+                <View style={styles.cardDivider} />
+
+                {/* আয় ও ব্যয়ের তুলনামূলক সেকশন */}
+                <View style={styles.statsRow}>
+                  <View style={styles.statColumn}>
+                    <View style={styles.statDotContainer}>
+                      <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
+                      <ThemedText type="small" themeColor="textSecondary">{t.totalInc}</ThemedText>
+                    </View>
+                    <ThemedText style={styles.statAmountGreen}>
+                      <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalIncome)}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.statColumn}>
+                    <View style={styles.statDotContainer}>
+                      <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
+                      <ThemedText type="small" themeColor="textSecondary">{t.totalExp}</ThemedText>
+                    </View>
+                    <ThemedText style={styles.statAmountRed}>
+                      <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalExpenses)}
+                    </ThemedText>
+                  </View>
+                </View>
+              </ThemedView>
+
+              {/* কুইক অ্যাকশন বাটন */}
+              <View style={styles.quickActionRow}>
+                <TouchableOpacity 
+                  style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
+                  onPress={() => { setType('income'); setModalVisible(true); }}
+                >
+                  <ThemedText style={styles.quickButtonText}>{t.addIncome}</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
+                  onPress={() => { setType('expense'); setModalVisible(true); }}
+                >
+                  <ThemedText style={styles.quickButtonText}>{t.addExpense}</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {/* সাম্প্রতিক লেনদেনের তালিকা (Recent Transactions) হেডার */}
+              <View style={styles.recentHeader}>
+                <ThemedText type="smallBold">{t.recentTx}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{t.last5}</ThemedText>
+              </View>
+            </>
+          }
+          ListEmptyComponent={
+            <ThemedView type="backgroundElement" style={styles.emptyContainer}>
+              <ThemedText type="small" themeColor="textSecondary">{t.noTxYet}</ThemedText>
+            </ThemedView>
+          }
+          renderItem={({ item: tx }) => (
+            <ThemedView type="backgroundElement" style={styles.transactionItem}>
+              <View style={styles.txIconContainer}>
+                <ThemedText style={styles.txIcon}>
+                  {tx.category === 'Food' && '🍔'}
+                  {tx.category === 'Shopping' && '🛒'}
+                  {tx.category === 'Utilities' && '⚡'}
+                  {tx.category === 'Rent' && '🏠'}
+                  {tx.category === 'Entertainment' && '🎬'}
+                  {tx.category === 'Salary' && '💼'}
+                  {tx.category === 'Transport' && '🚗'}
+                  {tx.category === 'Health' && '🏥'}
+                  {tx.category === 'Education' && '🎓'}
+                  {tx.category === 'Bills' && '🧾'}
+                  {!['Food','Shopping','Utilities','Rent','Entertainment','Salary','Transport','Health','Education','Bills'].includes(tx.category) && '🏷️'}
+                </ThemedText>
+              </View>
+              
+              <View style={styles.txInfo}>
+                <ThemedText style={styles.txTitle}>{tx.title}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {categoryLabels[tx.category] || tx.category} • {tx.date}
+                </ThemedText>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={styles.txAmountContainer}>
+                  <ThemedText style={[
+                    styles.txAmount,
+                    { color: tx.type === 'income' ? '#10B981' : '#EF4444' }
+                  ]}>
+                    {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(tx.amount)}
+                  </ThemedText>
+                </View>
+
+                {/* Edit button */}
+                <TouchableOpacity
+                  onPress={() => handleEditTransaction(tx)}
+                  style={{ padding: 6, opacity: 0.8 }}
+                  activeOpacity={0.6}
+                >
+                  <ThemedText style={{ fontSize: 14 }}>✏️</ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleDeleteTransaction(tx.id, tx.title)}
+                  style={{ padding: 6, opacity: 0.8 }}
+                  activeOpacity={0.6}
+                >
+                  <ThemedText style={{ fontSize: 16 }}>🗑️</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </ThemedView>
+          )}
+          ListFooterComponent={
+            transactions.length > 10 ? (
               <TouchableOpacity
                 style={{
                   alignItems: 'center',
@@ -370,6 +374,7 @@ export default function HomeScreen() {
                   borderRadius: 14,
                   borderWidth: 1,
                   borderColor: 'rgba(150,150,150,0.18)',
+                  marginBottom: 16,
                 }}
                 onPress={() => setShowAllTransactions((prev) => !prev)}
                 activeOpacity={0.7}
@@ -380,9 +385,9 @@ export default function HomeScreen() {
                     : t.showAllTx.replace('{count}', transactions.length.toString())}
                 </ThemedText>
               </TouchableOpacity>
-            )}
-          </View>
-        </ScrollView>
+            ) : null
+          }
+        />
       </SafeAreaView>
 
       {/* নতুন লেনদেন যোগ করার পপ-আপ মডাল */}
@@ -486,11 +491,11 @@ export default function HomeScreen() {
                 {/* তারিখ ইনপুট */}
                 <View style={styles.inputContainer}>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>
-                    📅 তারিখ (YYYY-MM-DD)
+                    {t.txDateLabel}
                   </ThemedText>
                   <TextInput
                     style={[styles.textInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
-                    placeholder={new Date().toISOString().split('T')[0]}
+                    placeholder={getLocalDateString()}
                     placeholderTextColor={theme.textSecondary}
                     value={txDate}
                     onChangeText={setTxDate}
@@ -500,14 +505,14 @@ export default function HomeScreen() {
                   {/* Quick date shortcuts */}
                   <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
                     {[
-                      { label: 'আজ', days: 0 },
-                      { label: 'গতকাল', days: 1 },
-                      { label: '২ দিন আগে', days: 2 },
-                      { label: '৭ দিন আগে', days: 7 },
+                      { label: t.dateToday, days: 0 },
+                      { label: t.dateYesterday, days: 1 },
+                      { label: t.dateTwoDaysAgo, days: 2 },
+                      { label: t.dateSevenDaysAgo, days: 7 },
                     ].map(({ label, days }) => {
                       const d = new Date();
                       d.setDate(d.getDate() - days);
-                      const val = d.toISOString().split('T')[0];
+                      const val = getLocalDateString(d);
                       return (
                         <TouchableOpacity
                           key={label}

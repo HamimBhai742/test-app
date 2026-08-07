@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import { triggerBudgetWarning } from '@/services/notificationService';
 import { API_BASE_URL } from '@/constants/config';
 import { DEFAULT_BUDGETS as SHARED_DEFAULT_BUDGETS } from '@/constants/budgetDefaults';
+import { getLocalDateString } from '@/utils/date';
 
 export interface Transaction {
   id: string;
@@ -85,7 +86,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           category: item.category || 'Others',
           // Fallback: use createdAt date if 'date' field is missing from server response
           date: item.date ||
-            (item.createdAt ? item.createdAt.toString().split('T')[0] : new Date().toISOString().split('T')[0]),
+            (item.createdAt ? item.createdAt.toString().split('T')[0] : getLocalDateString()),
         }));
         setTransactions(mappedTx);
       }
@@ -305,7 +306,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           category: data.data.category || 'Others',
           // Fallback: use createdAt date if 'date' field is missing
           date: data.data.date ||
-            (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : new Date().toISOString().split('T')[0]),
+            (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : getLocalDateString()),
         };
         setTransactions((prev) => prev.map((t) => (t.id === tempId ? savedTx : t)));
       }
@@ -341,7 +342,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           type: data.data.type,
           category: data.data.category || 'Others',
           date: data.data.date ||
-            (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : new Date().toISOString().split('T')[0]),
+            (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : getLocalDateString()),
         };
         setTransactions((prev) => prev.map((t) => (t.id === id ? savedTx : t)));
       }
