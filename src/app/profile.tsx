@@ -1987,12 +1987,12 @@ export default function ProfileScreen() {
                   borderWidth: 1,
                   borderColor: theme.backgroundSelected,
                 }}
-                onPress={() => Linking.openURL('mailto:support@hisabkitab.app').catch(() => {})}
+                onPress={() => Linking.openURL('mailto:mdhamim5088@gmail.com').catch(() => {})}
               >
                 <ThemedText style={{ fontSize: 26 }}>📩</ThemedText>
                 <View>
                   <ThemedText type="small" themeColor="textSecondary" style={{ fontSize: 11, fontWeight: '600' }}>{t.supportEmailLabel}</ThemedText>
-                  <ThemedText style={{ color: '#208AEF', fontSize: 15, fontWeight: '800', marginTop: 2 }}>support@hisabkitab.app</ThemedText>
+                  <ThemedText style={{ color: '#208AEF', fontSize: 15, fontWeight: '800', marginTop: 2 }}>mdhamim5088@gmail.com</ThemedText>
                 </View>
               </TouchableOpacity>
 
@@ -2008,12 +2008,12 @@ export default function ProfileScreen() {
                   borderWidth: 1.5,
                   borderColor: 'rgba(16, 185, 129, 0.4)',
                 }}
-                onPress={() => Linking.openURL('https://wa.me/8801700000000?text=Hi%20Hisab%20Kitab%20Support').catch(() => {})}
+                onPress={() => Linking.openURL('https://wa.me/8801318398640?text=Hi%20Hisab%20Kitab%20Support').catch(() => {})}
               >
                 <ThemedText style={{ fontSize: 26 }}>📲</ThemedText>
                 <View>
                   <ThemedText style={{ color: '#10B981', fontSize: 11, fontWeight: '600' }}>{t.supportPhoneLabel}</ThemedText>
-                  <ThemedText style={{ color: '#10B981', fontSize: 15, fontWeight: '800', marginTop: 2 }}>+880 1700-000000</ThemedText>
+                  <ThemedText style={{ color: '#10B981', fontSize: 15, fontWeight: '800', marginTop: 2 }}>+880 1318-398640</ThemedText>
                 </View>
               </TouchableOpacity>
 
