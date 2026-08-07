@@ -12,6 +12,10 @@ const subscribe = (listener: () => void) => {
 
 const getSnapshot = () => currentLanguage;
 
+export const getCurrentLanguage = (): Language => {
+  return currentLanguage;
+};
+
 const setLanguageGlobal = (lang: Language | ((prev: Language) => Language)) => {
   const nextLang = typeof lang === 'function' ? lang(currentLanguage) : lang;
   if (nextLang !== currentLanguage) {

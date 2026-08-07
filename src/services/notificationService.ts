@@ -2,6 +2,7 @@ import { Platform, Alert } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCurrentLanguage } from '@/context/LanguageContext';
 
 // Safe dynamic require for expo-notifications to prevent Expo Go SDK 53+ Android crashes
 let Notifications: any = null;
@@ -130,12 +131,13 @@ export const scheduleDailyReminder = async (
 
     await cancelDailyReminder();
 
+    const lang = getCurrentLanguage();
     if (typeof Notifications.scheduleNotificationAsync === 'function') {
       await Notifications.scheduleNotificationAsync({
         identifier: DAILY_REMINDER_ID,
         content: {
-          title: 'আজকের হিসাব লিখেছেন তো? 📝',
-          body: 'আপনার দৈনন্দিন আয়-ব্যয়ের সঠিক হিসাব রাখতে এখনই এন্ট্রি করুন।',
+          title: lang === 'bn' ? 'আজকের হিসাব লিখেছেন তো? 📝' : 'Did you record your expenses today? 📝',
+          body: lang === 'bn' ? 'আপনার দৈনন্দিন আয়-ব্যয়ের সঠিক হিসাব রাখতে এখনই এন্ট্রি করুন।' : 'Keep your daily income and expense records updated, log them now.',
           data: { type: 'daily_reminder' },
           sound: true,
         },
@@ -186,10 +188,20 @@ export const scheduleDueReminder = async (
     if (targetDate.getTime() <= Date.now()) return;
 
     const isReceivable = type === 'receivable';
-    const title = isReceivable ? 'পাওনা টাকা পরিশোধের তাগাদা 💰' : 'দেনা পরিশোধের সময়সূচি ⚠️';
-    const body = isReceivable
-      ? `${personName}-এর কাছে ৳${amount.toLocaleString()} পাওনার আজ শেষ তারিখ।`
-      : `${personName}-কে ৳${amount.toLocaleString()} পরিশোধের আজ শেষ তারিখ।`;
+    const lang = getCurrentLanguage();
+    let title = '';
+    let body = '';
+    if (lang === 'bn') {
+      title = isReceivable ? 'পাওনা টাকা পরিশোধের তাগাদা 💰' : 'দেনা পরিশোধের সময়সূচি ⚠️';
+      body = isReceivable
+        ? `${personName}-এর কাছে ৳${amount.toLocaleString()} পাওনার আজ শেষ তারিখ।`
+        : `${personName}-কে ৳${amount.toLocaleString()} পরিশোধের আজ শেষ তারিখ।`;
+    } else {
+      title = isReceivable ? 'Receivable Due Reminder 💰' : 'Payable Due Deadline ⚠️';
+      body = isReceivable
+        ? `Today is the deadline to receive ৳${amount.toLocaleString()} from ${personName}.`
+        : `Today is the deadline to pay ৳${amount.toLocaleString()} to ${personName}.`;
+    }
 
     const identifier = `due_reminder_${dueId}`;
     if (typeof Notifications.cancelScheduledNotificationAsync === 'function') {
@@ -236,19 +248,34 @@ export const triggerBudgetWarning = async (
   categoryName?: string
 ): Promise<void> => {
   const isExceeded = percent >= 100;
-  const categoryPrefix = categoryName ? `"${categoryName}" ক্যাটাগরির ` : 'আপনার নির্ধারিত ';
+  const lang = getCurrentLanguage();
   let title = '';
   let body = '';
 
-  if (isExceeded) {
-    title = `⚠️ ${categoryName ? `"${categoryName}" ` : ''}বাজেট ১০০% অতিক্রম করেছে!`;
-    body = `${categoryPrefix}বাজেট ৳${totalBudget.toLocaleString()} এর বিপরীতে মোট ৳${spentAmount.toLocaleString()} খরচ হয়েছে।`;
-  } else if (percent >= 90) {
-    title = `🟠 ${categoryName ? `"${categoryName}" ` : ''}বাজেটের ৯০% খরচ হয়ে গেছে!`;
-    body = `${categoryPrefix}বাজেট ৳${totalBudget.toLocaleString()} এর মধ্যে ৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) ইতিমধ্যেই খরচ হয়ে গেছে।`;
+  if (lang === 'bn') {
+    const categoryPrefix = categoryName ? `"${categoryName}" ক্যাটাগরির ` : 'আপনার নির্ধারিত ';
+    if (isExceeded) {
+      title = `⚠️ ${categoryName ? `"${categoryName}" ` : ''}বজেট ১০০% অতিক্রম করেছে!`;
+      body = `${categoryPrefix}বজেট ৳${totalBudget.toLocaleString()} এর বিপরীতে মোট ৳${spentAmount.toLocaleString()} খরচ হয়েছে।`;
+    } else if (percent >= 90) {
+      title = `🟠 ${categoryName ? `"${categoryName}" ` : ''}বাজেটের ৯০% খরচ হয়ে গেছে!`;
+      body = `${categoryPrefix}বজেট ৳${totalBudget.toLocaleString()} এর মধ্যে ৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) ইতিমধ্যেই খরচ হয়ে গেছে।`;
+    } else {
+      title = `🟡 ${categoryName ? `"${categoryName}" ` : ''}বাজেটের ৮০% খরচ হয়ে গেছে!`;
+      body = `${categoryPrefix}বজেট ৳${totalBudget.toLocaleString()} এর মধ্যে ৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) ইতিমধ্যেই খরচ হয়ে গেছে।`;
+    }
   } else {
-    title = `🟡 ${categoryName ? `"${categoryName}" ` : ''}বাজেটের ৮০% খরচ হয়ে গেছে!`;
-    body = `${categoryPrefix}বাজেট ৳${totalBudget.toLocaleString()} এর মধ্যে ৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) ইতিমধ্যেই খরচ হয়ে গেছে।`;
+    const categoryPrefix = categoryName ? `"${categoryName}" category ` : 'Your set ';
+    if (isExceeded) {
+      title = `⚠️ ${categoryName ? `"${categoryName}" ` : ''}Budget exceeded 100%!`;
+      body = `${categoryPrefix}budget of ৳${totalBudget.toLocaleString()} has been exceeded by spent amount of ৳${spentAmount.toLocaleString()}.`;
+    } else if (percent >= 90) {
+      title = `🟠 ${categoryName ? `"${categoryName}" ` : ''}90% of budget spent!`;
+      body = `৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) out of ৳${totalBudget.toLocaleString()} of ${categoryPrefix}budget has already been spent.`;
+    } else {
+      title = `🟡 ${categoryName ? `"${categoryName}" ` : ''}80% of budget spent!`;
+      body = `৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) out of ৳${totalBudget.toLocaleString()} of ${categoryPrefix}budget has already been spent.`;
+    }
   }
 
   // Show native alert immediately if app is in foreground
@@ -376,18 +403,32 @@ export const triggerPointsNotification = async (
     const hasPermission = await requestNotificationPermissions();
     if (!hasPermission) return;
 
-    let title = 'রিওয়ার্ড পয়েন্ট যুক্ত হয়েছে! 🎉';
+    const lang = getCurrentLanguage();
+    let title = lang === 'bn' ? 'রিওয়ার্ড পয়েন্ট যুক্ত হয়েছে! 🎉' : 'Reward points added! 🎉';
     let body = '';
 
-    if (type === 'login') {
-      body = `দৈনিক অ্যাপ ওপেন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
-    } else if (type === 'transaction') {
-      body = `দৈনিক হিসাব সংরক্ষণ করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
-    } else if (type === 'welcome') {
-      title = 'স্বাগতম বোনাস পয়েন্ট! 🎁';
-      body = `নতুন ইউজার হিসেবে +${pointsClaimed} পয়েন্ট আপনার ওয়ালেটে যোগ করা হয়েছে।`;
+    if (lang === 'bn') {
+      if (type === 'login') {
+        body = `দৈনিক অ্যাপ ওপেন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+      } else if (type === 'transaction') {
+        body = `দৈনিক হিসাব সংরক্ষণ করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+      } else if (type === 'welcome') {
+        title = 'স্বাগতম বোনাস পয়েন্ট! 🎁';
+        body = `নতুন ইউজার হিসেবে +${pointsClaimed} পয়েন্ট আপনার ওয়ালেটে যোগ করা হয়েছে।`;
+      } else {
+        body = `লক্ষ্য অর্জন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+      }
     } else {
-      body = `লক্ষ্য অর্জন করার জন্য +${pointsClaimed} পয়েন্ট সফলভাবে ক্লেইম করা হয়েছে।`;
+      if (type === 'login') {
+        body = `+${pointsClaimed} points successfully claimed for opening the app today.`;
+      } else if (type === 'transaction') {
+        body = `+${pointsClaimed} points successfully claimed for recording a transaction today.`;
+      } else if (type === 'welcome') {
+        title = 'Welcome Bonus Points! 🎁';
+        body = `+${pointsClaimed} welcome bonus points added to your wallet.`;
+      } else {
+        body = `+${pointsClaimed} points successfully claimed for achieving your savings goal.`;
+      }
     }
 
     if (typeof Notifications.scheduleNotificationAsync === 'function') {

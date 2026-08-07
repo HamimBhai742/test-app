@@ -209,7 +209,7 @@ export default function ProfileScreen() {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
-        setEditError('ছবি সিলেক্ট করতে ফাইল/গ্যালারির পারমিশন প্রয়োজন');
+        setEditError(language === 'bn' ? 'ছবি সিলেক্ট করতে ফাইল/গ্যালারির পারমিশন প্রয়োজন' : 'File/Gallery permission is required to choose an image');
         return;
       }
 
@@ -238,13 +238,13 @@ export default function ProfileScreen() {
           setEditAvatar(uploadRes.url);
           showToast(t.uploadSuccess, 'success');
         } else {
-          setEditError('Cloudinary-তে ছবি সেভ করা সম্ভব হয়নি। আবার চেষ্টা করুন।');
+          setEditError(language === 'bn' ? 'Cloudinary-তে ছবি সেভ করা সম্ভব হয়নি। আবার চেষ্টা করুন।' : 'Failed to save image to Cloudinary. Please try again.');
         }
       }
     } catch (e: any) {
       console.error('Image picker error:', e);
       setIsUploadingCloudinary(false);
-      setEditError('গ্যালারি থেকে ছবি আপলোড করতে সমস্যা হয়েছে');
+      setEditError(language === 'bn' ? 'গ্যালারি থেকে ছবি আপলোড করতে সমস্যা হয়েছে' : 'Error uploading image from gallery');
     }
   };
 
@@ -434,7 +434,7 @@ export default function ProfileScreen() {
             avatar: userAvatar || undefined,
           });
           if (res.success) {
-            showToast('গুগল অ্যাকাউন্ট দিয়ে সফলভাবে প্রবেশ করেছেন! ✨', 'success');
+            showToast(language === 'bn' ? 'গুগল অ্যাকাউন্ট দিয়ে সফলভাবে প্রবেশ করেছেন! ✨' : 'Successfully logged in with Google account! ✨', 'success');
           } else {
             setAuthError(res.message || t.errGoogleFailed);
           }
@@ -445,7 +445,7 @@ export default function ProfileScreen() {
     } catch (error: any) {
       console.warn('Google Sign-in Error Details:', error);
       if (error?.code === statusCodes?.SIGN_IN_CANCELLED) {
-        setAuthError('গুগল সাইন-ইন বাতিল করা হয়েছে (Sign In Cancelled)');
+        setAuthError(language === 'bn' ? 'গুগল সাইন-ইন বাতিল করা হয়েছে' : 'Google sign-in cancelled');
       } else {
         setShowGoogleModal(true);
       }
@@ -454,7 +454,7 @@ export default function ProfileScreen() {
 
   const handleConfirmGoogleAuth = async () => {
     if (!googleEmailInput.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(googleEmailInput.trim())) {
-      setAuthError('সঠিক গুগল ইমেইল অ্যাড্রেস দিন');
+      setAuthError(language === 'bn' ? 'সঠিক গুগল ইমেইল অ্যাড্রেস দিন' : 'Please enter a valid Google email address');
       return;
     }
     setAuthError('');
@@ -464,7 +464,7 @@ export default function ProfileScreen() {
       name: googleNameInput.trim() || 'Google User',
     });
     if (res.success) {
-      showToast('গুগল সাইন-ইন সফল হয়েছে! ✨', 'success');
+      showToast(language === 'bn' ? 'গুগল সাইন-ইন সফল হয়েছে! ✨' : 'Google sign-in successful! ✨', 'success');
     } else {
       setAuthError(res.message || t.errGoogleFailed);
     }
@@ -966,7 +966,7 @@ export default function ProfileScreen() {
           {/* Google Account Selector Modal */}
           <Modal
             visible={showGoogleModal}
-            transparent
+            transparent={true}
             animationType="fade"
             onRequestClose={() => setShowGoogleModal(false)}
           >
@@ -981,7 +981,7 @@ export default function ProfileScreen() {
                 onPress={(e) => e.stopPropagation()}
               >
                 <View style={styles.modalHeader}>
-                  <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>Google সাইন-ইন</ThemedText>
+                  <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>{language === 'bn' ? 'গুগল সাইন-ইন' : 'Google Sign-In'}</ThemedText>
                   <TouchableOpacity onPress={() => setShowGoogleModal(false)} style={styles.modalCloseBtn}>
                     <ThemedText style={styles.modalCloseText}>✕</ThemedText>
                   </TouchableOpacity>
@@ -994,16 +994,16 @@ export default function ProfileScreen() {
                     resizeMode="contain"
                   />
                   <ThemedText type="subtitle" style={{ fontSize: 18, fontWeight: '800' }}>
-                    গুগল অ্যাকাউন্ট নির্বাচন করুন
+                    {language === 'bn' ? 'গুগল অ্যাকাউন্ট নির্বাচন করুন' : 'Select Google Account'}
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', marginTop: 4, fontSize: 12 }}>
-                    হিসাব কিতাব অ্যাপে প্রবেশ করতে আপনার গুগল অ্যাকাউন্ট তথ্য দিন:
+                    {language === 'bn' ? 'হিসাব কিতাব অ্যাপে প্রবেশ করতে আপনার গুগল অ্যাকাউন্ট তথ্য দিন:' : 'Enter your Google account details to access Hisab Kitab:'}
                   </ThemedText>
                 </View>
 
                 <View style={{ gap: 12, marginVertical: 10 }}>
                   <View>
-                    <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>গুগল ইমেইল (Google Email):</ThemedText>
+                    <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>{language === 'bn' ? 'গুগল ইমেইল (Google Email):' : 'Google Email:'}</ThemedText>
                     <TextInput
                       style={[styles.inputField, { color: theme.text, backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
                       placeholder="your.email@gmail.com"
@@ -1016,7 +1016,7 @@ export default function ProfileScreen() {
                   </View>
 
                   <View>
-                    <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>সম্পূর্ণ নাম (Full Name):</ThemedText>
+                    <ThemedText type="smallBold" style={{ fontSize: 12, marginBottom: 6 }}>{language === 'bn' ? 'সম্পূর্ণ নাম (Full Name):' : 'Full Name:'}</ThemedText>
                     <TextInput
                       style={[styles.inputField, { color: theme.text, backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
                       placeholder="Hamim Ahmed"
@@ -1045,7 +1045,7 @@ export default function ProfileScreen() {
                     <ThemedText style={{ fontSize: 20 }}>👤</ThemedText>
                     <View style={{ flex: 1 }}>
                       <ThemedText style={{ fontSize: 13, fontWeight: '700', color: '#208AEF' }}>mdhamim5088@gmail.com</ThemedText>
-                      <ThemedText style={{ fontSize: 11, color: theme.textSecondary }}>Hamim Ahmed (গুগল ভেরিফাইড)</ThemedText>
+                      <ThemedText style={{ fontSize: 11, color: theme.textSecondary }}>Hamim Ahmed ({language === 'bn' ? 'গুগল ভেরিফাইড' : 'Google Verified'})</ThemedText>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -1055,7 +1055,7 @@ export default function ProfileScreen() {
                   onPress={handleConfirmGoogleAuth}
                 >
                   <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                    Google অ্যাকাউন্ট দিয়ে প্রবেশ করুন ➔
+                    {language === 'bn' ? 'Google অ্যাকাউন্ট দিয়ে প্রবেশ করুন ➔' : 'Continue with Google Account ➔'}
                   </ThemedText>
                 </TouchableOpacity>
               </TouchableOpacity>

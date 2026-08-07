@@ -177,11 +177,11 @@ export default function LeaderboardScreen({ onBack }: { onBack?: () => void }) {
             {isLeaderboardLoading && leaderboardList.length === 0 ? (
               <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#208AEF" />
-                <Text style={{ marginTop: 12, color: theme.textSecondary }}>লোড হচ্ছে...</Text>
+                <Text style={{ marginTop: 12, color: theme.textSecondary }}>{language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...'}</Text>
               </View>
             ) : leaderboardList.length === 0 ? (
               <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                <Text style={{ color: theme.textSecondary }}>কোনো ইউজার পাওয়া যায়নি</Text>
+                <Text style={{ color: theme.textSecondary }}>{language === 'bn' ? 'কোনো ইউজার পাওয়া যায়নি' : 'No users found'}</Text>
               </View>
             ) : (
               leaderboardList.map((item, index) => {
