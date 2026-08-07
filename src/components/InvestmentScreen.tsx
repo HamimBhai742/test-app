@@ -22,6 +22,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useInvestments, InvestmentProject, InvestmentLog } from '@/context/InvestmentContext';
 import { CustomDatePicker } from '@/components/custom-date-picker';
+import { Feather } from '@expo/vector-icons';
 
 const formatNum = (num: number) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -516,7 +517,7 @@ export default function InvestmentScreen({ onBack }: { onBack: () => void }) {
               onPress={() => setAddProjectVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.addHeaderBtnIcon, { color: theme.text }]}>➕</Text>
+              <Feather name="plus" size={20} color={theme.text} />
             </TouchableOpacity>
           )}
         </View>

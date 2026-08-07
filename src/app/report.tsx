@@ -18,6 +18,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { PDFExportModal } from '@/components/pdf-export-modal';
 import { useAuth } from '@/context/AuthContext';
+import { Feather } from '@expo/vector-icons';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -372,7 +373,7 @@ export default function ReportScreen() {
               onPress={() => setPdfModalVisible(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.addIconBtnText}>📄</Text>
+              <Feather name="file-text" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -418,7 +419,7 @@ export default function ReportScreen() {
             onPress={() => setPdfModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.addIconBtnText}>📄</Text>
+            <Feather name="file-text" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 

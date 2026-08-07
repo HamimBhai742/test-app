@@ -20,6 +20,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useDues, DueItem } from '@/context/DueContext';
+import { Feather } from '@expo/vector-icons';
 
 const formatNum = (num: number) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -271,7 +272,7 @@ export default function DuesScreen() {
             onPress={() => setModalVisible(true)}
             activeOpacity={0.75}
           >
-            <Text style={styles.addIconBtnText}>➕</Text>
+            <Feather name="plus" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 

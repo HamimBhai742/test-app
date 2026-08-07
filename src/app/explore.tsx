@@ -22,6 +22,7 @@ import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Feather } from '@expo/vector-icons';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -528,7 +529,7 @@ export default function BudgetScreen() {
             onPress={() => setAddCatModalVisible(true)}
             activeOpacity={0.75}
           >
-            <Text style={styles.addCategoryIconText}>➕</Text>
+            <Feather name="plus" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
