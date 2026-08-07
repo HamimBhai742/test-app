@@ -311,7 +311,37 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
   const safeFilename = documentTitle.replace(/[^a-zA-Z0-9_\-]/g, '_');
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    // 1. Direct File Download on Web & Mobile Web Browsers
+    // 1. Prioritize browser Print dialog for "Save as PDF" / "Print to PDF"
+    try {
+      let iframe = document.getElementById('pdf-print-iframe') as HTMLIFrameElement;
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'pdf-print-iframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+      }
+
+      const doc = iframe.contentWindow?.document || iframe.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+        setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        }, 400);
+      }
+      return;
+    } catch (e) {
+      console.warn('Iframe print error, falling back to direct html download:', e);
+    }
+
+    // Fallback: Direct HTML file download
     try {
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
       const blobUrl = URL.createObjectURL(blob);
@@ -326,45 +356,21 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
       }, 1000);
       return;
     } catch (e) {
-      console.warn('Direct blob download error, trying print window:', e);
-    }
-
-    // Fallback: Use hidden iframe for printing
-    let iframe = document.getElementById('pdf-print-iframe') as HTMLIFrameElement;
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.id = 'pdf-print-iframe';
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      document.body.appendChild(iframe);
-    }
-
-    const doc = iframe.contentWindow?.document || iframe.contentDocument;
-    if (doc) {
-      doc.open();
-      doc.write(htmlContent);
-      doc.close();
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      }, 400);
+      console.error('Direct download error:', e);
     }
   } else {
-    // 2. Native Mobile App (Android / iOS): Generate Base64 PDF & save directly
+    // 2. Native Mobile App (Android / iOS): Generate PDF, copy to a clean filename, and share
     try {
-      const pdf = await Print.printToFileAsync({ html: htmlContent, base64: true });
+      const pdf = await Print.printToFileAsync({ html: htmlContent });
       const filename = `${safeFilename}.pdf`;
-      const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
-      const targetUri = `${docDir}${filename}`;
+      const cacheDir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
+      const targetUri = `${cacheDir}${filename}`;
 
-      if (pdf && pdf.base64) {
-        // Write base64 PDF directly to documentDirectory
-        await FileSystem.writeAsStringAsync(targetUri, pdf.base64, {
-          encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
+      if (pdf && pdf.uri) {
+        // Copy the temporary UUID file to a clean, professionally-named file in the cache
+        await FileSystem.copyAsync({
+          from: pdf.uri,
+          to: targetUri,
         });
 
         if (await Sharing.isAvailableAsync()) {
@@ -375,19 +381,11 @@ export async function printOrDownloadPDF(htmlContent: string, documentTitle: str
           });
           return;
         }
-      } else if (pdf && pdf.uri) {
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(pdf.uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: filename,
-            UTI: 'com.adobe.pdf',
-          });
-          return;
-        }
       }
+      // Fallback if sharing is unavailable
       await Print.printAsync({ html: htmlContent });
     } catch (error) {
-      console.warn('Base64 PDF Save Error, falling back to print view:', error);
+      console.warn('PDF export error:', error);
       try {
         await Print.printAsync({ html: htmlContent });
       } catch (fallbackErr) {
