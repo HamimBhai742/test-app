@@ -658,7 +658,7 @@ export default function ReportScreen() {
                 if (parts.length < 3) return false;
                 const txY = Number(parts[0]);
                 const txM = Number(parts[1]);
-                return txY === selected.year && txM === selected.month;
+                return txY === selected.year && (txM - 1) === selected.month;
               })
             : transactions
         }
