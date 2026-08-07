@@ -194,7 +194,17 @@ function BarChart({ data, maxVal }: { data: BarData[]; maxVal: number }) {
               </View>
 
               {/* Day label */}
-              <Text style={styles.barDayLabel}>{item.label}</Text>
+              <Text
+                style={[
+                  styles.barDayLabel,
+                  data.length > 7 ? { fontSize: 8 } : {},
+                  { width: 44, left: '50%', marginLeft: -22 }
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {item.label}
+              </Text>
             </View>
           );
         })}
@@ -276,7 +286,25 @@ export default function StatsScreen() {
   };
 
   const expenseStats = useMemo(() => {
-    const expenses = transactions.filter((tx) => tx.type === 'expense');
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const filteredTransactions = transactions.filter((tx) => {
+      const txDate = new Date(tx.date);
+      if (isNaN(txDate.getTime())) return false;
+      const diffTime = todayStart.getTime() - new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (selectedPeriod === 'weekly') {
+        return diffDays <= 7 && diffDays >= -1;
+      } else if (selectedPeriod === 'monthly') {
+        return diffDays <= 30 && diffDays >= -1;
+      } else {
+        return diffDays <= 365 && diffDays >= -1;
+      }
+    });
+
+    const expenses = filteredTransactions.filter((tx) => tx.type === 'expense');
     const totalExp = expenses.reduce((acc, tx) => acc + tx.amount, 0);
 
     const categoryTotals: Record<string, number> = {};
@@ -304,20 +332,80 @@ export default function StatsScreen() {
     const highestExpense = breakdown.length > 0 ? breakdown[0] : null;
     const avgExpense = expenses.length > 0 ? Math.round(totalExp / expenses.length) : 0;
 
-    // Weekly bar chart data
-    const weeklyTrend: BarData[] = [
-      { label: t.weekDays[0], amount: 1500, color: colors.primary },
-      { label: t.weekDays[1], amount: 0, color: colors.primary },
-      { label: t.weekDays[2], amount: 0, color: colors.primary },
-      { label: t.weekDays[3], amount: 120, color: colors.warning },
-      { label: t.weekDays[4], amount: 0, color: colors.primary },
-      { label: t.weekDays[5], amount: 15, color: colors.pink },
-      { label: t.weekDays[6], amount: 0, color: colors.primary },
-    ];
-    const maxWeekly = Math.max(...weeklyTrend.map((d) => d.amount), 1);
+    // Dynamically compile weeklyTrend depending on selected period
+    let trendData: BarData[] = [];
+    if (selectedPeriod === 'weekly') {
+      const weekdayAmounts = Array(7).fill(0);
+      expenses.forEach((tx) => {
+        const txDate = new Date(tx.date);
+        if (!isNaN(txDate.getTime())) {
+          const day = txDate.getDay();
+          // Map getDay() 0=Sun, 1=Mon... 6=Sat to our weekDays order (Monday index 0, Sunday index 6)
+          const index = day === 0 ? 6 : day - 1;
+          if (index >= 0 && index < 7) {
+            weekdayAmounts[index] += tx.amount;
+          }
+        }
+      });
+      trendData = weekdayAmounts.map((amt, idx) => ({
+        label: t.weekDays[idx] || '',
+        amount: amt,
+        color: amt > 0 ? colors.primary : 'rgba(150,150,150,0.12)',
+      }));
+    } else if (selectedPeriod === 'monthly') {
+      // Monthly: Show 12 months (Jan to Dec) of the current year
+      const monthLabelsBn = ['জানু', 'ফেব', 'মার্চ', 'এপ্রি', 'মে', 'জুন', 'জুল', 'আগ', 'সেপ', 'অক্টো', 'নভে', 'ডিসে'];
+      const monthLabelsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthLabels = language === 'bn' ? monthLabelsBn : monthLabelsEn;
+
+      const monthlyAmounts = Array(12).fill(0);
+      const currentYear = now.getFullYear();
+      const yearExpenses = transactions.filter((tx) => tx.type === 'expense' && new Date(tx.date).getFullYear() === currentYear);
+
+      yearExpenses.forEach((tx) => {
+        const txDate = new Date(tx.date);
+        if (!isNaN(txDate.getTime())) {
+          const month = txDate.getMonth();
+          if (month >= 0 && month < 12) {
+            monthlyAmounts[month] += tx.amount;
+          }
+        }
+      });
+
+      trendData = monthlyAmounts.map((amt, idx) => ({
+        label: monthLabels[idx],
+        amount: amt,
+        color: amt > 0 ? colors.primary : 'rgba(150,150,150,0.12)',
+      }));
+    } else {
+      // Yearly: Show last 5 years (e.g. 2022, 2023, 2024, 2025, 2026)
+      const currentYear = now.getFullYear();
+      const years = Array.from({ length: 5 }, (_, i) => currentYear - 4 + i);
+      const yearlyAmounts = Array(5).fill(0);
+
+      const allExpenses = transactions.filter((tx) => tx.type === 'expense');
+      allExpenses.forEach((tx) => {
+        const txDate = new Date(tx.date);
+        if (!isNaN(txDate.getTime())) {
+          const year = txDate.getFullYear();
+          const yearIdx = years.indexOf(year);
+          if (yearIdx >= 0 && yearIdx < 5) {
+            yearlyAmounts[yearIdx] += tx.amount;
+          }
+        }
+      });
+
+      trendData = yearlyAmounts.map((amt, idx) => ({
+        label: years[idx].toString(),
+        amount: amt,
+        color: amt > 0 ? colors.primary : 'rgba(150,150,150,0.12)',
+      }));
+    }
+
+    const maxWeekly = Math.max(...trendData.map((d) => d.amount), 1);
 
     // Summary stats row
-    const incomes = transactions.filter((tx) => tx.type === 'income');
+    const incomes = filteredTransactions.filter((tx) => tx.type === 'income');
     const totalIncome = incomes.reduce((acc, tx) => acc + tx.amount, 0);
     const netBalance = totalIncome - totalExp;
 
@@ -330,10 +418,10 @@ export default function StatsScreen() {
       maxAmount,
       highestExpense,
       avgExpense,
-      weeklyTrend,
+      weeklyTrend: trendData,
       maxWeekly,
     };
-  }, [transactions]);
+  }, [transactions, selectedPeriod, language]);
 
   const contentPlatformStyle = Platform.select({
     android: {
@@ -544,11 +632,21 @@ export default function StatsScreen() {
             {/* ── Bar Chart Card ── */}
             <ThemedView type="backgroundElement" style={styles.sectionCard}>
               <View style={styles.cardHeader}>
-                <View>
+                <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={[styles.cardEyebrow, { color: theme.textSecondary }]}>
-                    {t.weeklyTrendEyebrow}
+                    {selectedPeriod === 'weekly' 
+                      ? t.weeklyTrendEyebrow 
+                      : selectedPeriod === 'monthly'
+                        ? (language === 'bn' ? 'মাসিক ট্রেন্ড' : 'MONTHLY TREND')
+                        : (language === 'bn' ? 'বার্ষিক ট্রেন্ড' : 'YEARLY TREND')}
                   </Text>
-                  <ThemedText style={styles.cardTitle}>{t.weeklyExpenseTitle}</ThemedText>
+                  <ThemedText style={styles.cardTitle}>
+                    {selectedPeriod === 'weekly'
+                      ? t.weeklyExpenseTitle
+                      : selectedPeriod === 'monthly'
+                        ? (language === 'bn' ? 'মাসিক খরচ' : 'Monthly Expense')
+                        : (language === 'bn' ? 'বার্ষিক খরচ' : 'Yearly Expense')}
+                  </ThemedText>
                 </View>
                 <Text style={styles.cardTitleEmoji}>📊</Text>
               </View>
