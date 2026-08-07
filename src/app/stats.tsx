@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   Platform,
   TouchableOpacity,
   Text,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -216,6 +217,25 @@ export default function StatsScreen() {
   const t = translations[language];
   const [selectedPeriod, setSelectedPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
 
+  // Pulsing animation for the green LIVE dot
+  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.4,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+
   const colors = {
     primary: '#3B82F6',
     success: '#10B981',
@@ -352,7 +372,7 @@ export default function StatsScreen() {
             <ThemedText style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>{t.expenseAnalyticsTitle}</ThemedText>
           </View>
           <View style={[styles.liveDotBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-            <View style={styles.liveDot} />
+            <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
             <Text style={styles.liveLabel}>{t.live}</Text>
           </View>
         </View>
