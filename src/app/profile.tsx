@@ -1186,30 +1186,24 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </TouchableOpacity>
 
-            <ThemedText type="subtitle" style={styles.userName}>
-              {user.name}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.userEmail}>
-              {user.email}
-            </ThemedText>
-
-            {/* Edit Profile Button */}
             <TouchableOpacity
-              style={[
-                styles.editProfileBtnRow,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }
-              ]}
               onPress={() => {
                 setEditName(user.name);
                 setEditAvatar(user.avatar || user.photo || '');
                 setEditError('');
                 setShowEditModal(true);
               }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, marginBottom: 2 }}
+              activeOpacity={0.7}
             >
-              <ThemedText type="smallBold" style={{ color: theme.text }}>
-                {t.editProfileBtn}
+              <ThemedText type="subtitle" style={[styles.userName, { marginTop: 0 }]}>
+                {user.name} 📝
               </ThemedText>
             </TouchableOpacity>
+
+            <ThemedText type="small" themeColor="textSecondary" style={styles.userEmail}>
+              {user.email}
+            </ThemedText>
 
             {/* 🏆 Reward Points & Leaderboard Hero Banner */}
             <TouchableOpacity
@@ -1696,118 +1690,14 @@ export default function ProfileScreen() {
                 </View>
               ) : null}
 
-              {/* Avatar Preview & Selection */}
-              <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 12, marginBottom: 8 }}>
-                {t.changeAvatarLabel}
-              </ThemedText>
-
-              {/* Clickable Interactive Avatar Picker Circle */}
-              <TouchableOpacity
-                onPress={handlePickImage}
-                disabled={isUploadingCloudinary}
-                style={{ alignSelf: 'center', marginBottom: 12, position: 'relative' }}
-              >
-                <Image
-                  source={{ uri: editAvatar || user.avatar || user.photo || PRESET_AVATARS[0] }}
-                  style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 3.5, borderColor: '#3B82F6' }}
-                />
-                {isUploadingCloudinary ? (
-                  <View style={{
-                    position: 'absolute',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.4)',
-                    borderRadius: 42,
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                  }}>
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  </View>
-                ) : (
-                  <View style={{
-                    position: 'absolute',
-                    bottom: 0, right: -2,
-                    backgroundColor: '#3B82F6',
-                    width: 28, height: 28, borderRadius: 14,
-                    justifyContent: 'center', alignItems: 'center',
-                    borderWidth: 2, borderColor: '#ffffff',
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3
-                  }}>
-                    <ThemedText style={{ fontSize: 13, color: '#ffffff' }}>📷</ThemedText>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* Choose from Device Gallery Button */}
-              <TouchableOpacity
-                onPress={handlePickImage}
-                disabled={isUploadingCloudinary}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  alignSelf: 'center'
-                }}
-              >
-                {isUploadingCloudinary ? (
-                  <ActivityIndicator size="small" color="#3B82F6" />
-                ) : (
-                  <ThemedText style={{ fontSize: 14 }}>📷</ThemedText>
-                )}
-                <ThemedText type="smallBold" style={{ color: theme.text }}>
-                  {isUploadingCloudinary ? t.uploadingImage : t.selectImageBtn}
-                </ThemedText>
-              </TouchableOpacity>
-
-              {/* Preset Avatars Grid */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
-                {PRESET_AVATARS.map((url, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => setEditAvatar(url)}
-                    style={{
-                      borderWidth: editAvatar === url ? 3 : 1,
-                      borderColor: editAvatar === url ? '#3B82F6' : theme.backgroundSelected,
-                      borderRadius: 24,
-                      padding: 2,
-                    }}
-                  >
-                    <Image source={{ uri: url }} style={{ width: 38, height: 38, borderRadius: 19 }} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Custom Image URL */}
-              <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: 4 }}>
-                ইমেজ ইউআরএল (Image URL):
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.inputField,
-                  { backgroundColor: theme.backgroundElement, color: theme.text, borderColor: theme.backgroundSelected },
-                ]}
-                placeholder="https://example.com/avatar.jpg"
-                placeholderTextColor={theme.textSecondary}
-                value={editAvatar}
-                onChangeText={setEditAvatar}
-                autoCapitalize="none"
-              />
-
               {/* Name Input */}
-              <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 10, marginBottom: 4 }}>
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 12, marginBottom: 6 }}>
                 {t.nameLabel}
               </ThemedText>
               <TextInput
                 style={[
                   styles.inputField,
-                  { backgroundColor: theme.backgroundElement, color: theme.text, borderColor: theme.backgroundSelected },
+                  { backgroundColor: theme.backgroundElement, color: theme.text, borderColor: theme.backgroundSelected, marginBottom: 20 },
                 ]}
                 placeholder={t.nameLabel}
                 placeholderTextColor={theme.textSecondary}

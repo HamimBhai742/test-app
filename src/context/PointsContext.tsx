@@ -142,7 +142,7 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     };
 
     autoClaimLoginReward();
-  }, [user, token]);
+  }, [user, token, dailyLoginEarnedToday]);
 
   // Fetch dynamic leaderboard from server
   const fetchLeaderboard = async () => {
