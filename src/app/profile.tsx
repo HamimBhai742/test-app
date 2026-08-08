@@ -71,7 +71,7 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const { showNotification } = useNotificationBanner();
   const { themeMode, setThemeMode } = useThemeMode();
-  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout, forgotPassword, verifyResetOtp, resetPassword } = useAuth();
+  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout, forgotPassword, verifyResetOtp, resetPassword, requestFinancialReport } = useAuth();
   
   // Custom Auth State to support login/signup & OTP
   const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction, deleteAllTransactions } = useTransactions();
@@ -246,6 +246,7 @@ export default function ProfileScreen() {
   const [authLoading, setAuthLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   // Edit Profile States
   const [showEditModal, setShowEditModal] = useState(false);
@@ -650,6 +651,26 @@ export default function ProfileScreen() {
       } finally {
         setForgotLoading(false);
       }
+    }
+  };
+
+  const handleSendFinancialReport = async () => {
+    setReportLoading(true);
+    try {
+      const res = await requestFinancialReport();
+      if (res.success) {
+        showToast(t.reportSendSuccess, 'success');
+      } else {
+        if (res.message === 'NETWORK_ERROR') {
+          showToast(t.errNetworkFail, 'error');
+        } else {
+          showToast(res.message || t.reportSendError, 'error');
+        }
+      }
+    } catch (err) {
+      showToast(t.errNetworkFail, 'error');
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -1882,6 +1903,26 @@ export default function ProfileScreen() {
               <View style={styles.actionTextContainer}>
                 <ThemedText type="small">{t.exportData}</ThemedText>
               </View>
+            </TouchableOpacity>
+
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+
+            {/* Email Weekly Financial Report */}
+            <TouchableOpacity 
+              style={styles.actionRow} 
+              onPress={handleSendFinancialReport}
+              disabled={reportLoading}
+            >
+              <ThemedText style={styles.actionIcon}>📊</ThemedText>
+              <View style={styles.actionTextContainer}>
+                <ThemedText type="small">{t.sendWeeklyReportBtn}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={{ fontSize: 11, marginTop: 2 }}>
+                  {reportLoading ? t.reportSending : (language === 'bn' ? 'গত ৭ দিনের খরচের চার্ট ও ক্যাটাগরি রিপোর্ট মেইলে পান' : 'Get last 7 days report with category chart')}
+                </ThemedText>
+              </View>
+              {reportLoading ? (
+                <ActivityIndicator size="small" color="#3b82f6" style={{ marginRight: Spacing.two }} />
+              ) : null}
             </TouchableOpacity>
           </View>
 

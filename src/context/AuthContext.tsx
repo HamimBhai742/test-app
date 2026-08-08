@@ -46,6 +46,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
   verifyResetOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
+  requestFinancialReport: () => Promise<{ success: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -555,6 +556,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Request Financial Report Handler
+  const requestFinancialReport = async (): Promise<{ success: boolean; message?: string }> => {
+    try {
+      if (!token) return { success: false, message: 'UNAUTHORIZED' };
+
+      const response = await fetch(`${getApiBaseUrl()}/user/me/financial-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'Failed to send report' };
+      }
+    } catch (error: any) {
+      console.error('Request Financial Report Error:', error);
+      return { success: false, message: 'NETWORK_ERROR' };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -573,6 +599,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         forgotPassword,
         verifyResetOtp,
         resetPassword,
+        requestFinancialReport,
       }}
     >
       {children}
