@@ -43,6 +43,9 @@ interface AuthContextType {
   uploadAvatarImage: (base64Image: string) => Promise<{ success: boolean; url?: string; message?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
+  verifyResetOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
+  resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -489,6 +492,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Forgot Password Handler
+  const forgotPassword = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'Failed to send reset code' };
+      }
+    } catch (error: any) {
+      console.error('Forgot Password Network Error:', error);
+      return { success: false, message: 'NETWORK_ERROR' };
+    }
+  };
+
+  // Reset Password Handler
+  const resetPassword = async (email: string, otp: string, newPassword: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp, newPassword }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'Reset password failed' };
+      }
+    } catch (error: any) {
+      console.error('Reset Password Network Error:', error);
+      return { success: false, message: 'NETWORK_ERROR' };
+    }
+  };
+
+  // Verify Reset OTP Handler
+  const verifyResetOtp = async (email: string, otp: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/verify-reset-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'OTP verification failed' };
+      }
+    } catch (error: any) {
+      console.error('Verify Reset OTP Network Error:', error);
+      return { success: false, message: 'NETWORK_ERROR' };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -504,6 +570,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         uploadAvatarImage,
         logout,
         refreshUser,
+        forgotPassword,
+        verifyResetOtp,
+        resetPassword,
       }}
     >
       {children}

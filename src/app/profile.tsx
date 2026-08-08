@@ -16,7 +16,13 @@ import {
   Text,
   Animated,
   Vibration,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -65,7 +71,7 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const { showNotification } = useNotificationBanner();
   const { themeMode, setThemeMode } = useThemeMode();
-  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout } = useAuth();
+  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout, forgotPassword, verifyResetOtp, resetPassword } = useAuth();
   
   // Custom Auth State to support login/signup & OTP
   const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction, deleteAllTransactions } = useTransactions();
@@ -92,6 +98,7 @@ export default function ProfileScreen() {
     new Animated.Value(1),
   ]).current;
   const pinTextInputRef = React.useRef<any>(null);
+  const otpInputRef = React.useRef<any>(null);
 
   const triggerModalShake = () => {
     Animated.sequence([
@@ -169,9 +176,76 @@ export default function ProfileScreen() {
 
   // Forgot Password Modal State
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState<'email' | 'otp' | 'reset'>('email');
   const [forgotEmail, setForgotEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotError, setForgotError] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Forgot Password Premium Animations
+  const forgotFadeAnim = React.useRef(new Animated.Value(1)).current;
+  const forgotSlideAnim = React.useRef(new Animated.Value(0)).current;
+  const stepIndicatorScales = {
+    email: React.useRef(new Animated.Value(1.25)).current,
+    otp: React.useRef(new Animated.Value(1.0)).current,
+    reset: React.useRef(new Animated.Value(1.0)).current,
+  };
+
+  const transitionForgotStep = (nextStep: 'email' | 'otp' | 'reset') => {
+    const steps = ['email', 'otp', 'reset'] as const;
+    const currentIndex = steps.indexOf(forgotStep);
+    const nextIndex = steps.indexOf(nextStep);
+    const isForward = nextIndex > currentIndex;
+
+    const slideOutValue = isForward ? -30 : 30;
+    const slideInStartValue = isForward ? 30 : -30;
+
+    Animated.parallel([
+      Animated.timing(forgotFadeAnim, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(forgotSlideAnim, {
+        toValue: slideOutValue,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setForgotStep(nextStep);
+      forgotSlideAnim.setValue(slideInStartValue);
+
+      const indicatorAnimations = steps.map((s) => {
+        return Animated.spring(stepIndicatorScales[s], {
+          toValue: s === nextStep ? 1.25 : 1.0,
+          useNativeDriver: true,
+          tension: 60,
+          friction: 7,
+        });
+      });
+
+      Animated.parallel([
+        ...indicatorAnimations,
+        Animated.timing(forgotFadeAnim, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(forgotSlideAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
+  // Local Loading States for Main Auth
+  const [authLoading, setAuthLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Edit Profile States
   const [showEditModal, setShowEditModal] = useState(false);
@@ -332,43 +406,48 @@ export default function ProfileScreen() {
     }
     setErrors({});
 
-    if (authMode === 'login') {
-      const res = await login(email.trim(), password);
-      if (!res.success) {
-        if (res.message === 'NETWORK_ERROR') {
-          setAuthError(t.errNetworkFail);
-        } else if (res.message?.includes('already exists')) {
-          setAuthError(t.errUserExists);
-        } else if (res.message?.includes('does not exist')) {
-          setAuthError(t.errUserNotFound);
-        } else if (res.message?.includes('Invalid credentials')) {
-          setAuthError(t.errInvalidCreds);
-        } else if (res.message?.includes('blocked') || res.message?.includes('inactive')) {
-          setAuthError(t.errAccountBlocked);
-        } else if (res.message?.includes('Password is not set')) {
-          setAuthError(t.errGooglePassNotSet);
-        } else {
-          setAuthError(res.message || (language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed'));
+    setAuthLoading(true);
+    try {
+      if (authMode === 'login') {
+        const res = await login(email.trim(), password);
+        if (!res.success) {
+          if (res.message === 'NETWORK_ERROR') {
+            setAuthError(t.errNetworkFail);
+          } else if (res.message?.includes('already exists')) {
+            setAuthError(t.errUserExists);
+          } else if (res.message?.includes('does not exist')) {
+            setAuthError(t.errUserNotFound);
+          } else if (res.message?.includes('Invalid credentials')) {
+            setAuthError(t.errInvalidCreds);
+          } else if (res.message?.includes('blocked') || res.message?.includes('inactive')) {
+            setAuthError(t.errAccountBlocked);
+          } else if (res.message?.includes('Password is not set')) {
+            setAuthError(t.errGooglePassNotSet);
+          } else {
+            setAuthError(res.message || (language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed'));
+          }
         }
-      }
-    } else {
-      const res = await register(fullName.trim(), email.trim(), password);
-      if (res.success && res.requireOtp) {
-        setPendingEmail(res.email || email.trim());
-        setAuthStep('otp');
-        setResendTimer(30);
-        setOtpInput('');
-        setAuthError('');
-        setAuthSuccessMsg('');
       } else {
-        if (res.message === 'NETWORK_ERROR') {
-          setAuthError(t.errNetworkFail);
-        } else if (res.message?.includes('already exists')) {
-          setAuthError(t.errUserExists);
+        const res = await register(fullName.trim(), email.trim(), password);
+        if (res.success && res.requireOtp) {
+          setPendingEmail(res.email || email.trim());
+          setAuthStep('otp');
+          setResendTimer(30);
+          setOtpInput('');
+          setAuthError('');
+          setAuthSuccessMsg('');
         } else {
-          setAuthError(res.message || (language === 'bn' ? 'সাইন আপ ব্যর্থ হয়েছে' : 'Registration failed'));
+          if (res.message === 'NETWORK_ERROR') {
+            setAuthError(t.errNetworkFail);
+          } else if (res.message?.includes('already exists')) {
+            setAuthError(t.errUserExists);
+          } else {
+            setAuthError(res.message || (language === 'bn' ? 'সাইন আপ ব্যর্থ হয়েছে' : 'Registration failed'));
+          }
         }
       }
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -380,15 +459,20 @@ export default function ProfileScreen() {
     }
     setAuthError('');
     setAuthSuccessMsg('');
-    const res = await verifyOtp(pendingEmail, otpInput.trim());
-    if (!res.success) {
-      if (res.message === 'NETWORK_ERROR') {
-        setAuthError(t.errNetworkFail);
-      } else if (res.message?.includes('Invalid OTP') || res.message?.includes('expired')) {
-        setAuthError(t.otpInvalid);
-      } else {
-        setAuthError(res.message || t.otpInvalid);
+    setOtpLoading(true);
+    try {
+      const res = await verifyOtp(pendingEmail, otpInput.trim());
+      if (!res.success) {
+        if (res.message === 'NETWORK_ERROR') {
+          setAuthError(t.errNetworkFail);
+        } else if (res.message?.includes('Invalid OTP') || res.message?.includes('expired')) {
+          setAuthError(t.otpInvalid);
+        } else {
+          setAuthError(res.message || t.otpInvalid);
+        }
       }
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -427,16 +511,21 @@ export default function ProfileScreen() {
         const idToken = userInfo.data?.idToken || userInfo.idToken;
 
         if (userEmail) {
-          const res = await loginWithGoogle({
-            idToken: idToken || undefined,
-            email: userEmail,
-            name: userName || 'Google User',
-            avatar: userAvatar || undefined,
-          });
-          if (res.success) {
-            showToast(language === 'bn' ? 'গুগল অ্যাকাউন্ট দিয়ে সফলভাবে প্রবেশ করেছেন! ✨' : 'Successfully logged in with Google account! ✨', 'success');
-          } else {
-            setAuthError(res.message || t.errGoogleFailed);
+          setGoogleLoading(true);
+          try {
+            const res = await loginWithGoogle({
+              idToken: idToken || undefined,
+              email: userEmail,
+              name: userName || 'Google User',
+              avatar: userAvatar || undefined,
+            });
+            if (res.success) {
+              showToast(language === 'bn' ? 'গুগল অ্যাকাউন্ট দিয়ে সফলভাবে প্রবেশ করেছেন! ✨' : 'Successfully logged in with Google account! ✨', 'success');
+            } else {
+              setAuthError(res.message || t.errGoogleFailed);
+            }
+          } finally {
+            setGoogleLoading(false);
           }
           return;
         }
@@ -459,29 +548,109 @@ export default function ProfileScreen() {
     }
     setAuthError('');
     setShowGoogleModal(false);
-    const res = await loginWithGoogle({
-      email: googleEmailInput.trim(),
-      name: googleNameInput.trim() || 'Google User',
-    });
-    if (res.success) {
-      showToast(language === 'bn' ? 'গুগল সাইন-ইন সফল হয়েছে! ✨' : 'Google sign-in successful! ✨', 'success');
-    } else {
-      setAuthError(res.message || t.errGoogleFailed);
+    setGoogleLoading(true);
+    try {
+      const res = await loginWithGoogle({
+        email: googleEmailInput.trim(),
+        name: googleNameInput.trim() || 'Google User',
+      });
+      if (res.success) {
+        showToast(language === 'bn' ? 'গুগল সাইন-ইন সফল হয়েছে! ✨' : 'Google sign-in successful! ✨', 'success');
+      } else {
+        setAuthError(res.message || t.errGoogleFailed);
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
-  // Reset password simulation
+  // Reset password logic calling backend
   const handleSendReset = async () => {
-    if (!forgotEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
-      setForgotMsg(t.valEmailInvalid);
-      return;
+    if (forgotStep === 'email') {
+      if (!forgotEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+        setForgotError(t.valEmailInvalid);
+        setForgotMsg('');
+        return;
+      }
+      setForgotLoading(true);
+      setForgotError('');
+      setForgotMsg('');
+      try {
+        const res = await forgotPassword(forgotEmail.trim());
+        if (res.success) {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setForgotMsg(t.resetLinkSent);
+          transitionForgotStep('otp');
+        } else {
+          if (res.message === 'NETWORK_ERROR') {
+            setForgotError(t.errNetworkFail);
+          } else if (res.message?.includes('not found')) {
+            setForgotError(t.errUserNotFound);
+          } else {
+            setForgotError(res.message || 'Failed to send OTP');
+          }
+        }
+      } catch (err) {
+        setForgotError(t.errNetworkFail);
+      } finally {
+        setForgotLoading(false);
+      }
+    } else if (forgotStep === 'otp') {
+      if (!resetOtp.trim() || resetOtp.trim().length !== 6) {
+        setForgotError(language === 'bn' ? '৬ ডিজিটের ওটিপি দিন' : 'Enter 6-digit OTP');
+        return;
+      }
+      setForgotLoading(true);
+      setForgotError('');
+      setForgotMsg('');
+      try {
+        const res = await verifyResetOtp(forgotEmail.trim(), resetOtp.trim());
+        if (res.success) {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setForgotMsg(language === 'bn' ? 'ওটিপি সফলভাবে ভেরিফাই হয়েছে!' : 'OTP verified successfully!');
+          transitionForgotStep('reset');
+        } else {
+          if (res.message === 'NETWORK_ERROR') {
+            setForgotError(t.errNetworkFail);
+          } else if (res.message?.includes('Invalid OTP') || res.message?.includes('expired')) {
+            setForgotError(t.otpInvalid);
+          } else {
+            setForgotError(res.message || 'OTP verification failed');
+          }
+        }
+      } catch (err) {
+        setForgotError(t.errNetworkFail);
+      } finally {
+        setForgotLoading(false);
+      }
+    } else {
+      if (!resetNewPassword || resetNewPassword.length < 6) {
+        setForgotError(t.valPasswordMin);
+        return;
+      }
+      setForgotLoading(true);
+      setForgotError('');
+      setForgotMsg('');
+      try {
+        const res = await resetPassword(forgotEmail.trim(), resetOtp.trim(), resetNewPassword);
+        if (res.success) {
+          setForgotMsg(t.resetPassSuccess);
+          setTimeout(() => {
+            setShowForgotModal(false);
+          }, 2000);
+        } else {
+          if (res.message === 'NETWORK_ERROR') {
+            setForgotError(t.errNetworkFail);
+          } else {
+            setForgotError(res.message || 'Reset password failed');
+          }
+        }
+      } catch (err) {
+        setForgotError(t.errNetworkFail);
+      } finally {
+        setForgotLoading(false);
+      }
     }
-    setForgotLoading(true);
-    setForgotMsg('');
-    setTimeout(() => {
-      setForgotLoading(false);
-      setForgotMsg(t.resetLinkSent);
-    }, 1000);
   };
 
   const handleExportData = () => {
@@ -656,10 +825,10 @@ export default function ProfileScreen() {
                       <TouchableOpacity
                         style={[styles.primaryButton, { backgroundColor: '#3b82f6' }]}
                         onPress={handleVerifyOtp}
-                        disabled={isLoading}
+                        disabled={otpLoading}
                         activeOpacity={0.9}
                       >
-                        {isLoading ? (
+                        {otpLoading ? (
                           <ActivityIndicator size="small" color="#ffffff" />
                         ) : (
                           <ThemedText type="smallBold" style={styles.primaryButtonText}>
@@ -798,7 +967,21 @@ export default function ProfileScreen() {
                             {t.passwordLabel}
                           </ThemedText>
                           {authMode === 'login' && (
-                            <TouchableOpacity onPress={() => { setForgotEmail(email); setForgotMsg(''); setShowForgotModal(true); }}>
+                            <TouchableOpacity onPress={() => {
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                              setForgotEmail(email);
+                              forgotFadeAnim.setValue(1);
+                              forgotSlideAnim.setValue(0);
+                              stepIndicatorScales.email.setValue(1.25);
+                              stepIndicatorScales.otp.setValue(1.0);
+                              stepIndicatorScales.reset.setValue(1.0);
+                              setForgotStep('email');
+                              setResetOtp('');
+                              setResetNewPassword('');
+                              setForgotMsg('');
+                              setForgotError('');
+                              setShowForgotModal(true);
+                            }}>
                               <ThemedText type="code" style={styles.forgotText}>
                                 {t.forgotPassword}
                               </ThemedText>
@@ -898,10 +1081,10 @@ export default function ProfileScreen() {
                     <TouchableOpacity
                       style={[styles.primaryButton, { backgroundColor: '#3b82f6' }]}
                       onPress={handleEmailAuth}
-                      disabled={isLoading}
+                      disabled={authLoading}
                       activeOpacity={0.9}
                     >
-                      {isLoading ? (
+                      {authLoading ? (
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
                         <ThemedText type="smallBold" style={styles.primaryButtonText}>
@@ -929,10 +1112,10 @@ export default function ProfileScreen() {
                       },
                     ]}
                     onPress={handleGoogleAuth}
-                    disabled={isLoading}
+                    disabled={googleLoading}
                     activeOpacity={0.8}
                   >
-                    {isLoading ? (
+                    {googleLoading ? (
                       <ActivityIndicator size="small" color="#4285F4" />
                     ) : (
                       <>
@@ -1071,52 +1254,259 @@ export default function ProfileScreen() {
           onRequestClose={() => setShowForgotModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContainer, { backgroundColor: theme.backgroundElement }]}>
+            <View style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderRadius: 20, padding: Spacing.four }]}>
+              {/* Header */}
               <View style={styles.modalHeader}>
-                <ThemedText type="subtitle">{t.resetPassTitle}</ThemedText>
-                <TouchableOpacity onPress={() => setShowForgotModal(false)}>
-                  <ThemedText style={{ fontSize: 18, color: theme.textSecondary }}>✕</ThemedText>
+                <ThemedText type="subtitle" style={{ fontWeight: 'bold' }}>{t.resetPassTitle}</ThemedText>
+                <TouchableOpacity onPress={() => setShowForgotModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={{ fontSize: 16, color: theme.textSecondary, fontWeight: 'bold' }}>✕</ThemedText>
                 </TouchableOpacity>
               </View>
 
-              <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: Spacing.three, marginTop: Spacing.one }}>
-                {t.resetPassInstruction}
-              </ThemedText>
+              {/* Step Progress Indicator */}
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.four, marginTop: Spacing.two, width: '100%', paddingHorizontal: Spacing.two }}>
+                {/* Step 1 */}
+                <Animated.View style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: forgotStep === 'email' ? '#3b82f6' : '#10b981',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  shadowColor: '#3b82f6',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: forgotStep === 'email' ? 0.3 : 0,
+                  shadowRadius: 4,
+                  elevation: 3,
+                  transform: [{ scale: stepIndicatorScales.email }]
+                }}>
+                  <ThemedText style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>{forgotStep === 'email' ? '1' : '✓'}</ThemedText>
+                </Animated.View>
+                <View style={{ flex: 1, height: 2.5, backgroundColor: forgotStep !== 'email' ? '#10b981' : 'rgba(0,0,0,0.06)', marginHorizontal: Spacing.one }} />
+                
+                {/* Step 2 */}
+                <Animated.View style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: forgotStep === 'otp' ? '#3b82f6' : (forgotStep === 'reset' ? '#10b981' : 'rgba(0,0,0,0.06)'),
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  shadowColor: '#3b82f6',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: forgotStep === 'otp' ? 0.3 : 0,
+                  shadowRadius: 4,
+                  elevation: forgotStep === 'otp' ? 3 : 0,
+                  transform: [{ scale: stepIndicatorScales.otp }]
+                }}>
+                  <ThemedText style={{ color: forgotStep === 'email' ? 'rgba(0,0,0,0.3)' : '#ffffff', fontSize: 12, fontWeight: 'bold' }}>{forgotStep === 'reset' ? '✓' : '2'}</ThemedText>
+                </Animated.View>
+                <View style={{ flex: 1, height: 2.5, backgroundColor: forgotStep === 'reset' ? '#10b981' : 'rgba(0,0,0,0.06)', marginHorizontal: Spacing.one }} />
+                
+                {/* Step 3 */}
+                <Animated.View style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: forgotStep === 'reset' ? '#3b82f6' : 'rgba(0,0,0,0.06)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  shadowColor: '#3b82f6',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: forgotStep === 'reset' ? 0.3 : 0,
+                  shadowRadius: 4,
+                  elevation: forgotStep === 'reset' ? 3 : 0,
+                  transform: [{ scale: stepIndicatorScales.reset }]
+                }}>
+                  <ThemedText style={{ color: forgotStep !== 'reset' ? 'rgba(0,0,0,0.3)' : '#ffffff', fontSize: 12, fontWeight: 'bold' }}>3</ThemedText>
+                </Animated.View>
+              </View>
 
-              {forgotMsg ? (
-                <View style={[styles.successContainer, { marginBottom: Spacing.three }]}>
-                  <ThemedText type="smallBold" style={styles.successText}>{forgotMsg}</ThemedText>
-                </View>
-              ) : null}
+              {/* Animated Content Wrapper */}
+              <Animated.View style={{
+                width: '100%',
+                opacity: forgotFadeAnim,
+                transform: [
+                  { translateX: forgotSlideAnim }
+                ]
+              }}>
+                {/* Back Button for Steps */}
+                {forgotStep !== 'email' ? (
+                  <TouchableOpacity
+                    style={{ alignSelf: 'flex-start', marginBottom: Spacing.three }}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      if (forgotStep === 'otp') transitionForgotStep('email');
+                      if (forgotStep === 'reset') transitionForgotStep('otp');
+                      setForgotError('');
+                      setForgotMsg('');
+                    }}
+                  >
+                    <ThemedText style={{ color: '#3b82f6', fontSize: 13, fontWeight: '700' }}>
+                      ← {language === 'bn' ? 'পেছনে যান' : 'Go Back'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ) : null}
 
-              <TextInput
-                style={[
-                  styles.inputField,
-                  {
-                    color: theme.text,
-                    backgroundColor: theme.background,
-                    borderColor: 'rgba(0,0,0,0.1)',
-                    marginBottom: Spacing.three,
-                  },
-                ]}
-                placeholder="example@mail.com"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={forgotEmail}
-                onChangeText={setForgotEmail}
-              />
+                {/* Instructions */}
+                <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: Spacing.three, lineHeight: 18 }}>
+                  {forgotStep === 'email'
+                    ? t.resetPassInstruction
+                    : forgotStep === 'otp'
+                    ? (language === 'bn' ? 'ওটিপি কোডটি লিখুন যা আপনার ইমেইলে পাঠানো হয়েছে।' : 'Enter the OTP code sent to your email.')
+                    : t.resetPassInstructionOtp}
+                </ThemedText>
 
+                {/* Status & Error Banners */}
+                {forgotMsg ? (
+                  <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10, marginBottom: Spacing.three, width: '100%', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                    <ThemedText type="smallBold" style={{ color: '#10b981', textAlign: 'center' }}>✨ {forgotMsg}</ThemedText>
+                  </View>
+                ) : null}
+
+                {/* Forgot Error */}
+                {forgotError ? (
+                  <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10, marginBottom: Spacing.three, width: '100%', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                    <ThemedText type="smallBold" style={{ color: '#EF4444', textAlign: 'center' }}>⚠️ {forgotError}</ThemedText>
+                  </View>
+                ) : null}
+
+                {/* Steps Layout */}
+                {forgotStep === 'email' ? (
+                  <View style={{ width: '100%' }}>
+                    <ThemedText type="smallBold" style={{ marginBottom: Spacing.one, color: theme.text }}>
+                      {language === 'bn' ? 'আপনার ইমেইল এড্রেস' : 'Your Email Address'}
+                    </ThemedText>
+                    <TextInput
+                      style={[
+                        styles.inputField,
+                        {
+                          color: theme.text,
+                          backgroundColor: theme.background,
+                          borderColor: forgotError ? '#EF4444' : 'rgba(0,0,0,0.08)',
+                          borderRadius: 12,
+                          paddingHorizontal: Spacing.three,
+                          width: '100%',
+                        },
+                      ]}
+                      placeholder="example@mail.com"
+                      placeholderTextColor={theme.textSecondary}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={forgotEmail}
+                      onChangeText={(text) => {
+                        setForgotEmail(text);
+                        if (forgotError) setForgotError('');
+                      }}
+                      editable={!forgotLoading}
+                    />
+                  </View>
+                ) : forgotStep === 'otp' ? (
+                  <View style={{ width: '100%', alignItems: 'center' }}>
+                    {/* Email Pill Badge */}
+                    <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, borderRadius: 20, marginBottom: Spacing.two, borderWidth: 1, borderColor: 'rgba(59, 130, 246, 0.15)' }}>
+                      <ThemedText type="small" style={{ color: '#3b82f6' }}>
+                        ✉️ {forgotEmail}
+                      </ThemedText>
+                    </View>
+
+                    <ThemedText type="smallBold" style={{ alignSelf: 'flex-start', marginBottom: Spacing.one, color: theme.text }}>
+                      {t.resetPassOtpLabel}
+                    </ThemedText>
+
+                    {/* High Fidelity Segmented OTP Input */}
+                    <TouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => otpInputRef.current?.focus()}
+                      style={styles.otpBoxesContainer}
+                    >
+                      {[0, 1, 2, 3, 4, 5].map((index) => {
+                        const digit = resetOtp[index] || '';
+                        const isFocused = resetOtp.length === index;
+                        return (
+                          <View
+                            key={index}
+                            style={[
+                              styles.otpBox,
+                              {
+                                borderColor: isFocused ? '#3b82f6' : (forgotError ? '#EF4444' : 'rgba(0,0,0,0.08)'),
+                                backgroundColor: theme.background,
+                              },
+                            ]}
+                          >
+                            <ThemedText style={[styles.otpBoxText, { color: theme.text }]}>{digit}</ThemedText>
+                          </View>
+                        );
+                      })}
+                    </TouchableOpacity>
+
+                    {/* Hidden Text Input */}
+                    <TextInput
+                      ref={otpInputRef}
+                      style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      value={resetOtp}
+                      onChangeText={(text) => {
+                        setResetOtp(text);
+                        if (forgotError) setForgotError('');
+                      }}
+                      editable={!forgotLoading}
+                    />
+                  </View>
+                ) : (
+                  <View style={{ width: '100%' }}>
+                    {/* Email Pill Badge */}
+                    <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, borderRadius: 20, marginBottom: Spacing.two, alignSelf: 'center', borderWidth: 1, borderColor: 'rgba(59, 130, 246, 0.15)' }}>
+                      <ThemedText type="small" style={{ color: '#3b82f6' }}>
+                        ✉️ {forgotEmail}
+                      </ThemedText>
+                    </View>
+
+                    <ThemedText type="smallBold" style={{ marginBottom: Spacing.one, color: theme.text }}>
+                      {t.resetPassNewLabel}
+                    </ThemedText>
+                    <TextInput
+                      style={[
+                        styles.inputField,
+                        {
+                          color: theme.text,
+                          backgroundColor: theme.background,
+                          borderColor: forgotError ? '#EF4444' : 'rgba(0,0,0,0.08)',
+                          borderRadius: 12,
+                          paddingHorizontal: Spacing.three,
+                        },
+                      ]}
+                      placeholder="••••••••"
+                      placeholderTextColor={theme.textSecondary}
+                      secureTextEntry={true}
+                      value={resetNewPassword}
+                      onChangeText={(text) => {
+                        setResetNewPassword(text);
+                        if (forgotError) setForgotError('');
+                      }}
+                      editable={!forgotLoading}
+                    />
+                  </View>
+                )}
+              </Animated.View>
+
+              {/* Action Button */}
               <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: '#3b82f6', marginTop: 0 }]}
+                style={[styles.primaryButton, { backgroundColor: '#3b82f6', marginTop: Spacing.three, width: '100%', borderRadius: 12, height: 48 }]}
                 onPress={handleSendReset}
                 disabled={forgotLoading}
+                activeOpacity={0.9}
               >
                 {forgotLoading ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
                   <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                    {t.sendResetLink}
+                    {forgotStep === 'email'
+                      ? t.sendResetLink
+                      : forgotStep === 'otp'
+                      ? (language === 'bn' ? 'ওটিপি ভেরিফাই করুন ➔' : 'Verify OTP Code ➔')
+                      : t.resetPassBtn}
                   </ThemedText>
                 )}
               </TouchableOpacity>
@@ -3262,5 +3652,30 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#3B82F6',
+  },
+  otpBoxesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: Spacing.two,
+    width: '100%',
+    paddingHorizontal: Spacing.one,
+  },
+  otpBox: {
+    width: 45,
+    height: 48,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  otpBoxText: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });

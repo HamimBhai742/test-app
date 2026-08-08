@@ -110,9 +110,14 @@ export const translations = {
     
     // Forgot Password
     resetPassTitle: 'পাসওয়ার্ড পুনর্নির্ধারণ',
-    resetPassInstruction: 'আপনার অ্যাকাউন্টের ইমেইল লিখুন, আমরা পাসওয়ার্ড রিসেট লিংক পাঠাবো।',
-    sendResetLink: 'রিসেট লিংক পাঠান',
-    resetLinkSent: 'পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে!',
+    resetPassInstruction: 'আপনার অ্যাকাউন্টের ইমেইল লিখুন, আমরা ওটিপি কোড পাঠাবো।',
+    sendResetLink: 'ওটিপি পাঠান',
+    resetLinkSent: 'ওটিপি কোড আপনার ইমেইলে পাঠানো হয়েছে!',
+    resetPassInstructionOtp: 'আপনার ইমেইলে পাঠানো ওটিপি এবং নতুন পাসওয়ার্ডটি লিখুন।',
+    resetPassOtpLabel: 'ওটিপি কোড (OTP)',
+    resetPassNewLabel: 'নতুন পাসওয়ার্ড',
+    resetPassBtn: 'পাসওয়ার্ড রিসেট করুন',
+    resetPassSuccess: 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!',
 
     // Category names
     catFood: 'খাবার দাবার',
@@ -583,9 +588,14 @@ export const translations = {
     
     // Forgot Password
     resetPassTitle: 'Reset Password',
-    resetPassInstruction: 'Enter your registered email address and we will send a password reset link.',
-    sendResetLink: 'Send Reset Link',
-    resetLinkSent: 'Password reset link has been sent to your email!',
+    resetPassInstruction: 'Enter your registered email address and we will send an OTP code.',
+    sendResetLink: 'Send OTP Code',
+    resetLinkSent: 'Password reset OTP has been sent to your email!',
+    resetPassInstructionOtp: 'Enter the OTP sent to your email and your new password.',
+    resetPassOtpLabel: 'OTP Code',
+    resetPassNewLabel: 'New Password',
+    resetPassBtn: 'Reset Password',
+    resetPassSuccess: 'Password has been reset successfully!',
 
     // Category names
     catFood: 'Food & Dining',
