@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, integrated a native calendar/clock picker, updated the subheader transaction count to dynamically reflect the selected filters, added support for user inputs using Bengali digits, and replaced default system alerts with a custom premium Animated Toast component featuring vector icons. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, integrated a native calendar/clock picker, updated the subheader transaction count to dynamically reflect the selected filters, added support for user inputs using Bengali digits, replaced default system alerts with a custom premium Animated Toast component featuring vector icons, and updated the modal save buttons to toggle enabled states dynamically based on amount inputs. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -111,8 +111,11 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 
 18. **Custom Premium Animated Spring Toast Banner with Feather Vector Icons (`src/app/index.tsx`)**:
     - Built a fluid, 60FPS physics-based animated spring Toast notification using React Native's `Animated` library.
-    - When triggered, it slides down dynamically from off-screen (`translateY: -120` to `50` with custom tension and friction) and slides back up automatically after 3 seconds.
-    - Replaced emoji indicators with premium `Feather` vector icons (`alert-circle` for errors, `alert-triangle` for warnings, `check-circle` for success statuses) matching the rest of the application's clean design system.
+    - Replaced emoji indicators with premium `Feather` vector icons (`alert-circle` for errors, `alert-triangle` for warnings, `check-circle` for success statuses).
+
+19. **Conditional Save Button Disable on Empty Amount (`src/app/index.tsx`)**:
+    - Configured the transaction submittal save button (`TouchableOpacity` container) to automatically lock and disable (`disabled={!amount.trim()}`) when the amount input is left empty.
+    - Styled the disabled state to grey out dynamically (`opacity: 0.5` and background tinted to matches `theme.backgroundSelected`) and dim the text color to `theme.textSecondary`. Once the user enters a character, it instantly activates and displays its full vibrant green (`#10B981`) or red (`#EF4444`) brand accent colors.
 
 ---
 

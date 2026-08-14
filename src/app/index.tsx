@@ -1080,10 +1080,18 @@ export default function HomeScreen() {
 
                 {/* সাবমিট বাটন */}
                 <TouchableOpacity
-                  style={[styles.submitButton, { backgroundColor: type === 'income' ? '#10B981' : '#EF4444' }]}
+                  disabled={!amount.trim()}
+                  style={[
+                    styles.submitButton,
+                    { backgroundColor: type === 'income' ? '#10B981' : '#EF4444' },
+                    !amount.trim() && { backgroundColor: theme.backgroundSelected, opacity: 0.5 }
+                  ]}
                   onPress={handleAddTransaction}
                 >
-                  <ThemedText style={styles.submitButtonText}>{t.saveBtn}</ThemedText>
+                  <ThemedText style={[
+                    styles.submitButtonText,
+                    !amount.trim() && { color: theme.textSecondary }
+                  ]}>{t.saveBtn}</ThemedText>
                 </TouchableOpacity>
               </ThemedView>
             </KeyboardAvoidingView>
