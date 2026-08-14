@@ -71,6 +71,14 @@ export default function HomeScreen() {
   const { notifications, clearAll, markAllAsRead, markAsRead } = useNotificationBanner();
   const [notifModalVisible, setNotifModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [periodFilter, setPeriodFilter] = useState<'today' | 'month' | 'total'>('total');
+
+  const getCurrentMonthName = () => {
+    const monthsBn = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonthIdx = new Date().getMonth();
+    return language === 'bn' ? monthsBn[currentMonthIdx] : monthsEn[currentMonthIdx];
+  };
 
   // Load custom categories from AsyncStorage on mount
   useEffect(() => {
@@ -230,10 +238,36 @@ export default function HomeScreen() {
   const allCategories = ['Food', 'Shopping', 'Utilities', 'Rent', 'Entertainment', 'Salary', 'Transport', 'Health', 'Education', 'Bills', 'Others', ...customCategories];
   const uniqueCategories = Array.from(new Set(allCategories));
 
+  // Filter transactions by selected period
+  const filteredByPeriodTransactions = transactions.filter((tx) => {
+    const txDateStr = tx.date.split('T')[0];
+    const todayStr = getLocalDateString();
+    
+    if (periodFilter === 'today') {
+      return txDateStr === todayStr;
+    }
+    if (periodFilter === 'month') {
+      const currentYearMonth = new Date().toISOString().substring(0, 7); // "YYYY-MM"
+      return txDateStr.startsWith(currentYearMonth);
+    }
+    return true; // 'total'
+  });
+
   // Filter transactions by selected category
   const filteredTransactions = selectedCategory
-    ? transactions.filter((t) => t.category === selectedCategory)
-    : transactions;
+    ? filteredByPeriodTransactions.filter((t) => t.category === selectedCategory)
+    : filteredByPeriodTransactions;
+
+  // Calculate dynamic stats based on selected period
+  const periodIncome = filteredByPeriodTransactions
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const periodExpenses = filteredByPeriodTransactions
+    .filter((t) => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const periodBalance = periodIncome - periodExpenses;
 
   // Group and sort transactions by date descending
   const sortedTransactions = [...filteredTransactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -341,11 +375,39 @@ export default function HomeScreen() {
 
           {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
           <ThemedView type="backgroundElement" style={styles.balanceCard}>
+            {/* পিরিয়ড ফিল্টার ট্যাব রো */}
+            <View style={styles.periodTabRow}>
+              <TouchableOpacity
+                style={[styles.periodTab, periodFilter === 'today' && styles.periodTabActive]}
+                onPress={() => setPeriodFilter('today')}
+              >
+                <Text style={[styles.periodTabText, { color: periodFilter === 'today' ? '#FFFFFF' : '#9CA3AF' }]}>
+                  {language === 'bn' ? 'আজ' : 'Today'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.periodTab, periodFilter === 'month' && styles.periodTabActive]}
+                onPress={() => setPeriodFilter('month')}
+              >
+                <Text style={[styles.periodTabText, { color: periodFilter === 'month' ? '#FFFFFF' : '#9CA3AF' }]}>
+                  {getCurrentMonthName()}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.periodTab, periodFilter === 'total' && styles.periodTabActive]}
+                onPress={() => setPeriodFilter('total')}
+              >
+                <Text style={[styles.periodTabText, { color: periodFilter === 'total' ? '#FFFFFF' : '#9CA3AF' }]}>
+                  {language === 'bn' ? 'মোট' : 'Total'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
-              {t.totalBal}
+              {periodFilter === 'today' ? (language === 'bn' ? 'আজকের ব্যালেন্স' : "Today's Balance") : periodFilter === 'month' ? (language === 'bn' ? 'এই মাসের ব্যালেন্স' : "This Month's Balance") : t.totalBal}
             </ThemedText>
-            <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
-              <Text style={{ fontSize: 18, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalBalance)}
+            <ThemedText style={[styles.balanceAmount, { color: periodBalance >= 0 ? '#10B981' : '#EF4444' }]}>
+              <Text style={{ fontSize: 18, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(periodBalance)}
             </ThemedText>
 
             <View style={styles.cardDivider} />
@@ -355,20 +417,24 @@ export default function HomeScreen() {
               <View style={styles.statColumn}>
                 <View style={styles.statDotContainer}>
                   <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">{t.totalInc}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {periodFilter === 'today' ? (language === 'bn' ? 'আজকের আয়' : "Today's Income") : periodFilter === 'month' ? (language === 'bn' ? 'এই মাসের আয়' : "This Month's Income") : t.totalInc}
+                  </ThemedText>
                 </View>
                 <ThemedText style={styles.statAmountGreen}>
-                  <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalIncome)}
+                  <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(periodIncome)}
                 </ThemedText>
               </View>
 
               <View style={styles.statColumn}>
                 <View style={styles.statDotContainer}>
                   <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">{t.totalExp}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {periodFilter === 'today' ? (language === 'bn' ? 'আজকের ব্যয়' : "Today's Expense") : periodFilter === 'month' ? (language === 'bn' ? 'এই মাসের ব্যয়' : "This Month's Expense") : t.totalExp}
+                  </ThemedText>
                 </View>
                 <ThemedText style={styles.statAmountRed}>
-                  <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalExpenses)}
+                  <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(periodExpenses)}
                 </ThemedText>
               </View>
             </View>
@@ -1190,6 +1256,26 @@ const styles = StyleSheet.create({
   categoryFilterText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  periodTabRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(150, 150, 150, 0.1)',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 14,
+    alignSelf: 'flex-start',
+  },
+  periodTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  periodTabActive: {
+    backgroundColor: '#3B82F6',
+  },
+  periodTabText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   categorySummaryRow: {
     flexDirection: 'row',

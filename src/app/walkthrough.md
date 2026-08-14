@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, and isolated the scroll container of the ledger. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, and added period-based segment filters inside the balance card. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -100,6 +100,15 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 13. **Sticky Top Container & Isolated Ledger Scroll (`src/app/index.tsx`)**:
     - Extracted all non-scrollable dashboard elements (App Header, Balance Card, Quick Buttons, Category Scroll Filters, and Category Summary Banner) out of the `SectionList`'s header container and placed them inside a static parent view wrapper (`fixedHeaderContainer` styled).
     - Configured the transaction `SectionList` container to occupy `flex: 1` underneath. This ensures the header and balance metrics remain fully fixed at the top of the viewport, and only the transaction list cards scroll below them, creating a native and high-performance scrolling experience.
+
+14. **Segmented Period Filtering on Balance metrics & Ledger (`src/app/index.tsx`)**:
+    - Embedded a premium segmented tab switcher row (`periodTabRow` styled) inside the main Balance Card at the top.
+    - Features three dynamic period tabs:
+      - **Today (`আজ` / `Today`)**
+      - **Current Month (e.g. `আগস্ট` / `Aug` based dynamically on active date)**
+      - **Total (`মোট` / `Total`)**
+    - Tapping a period tab dynamically filters both the balance card calculations (calculating Net Balance, Income, and Expenses for the selected range only) and the ledger transaction list below.
+    - The labels on the balance card adapt dynamically to reflect the selected period (e.g. `আজকের ব্যালেন্স`, `এই মাসের আয়` etc.).
 
 ---
 
