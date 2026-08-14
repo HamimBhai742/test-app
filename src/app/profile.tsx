@@ -1918,10 +1918,12 @@ export default function ProfileScreen() {
             >
               <ThemedText style={styles.actionIcon}>📊</ThemedText>
               <View style={styles.actionTextContainer}>
-                <ThemedText type="small">{t.sendWeeklyReportBtn}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={{ fontSize: 11, marginTop: 2 }}>
-                  {reportLoading ? t.reportSending : (language === 'bn' ? 'গত ৭ দিনের খরচের চার্ট ও ক্যাটাগরি রিপোর্ট মেইলে পান' : 'Get last 7 days report with category chart')}
-                </ThemedText>
+                <View style={{ flex: 1 }}>
+                  <ThemedText type="small">{t.sendWeeklyReportBtn}</ThemedText>
+                  <ThemedText themeColor="textSecondary" style={{ fontSize: 11, marginTop: 2 }}>
+                    {reportLoading ? t.reportSending : (language === 'bn' ? 'গত ৭ দিনের খরচের চার্ট ও ক্যাটাগরি রিপোর্ট মেইলে পান' : 'Get last 7 days report with category chart')}
+                  </ThemedText>
+                </View>
               </View>
               {reportLoading ? (
                 <ActivityIndicator size="small" color="#3b82f6" style={{ marginRight: Spacing.two }} />
