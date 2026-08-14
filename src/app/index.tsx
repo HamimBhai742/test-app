@@ -23,6 +23,7 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 // ট্রানজেকশন সম্পর্কিত স্টেট ও টাইপ ইমপোর্ট করা হচ্ছে।
 import { useTransactions, Transaction } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import { translations } from '@/constants/translations';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
@@ -35,11 +36,7 @@ import { useNotificationBanner } from '@/context/NotificationBannerContext';
 const CUSTOM_CATS_KEY = 'hisabkitab_custom_categories_home';
 
 
-const formatNumber = (num: number) => {
-  const parts = num.toString().split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return parts.join('.');
-};
+
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -264,7 +261,7 @@ export default function HomeScreen() {
                         paddingHorizontal: 4,
                       }}>
                         <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>
-                          {notifications.filter(n => !n.isRead).length}
+                          {language === 'bn' ? toBanglaDigits(notifications.filter(n => !n.isRead).length.toString()) : notifications.filter(n => !n.isRead).length}
                         </Text>
                       </View>
                     )}

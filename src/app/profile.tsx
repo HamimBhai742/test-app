@@ -50,6 +50,7 @@ import {
   NotificationSettings,
 } from '@/services/notificationService';
 import { useNotificationBanner } from '@/context/NotificationBannerContext';
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 
 let GoogleSignin: any = null;
 let statusCodes: any = {};
@@ -1638,7 +1639,7 @@ export default function ProfileScreen() {
                 <ThemedText style={{ fontSize: 28 }}>🏆</ThemedText>
                 <View>
                   <ThemedText style={{ fontSize: 15, fontWeight: '800', color: '#EAB308' }}>
-                    {t.rewardPointsLabel.replace('{points}', points.toString())}
+                    {t.rewardPointsLabel.replace('{points}', language === 'bn' ? toBanglaDigits(points.toString()) : points.toString())}
                   </ThemedText>
                   <ThemedText style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
                     {t.badgeLabel.replace('{badge}', userBadge)}
@@ -1668,7 +1669,7 @@ export default function ProfileScreen() {
                   { color: totalBalance >= 0 ? '#10B981' : '#EF4444', fontSize: 20 },
                 ]}
               >
-                TK {totalBalance.toLocaleString('en-US')}
+                {getCurrencySymbol()}{formatNumber(totalBalance)}
               </ThemedText>
             </View>
 
@@ -1678,7 +1679,7 @@ export default function ProfileScreen() {
                 📝 {t.totalTx}
               </ThemedText>
               <ThemedText style={[styles.statValue, { color: theme.text }]}>
-                {transactions.length}
+                {language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length}
               </ThemedText>
             </View>
 
@@ -1688,7 +1689,7 @@ export default function ProfileScreen() {
                 📈 {t.totalInc}
               </ThemedText>
               <ThemedText style={[styles.statValue, { color: '#10B981' }]}>
-                TK {totalIncome.toLocaleString('en-US')}
+                {getCurrencySymbol()}{formatNumber(totalIncome)}
               </ThemedText>
             </View>
 
@@ -1698,7 +1699,7 @@ export default function ProfileScreen() {
                 📉 {t.totalExp}
               </ThemedText>
               <ThemedText style={[styles.statValue, { color: '#EF4444' }]}>
-                TK {totalExpenses.toLocaleString('en-US')}
+                {getCurrencySymbol()}{formatNumber(totalExpenses)}
               </ThemedText>
             </View>
           </View>
@@ -3001,7 +3002,7 @@ export default function ProfileScreen() {
 
               {/* User Stats Card */}
               <View style={{ backgroundColor: 'rgba(234, 179, 8, 0.15)', borderRadius: 16, padding: 16, marginVertical: 12, borderWidth: 1, borderColor: 'rgba(234, 179, 8, 0.3)', alignItems: 'center' }}>
-                <ThemedText style={{ fontSize: 28, fontWeight: '900', color: '#EAB308' }}>⭐ {points} {t.pointsPillLabel}</ThemedText>
+                <ThemedText style={{ fontSize: 28, fontWeight: '900', color: '#EAB308' }}>⭐ {language === 'bn' ? toBanglaDigits(points.toString()) : points} {t.pointsPillLabel}</ThemedText>
                 <ThemedText style={{ fontSize: 14, fontWeight: '700', marginTop: 4 }}>{language === 'bn' ? `আপনার ব্যাজ: ${userBadge}` : `Your Badge: ${userBadge}`}</ThemedText>
               </View>
 

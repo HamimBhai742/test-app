@@ -18,14 +18,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const formatNumber = (num: number) => {
-  const parts = num.toString().split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return parts.join('.');
-};
+
 
 // Convert polar to cartesian (for pie slice positioning)
 const polarToCartesian = (cx: number, cy: number, r: number, angleDeg: number) => {
@@ -577,7 +574,7 @@ export default function StatsScreen() {
             </View>
 
             <View style={styles.heroAmountRow}>
-              <Text style={styles.heroTK}>TK</Text>
+              <Text style={styles.heroTK}>{getCurrencySymbol().trim()}</Text>
               <Text style={styles.heroAmount}>
                 {formatNumber(expenseStats.totalExpense)}
               </Text>
@@ -597,7 +594,7 @@ export default function StatsScreen() {
               <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
               <View style={styles.heroStatItem}>
                 <Text style={[styles.heroStatValue, { color: colors.success }]}>
-                  TK {formatNumber(expenseStats.avgExpense)}
+                  {getCurrencySymbol()}{formatNumber(expenseStats.avgExpense)}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
                   {t.avgExpense}
@@ -611,7 +608,7 @@ export default function StatsScreen() {
                     { color: expenseStats.netBalance >= 0 ? colors.success : colors.danger },
                   ]}
                 >
-                  TK {formatNumber(Math.abs(expenseStats.netBalance))}
+                  {getCurrencySymbol()}{formatNumber(Math.abs(expenseStats.netBalance))}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
                   {expenseStats.netBalance >= 0 ? t.savingsWord : t.deficitWord}
@@ -658,7 +655,7 @@ export default function StatsScreen() {
                           {item.emoji} {item.label}
                         </Text>
                         <Text style={[styles.legendPct, { color: item.color }]}>
-                          {item.percentage}% · TK {formatNumber(item.amount)}
+                          {item.percentage}% · {getCurrencySymbol()}{formatNumber(item.amount)}
                         </Text>
                       </View>
                     </View>
@@ -724,7 +721,7 @@ export default function StatsScreen() {
                   <View style={[styles.barSummaryDot, { backgroundColor: colors.primary }]} />
                   <Text style={[styles.barSummaryLabel, { color: theme.textSecondary }]}>
                     {t.maxPrefix} <Text style={{ color: theme.text, fontWeight: '700' }}>
-                      TK {formatNumber(expenseStats.maxWeekly)}
+                      {getCurrencySymbol()}{formatNumber(expenseStats.maxWeekly)}
                     </Text>
                   </Text>
                 </View>
@@ -732,7 +729,7 @@ export default function StatsScreen() {
                   <View style={[styles.barSummaryDot, { backgroundColor: colors.success }]} />
                   <Text style={[styles.barSummaryLabel, { color: theme.textSecondary }]}>
                     {t.totalPrefix} <Text style={{ color: theme.text, fontWeight: '700' }}>
-                      TK {formatNumber(expenseStats.weeklyTrend.reduce((a, b) => a + b.amount, 0))}
+                      {getCurrencySymbol()}{formatNumber(expenseStats.weeklyTrend.reduce((a, b) => a + b.amount, 0))}
                     </Text>
                   </Text>
                 </View>
@@ -764,7 +761,7 @@ export default function StatsScreen() {
                       <View style={styles.catTopRow}>
                         <Text style={[styles.catName, { color: theme.text }]}>{item.label}</Text>
                         <Text style={[styles.catAmount, { color: theme.text }]}>
-                          <Text style={[styles.catTK, { color: theme.textSecondary }]}>TK </Text>
+                          <Text style={[styles.catTK, { color: theme.textSecondary }]}>{getCurrencySymbol()}</Text>
                           {formatNumber(item.amount)}
                         </Text>
                       </View>

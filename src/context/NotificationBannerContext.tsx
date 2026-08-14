@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Platform, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,7 +27,7 @@ export const NotificationBannerProvider: React.FC<{ children: ReactNode }> = ({ 
   const [activeBanner, setActiveBanner] = useState<BannerNotification | null>(null);
   const [notifications, setNotifications] = useState<BannerNotification[]>([]);
 
-  // Load saved notifications on mount
+  // Load saved notifications on mount and listen to real-time events
   useEffect(() => {
     const loadSaved = async () => {
       try {
@@ -40,6 +40,19 @@ export const NotificationBannerProvider: React.FC<{ children: ReactNode }> = ({ 
       }
     };
     loadSaved();
+
+    // Listen to real-time additions from notificationService.ts
+    const subscription = DeviceEventEmitter.addListener('new_in_app_notification', (newNotif) => {
+      setNotifications((prev) => {
+        const exists = prev.some(n => n.id === newNotif.id);
+        if (exists) return prev;
+        return [newNotif, ...prev];
+      });
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   const showNotification = (title: string, body: string, type: 'daily' | 'due' | 'budget' | 'info' = 'info') => {

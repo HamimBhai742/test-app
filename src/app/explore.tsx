@@ -21,17 +21,14 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import { translations } from '@/constants/translations';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const formatNum = (n: number) => {
-  const parts = n.toString().split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return parts.join('.');
-};
+
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -139,7 +136,7 @@ function BudgetEditModal({
 
             {/* Input */}
             <View style={[styles.modalInputWrapper, { backgroundColor: theme.backgroundElement, borderColor: category.color }]}>
-              <Text style={[styles.modalInputPrefix, { color: category.color }]}>TK</Text>
+              <Text style={[styles.modalInputPrefix, { color: category.color }]}>{getCurrencySymbol().trim()}</Text>
               <TextInput
                 style={[styles.modalInput, { color: theme.text }]}
                 value={input}
@@ -363,13 +360,13 @@ function BudgetCard({
             {/* Amounts row */}
             <View style={styles.budgetAmounts}>
               <Text style={[styles.spentText, { color: statusColor }]}>
-                <Text style={styles.tkSmall}>TK </Text>
-                {formatNum(spent)} {t.spentWord}
+                <Text style={styles.tkSmall}>{getCurrencySymbol()}</Text>
+                {formatNumber(spent)} {t.spentWord}
               </Text>
               <Text style={[styles.remainText, { color: theme.textSecondary }]}>
                 {isOver
-                  ? `TK ${formatNum(Math.abs(remaining))} ${t.overWord}`
-                  : `TK ${formatNum(remaining)} ${t.leftWord}`}
+                  ? `${getCurrencySymbol()}${formatNumber(Math.abs(remaining))} ${t.overWord}`
+                  : `${getCurrencySymbol()}${formatNumber(remaining)} ${t.leftWord}`}
               </Text>
             </View>
           </View>
@@ -378,7 +375,7 @@ function BudgetCard({
         {/* Right: budget total + edit cue */}
         <View style={styles.budgetRight}>
           <Text style={[styles.budgetTotal, { color: theme.text }]}>
-            TK {formatNum(budget)}
+            {getCurrencySymbol()}{formatNumber(budget)}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
             <Text style={[styles.budgetEditHint, { color: theme.textSecondary }]}>
@@ -660,9 +657,9 @@ export default function BudgetScreen() {
                   {t.totalMonthlyBudget}
                 </Text>
                 <View style={styles.heroAmountRow}>
-                  <Text style={[styles.heroTK, { color: theme.text }]}>TK</Text>
+                  <Text style={[styles.heroTK, { color: theme.text }]}>{getCurrencySymbol()}</Text>
                   <Text style={[styles.heroAmount, { color: theme.text }]}>
-                    {formatNum(summary.totalBudget)}
+                    {formatNumber(summary.totalBudget)}
                   </Text>
                 </View>
               </View>
@@ -699,7 +696,7 @@ export default function BudgetScreen() {
             <View style={styles.heroStats}>
               <View style={styles.heroStatItem}>
                 <Text style={[styles.heroStatVal, { color: '#EF4444' }]}>
-                  TK {formatNum(summary.totalSpent)}
+                  {getCurrencySymbol()}{formatNumber(summary.totalSpent)}
                 </Text>
                 <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.spentLabel}</Text>
               </View>
@@ -713,7 +710,7 @@ export default function BudgetScreen() {
                     { color: summary.totalBudget >= summary.totalSpent ? '#10B981' : '#EF4444' },
                   ]}
                 >
-                  TK {formatNum(Math.abs(summary.totalBudget - summary.totalSpent))}
+                  {getCurrencySymbol()}{formatNumber(Math.abs(summary.totalBudget - summary.totalSpent))}
                 </Text>
                 <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>
                   {summary.totalBudget >= summary.totalSpent ? t.leftLabel : t.overBudgetLabel}

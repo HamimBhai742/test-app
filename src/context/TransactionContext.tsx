@@ -16,6 +16,7 @@ export interface Transaction {
   type: 'income' | 'expense';
   category: string;
   date: string;
+  createdAt?: string;
 }
 
 interface TransactionContextType {
@@ -74,6 +75,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           category: item.category || 'Others',
           date: item.date ||
             (item.createdAt ? item.createdAt.toString().split('T')[0] : getLocalDateString()),
+          createdAt: item.createdAt,
         }));
         setTransactions(mappedTx);
       } else if (response.status === 401 || response.status === 403) {
@@ -262,7 +264,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Add Transaction to Backend API & MongoDB
   const addTransaction = async (newTx: Omit<Transaction, 'id'>) => {
     const tempId = Math.random().toString(36).substring(2, 9);
-    const optimisticTx: Transaction = { ...newTx, id: tempId };
+    const optimisticTx: Transaction = { ...newTx, id: tempId, createdAt: new Date().toISOString() };
 
     setTransactions((prev) => [optimisticTx, ...prev]);
 
@@ -294,6 +296,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Fallback: use createdAt date if 'date' field is missing
           date: data.data.date ||
             (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : getLocalDateString()),
+          createdAt: data.data.createdAt,
         };
         setTransactions((prev) => prev.map((t) => (t.id === tempId ? savedTx : t)));
       }

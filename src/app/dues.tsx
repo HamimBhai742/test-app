@@ -19,13 +19,12 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/context/LanguageContext';
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import { translations } from '@/constants/translations';
 import { useDues, DueItem } from '@/context/DueContext';
 import { Feather } from '@expo/vector-icons';
 
-const formatNum = (num: number) => {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-};
+
 
 // ─── Add Due Modal ────────────────────────────────────────────────────────────
 
@@ -270,12 +269,12 @@ export default function DuesScreen() {
     if (item.type === 'receivable') {
       message = t.dueWaReceivableMsg
         .replace('{name}', item.personName)
-        .replace('{amount}', formatNum(item.amount))
+        .replace('{amount}', formatNumber(item.amount))
         .replace('{note}', item.note ? `(${t.dueNoteLabel}: ${item.note})` : '');
     } else {
       message = t.dueWaPayableMsg
         .replace('{name}', item.personName)
-        .replace('{amount}', formatNum(item.amount))
+        .replace('{amount}', formatNumber(item.amount))
         .replace('{note}', item.note ? `(${t.dueNoteLabel}: ${item.note})` : '');
     }
 
@@ -336,7 +335,7 @@ export default function DuesScreen() {
           <View style={styles.heroRow}>
             {/* Receivable */}
             <View style={styles.heroItem}>
-              <Text style={[styles.heroVal, { color: '#10B981' }]}>TK {formatNum(totalReceivable)}</Text>
+              <Text style={[styles.heroVal, { color: '#10B981' }]}>{getCurrencySymbol()}{formatNumber(totalReceivable)}</Text>
               <Text style={[styles.heroLbl, { color: theme.textSecondary }]}>{t.totalReceivable}</Text>
             </View>
 
@@ -344,7 +343,7 @@ export default function DuesScreen() {
 
             {/* Payable */}
             <View style={styles.heroItem}>
-              <Text style={[styles.heroVal, { color: '#EF4444' }]}>TK {formatNum(totalPayable)}</Text>
+              <Text style={[styles.heroVal, { color: '#EF4444' }]}>{getCurrencySymbol()}{formatNumber(totalPayable)}</Text>
               <Text style={[styles.heroLbl, { color: theme.textSecondary }]}>{t.totalPayable}</Text>
             </View>
           </View>
@@ -355,7 +354,7 @@ export default function DuesScreen() {
           <View style={styles.netRow}>
             <Text style={[styles.netLbl, { color: theme.textSecondary }]}>{t.netBalance}:</Text>
             <Text style={[styles.netVal, { color: netBalance >= 0 ? '#10B981' : '#EF4444' }]}>
-              {netBalance >= 0 ? `+ TK ${formatNum(netBalance)}` : `- TK ${formatNum(Math.abs(netBalance))}`}
+              {netBalance >= 0 ? `+ TK ${formatNumber(netBalance)}` : `- TK ${formatNumber(Math.abs(netBalance))}`}
             </Text>
           </View>
         </ThemedView>
@@ -459,7 +458,7 @@ export default function DuesScreen() {
                       },
                     ]}
                   >
-                    TK {formatNum(item.amount)}
+                    {getCurrencySymbol()}{formatNumber(item.amount)}
                   </Text>
 
                   {item.note ? (

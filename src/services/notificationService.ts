@@ -1,4 +1,4 @@
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, DeviceEventEmitter } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -239,6 +239,34 @@ export const cancelDueReminder = async (dueId: string): Promise<void> => {
 };
 
 /**
+ * Save notification to AsyncStorage and notify active context listeners
+ */
+const saveNotificationLocallyAndNotify = async (
+  title: string,
+  body: string,
+  type: 'daily' | 'due' | 'budget' | 'info' = 'info'
+) => {
+  try {
+    const id = Math.random().toString();
+    const newNotif = {
+      id,
+      title,
+      body,
+      type,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    };
+    const stored = await AsyncStorage.getItem('hisabkitab_saved_notifications');
+    const list = stored ? JSON.parse(stored) : [];
+    list.unshift(newNotif);
+    await AsyncStorage.setItem('hisabkitab_saved_notifications', JSON.stringify(list));
+    DeviceEventEmitter.emit('new_in_app_notification', newNotif);
+  } catch (e) {
+    console.warn('Error saving local notification:', e);
+  }
+};
+
+/**
  * Trigger immediate budget warning notification
  */
 export const triggerBudgetWarning = async (
@@ -277,6 +305,9 @@ export const triggerBudgetWarning = async (
       body = `৳${spentAmount.toLocaleString()} (${Math.round(percent)}%) out of ৳${totalBudget.toLocaleString()} of ${categoryPrefix}budget has already been spent.`;
     }
   }
+
+  // Save notification locally for the Notification Box
+  await saveNotificationLocallyAndNotify(title, body, 'budget');
 
   // Show native alert immediately if app is in foreground
   if (Platform.OS !== 'web') {
@@ -362,17 +393,26 @@ export const registerForPushNotificationsAsync = async (): Promise<string | null
  * Schedule a 5-second delayed test notification for physical device testing
  */
 export const scheduleFiveSecondTestNotification = async (): Promise<boolean> => {
-  if (Platform.OS === 'web' || !Notifications) return false;
+  const lang = getCurrentLanguage();
+  const title = lang === 'bn' ? 'আজকের হিসাব লিখেছেন তো? 📝' : 'Did you record your expenses today? 📝';
+  const body = lang === 'bn' ? 'আপনার দৈনন্দিন আয়-ব্যয়ের সঠিক হিসাব রাখতে এখনই এন্ট্রি করুন।' : 'Keep your daily income and expense records updated, log them now.';
+
+  // Save local notification after 5 seconds to match OS timing
+  setTimeout(async () => {
+    await saveNotificationLocallyAndNotify(title, body, 'daily');
+  }, 5000);
+
+  if (Platform.OS === 'web' || !Notifications) return true; // Fallback to local box only if notifications are disabled/web
 
   try {
     const hasPermission = await requestNotificationPermissions();
-    if (!hasPermission) return false;
+    if (!hasPermission) return true;
 
     if (typeof Notifications.scheduleNotificationAsync === 'function') {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'আজকের হিসাব লিখেছেন তো? 📝',
-          body: 'আপনার দৈনন্দিন আয়-ব্যয়ের সঠিক হিসাব রাখতে এখনই এন্ট্রি করুন।',
+          title,
+          body,
           data: { type: 'test' },
           sound: true,
         },
@@ -381,10 +421,9 @@ export const scheduleFiveSecondTestNotification = async (): Promise<boolean> => 
           seconds: 5,
         },
       }).catch(() => {});
-      return true;
     }
   } catch (e) {}
-  return false;
+  return true;
 };
 
 /**
@@ -430,6 +469,9 @@ export const triggerPointsNotification = async (
         body = `+${pointsClaimed} points successfully claimed for achieving your savings goal.`;
       }
     }
+
+    // Save notification locally for the Notification Box
+    await saveNotificationLocallyAndNotify(title, body, 'daily');
 
     if (typeof Notifications.scheduleNotificationAsync === 'function') {
       await Notifications.scheduleNotificationAsync({

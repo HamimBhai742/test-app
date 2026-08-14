@@ -18,17 +18,14 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { PDFExportModal } from '@/components/pdf-export-modal';
 import { useAuth } from '@/context/AuthContext';
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import { Feather } from '@expo/vector-icons';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 // Removed hardcoded month names, they will come from translations now
 
-const formatNumber = (num: number) => {
-  const parts = num.toString().split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return parts.join('.');
-};
+
 
 interface MonthData {
   key: string;
@@ -132,7 +129,7 @@ function MonthCard({
         </View>
         <View style={monthCardStyles.right}>
           <Text style={[monthCardStyles.netAmount, { color: netPositive ? colors.success : colors.danger }]}>
-            {netPositive ? '+' : '-'} TK {formatNumber(Math.abs(data.net))}
+            {netPositive ? '+' : '-'} {getCurrencySymbol()}{formatNumber(Math.abs(data.net))}
           </Text>
           {data.income > 0 && (
             <View
@@ -436,7 +433,7 @@ export default function ReportScreen() {
               <View style={styles.heroSplitItem}>
                 <Text style={[styles.heroSplitLabel, { color: theme.textSecondary }]}>{t.totalIncome}</Text>
                 <Text style={[styles.heroSplitAmt, { color: colors.success }]}>
-                  <Text style={styles.heroTK}>TK </Text>
+                  <Text style={styles.heroTK}>{getCurrencySymbol()}</Text>
                   {formatNumber(overallStats.totalInc)}
                 </Text>
               </View>
@@ -444,7 +441,7 @@ export default function ReportScreen() {
               <View style={styles.heroSplitItem}>
                 <Text style={[styles.heroSplitLabel, { color: theme.textSecondary }]}>{t.totalExpense}</Text>
                 <Text style={[styles.heroSplitAmt, { color: colors.danger }]}>
-                  <Text style={styles.heroTK}>TK </Text>
+                  <Text style={styles.heroTK}>{getCurrencySymbol()}</Text>
                   {formatNumber(overallStats.totalExp)}
                 </Text>
               </View>
@@ -453,14 +450,14 @@ export default function ReportScreen() {
             <View style={styles.heroStatsRow}>
               <View style={styles.heroStatItem}>
                 <Text style={[styles.heroStatVal, { color: colors.primary }]}>
-                  TK {formatNumber(overallStats.avgMonthlyExpense)}
+                  {getCurrencySymbol()}{formatNumber(overallStats.avgMonthlyExpense)}
                 </Text>
                 <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>{t.avgMonthlyExpense}</Text>
               </View>
               <View style={[styles.heroStatSep, { backgroundColor: theme.backgroundSelected }]} />
               <View style={styles.heroStatItem}>
                 <Text style={[styles.heroStatVal, { color: overallStats.totalInc - overallStats.totalExp >= 0 ? colors.success : colors.danger }]}>
-                  TK {formatNumber(Math.abs(overallStats.totalInc - overallStats.totalExp))}
+                  {getCurrencySymbol()}{formatNumber(Math.abs(overallStats.totalInc - overallStats.totalExp))}
                 </Text>
                 <Text style={[styles.heroStatLbl, { color: theme.textSecondary }]}>
                   {overallStats.totalInc >= overallStats.totalExp ? t.totalSavings : t.totalDeficit}
@@ -507,8 +504,8 @@ export default function ReportScreen() {
             <View style={[styles.tooltip, { backgroundColor: theme.backgroundSelected }]}>
               <Text style={[styles.tooltipTitle, { color: theme.text }]}>📅 {selected.label}</Text>
               <View style={styles.tooltipRow}>
-                <Text style={[styles.tooltipItem, { color: colors.success }]}>{t.income}: TK {formatNumber(selected.income)}</Text>
-                <Text style={[styles.tooltipItem, { color: colors.danger }]}>{t.expense}: TK {formatNumber(selected.expense)}</Text>
+                <Text style={[styles.tooltipItem, { color: colors.success }]}>{t.income}: {getCurrencySymbol()}{formatNumber(selected.income)}</Text>
+                <Text style={[styles.tooltipItem, { color: colors.danger }]}>{t.expense}: {getCurrencySymbol()}{formatNumber(selected.expense)}</Text>
               </View>
             </View>
           )}
@@ -521,7 +518,7 @@ export default function ReportScreen() {
               <Text style={styles.insightIcon}>🏆</Text>
               <Text style={[styles.insightTitle, { color: '#065f46' }]}>{t.bestMonth}</Text>
               <Text style={[styles.insightMonthName, { color: '#059669' }]}>{overallStats.bestMonth.label}</Text>
-              <Text style={[styles.insightAmt, { color: '#10B981' }]}>+TK {formatNumber(overallStats.bestMonth.net)}</Text>
+              <Text style={[styles.insightAmt, { color: '#10B981' }]}>+{getCurrencySymbol()}{formatNumber(overallStats.bestMonth.net)}</Text>
             </View>
           )}
           {overallStats.worstMonth && overallStats.bestMonth?.key !== overallStats.worstMonth.key && (
@@ -530,7 +527,7 @@ export default function ReportScreen() {
               <Text style={[styles.insightTitle, { color: '#991b1b' }]}>{t.worstMonth}</Text>
               <Text style={[styles.insightMonthName, { color: '#DC2626' }]}>{overallStats.worstMonth.label}</Text>
               <Text style={[styles.insightAmt, { color: '#EF4444' }]}>
-                {overallStats.worstMonth.net >= 0 ? '+' : '-'}TK {formatNumber(Math.abs(overallStats.worstMonth.net))}
+                {overallStats.worstMonth.net >= 0 ? '+' : '-'}{getCurrencySymbol()}{formatNumber(Math.abs(overallStats.worstMonth.net))}
               </Text>
             </View>
           )}
@@ -566,18 +563,18 @@ export default function ReportScreen() {
               <Text style={[styles.detailMonth, { color: theme.text }]}>{selected.label}</Text>
               <View style={styles.detailStatsRow}>
                 <View style={styles.detailStatItem}>
-                  <Text style={[styles.detailStatVal, { color: colors.success }]}>TK {formatNumber(selected.income)}</Text>
+                  <Text style={[styles.detailStatVal, { color: colors.success }]}>{getCurrencySymbol()}{formatNumber(selected.income)}</Text>
                   <Text style={[styles.detailStatLbl, { color: theme.textSecondary }]}>{t.income}</Text>
                 </View>
                 <View style={[styles.detailStatSep, { backgroundColor: theme.backgroundSelected }]} />
                 <View style={styles.detailStatItem}>
-                  <Text style={[styles.detailStatVal, { color: colors.danger }]}>TK {formatNumber(selected.expense)}</Text>
+                  <Text style={[styles.detailStatVal, { color: colors.danger }]}>{getCurrencySymbol()}{formatNumber(selected.expense)}</Text>
                   <Text style={[styles.detailStatLbl, { color: theme.textSecondary }]}>{t.expense}</Text>
                 </View>
                 <View style={[styles.detailStatSep, { backgroundColor: theme.backgroundSelected }]} />
                 <View style={styles.detailStatItem}>
                   <Text style={[styles.detailStatVal, { color: selected.net >= 0 ? colors.success : colors.danger }]}>
-                    {selected.net >= 0 ? '+' : '-'}TK {formatNumber(Math.abs(selected.net))}
+                    {selected.net >= 0 ? '+' : '-'}{getCurrencySymbol()}{formatNumber(Math.abs(selected.net))}
                   </Text>
                   <Text style={[styles.detailStatLbl, { color: theme.textSecondary }]}>
                     {selected.net >= 0 ? t.savingsWord : t.deficitWord}
