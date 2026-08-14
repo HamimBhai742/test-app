@@ -29,6 +29,8 @@ import { useThemeMode } from '@/context/ThemeContext';
 import { usePoints } from '@/context/PointsContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalDateString } from '@/utils/date';
+import { scheduleFiveSecondTestNotification } from '@/services/notificationService';
+import { useNotificationBanner } from '@/context/NotificationBannerContext';
 
 const CUSTOM_CATS_KEY = 'hisabkitab_custom_categories_home';
 
@@ -64,6 +66,10 @@ export default function HomeScreen() {
 
   // Edit transaction state
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+
+  // Notification center state
+  const { notifications, clearAll, markAllAsRead, markAsRead } = useNotificationBanner();
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
 
   // Load custom categories from AsyncStorage on mount
   useEffect(() => {
@@ -233,20 +239,39 @@ export default function HomeScreen() {
                       });
                     }}
                   >
-                    <ThemedText style={{ fontSize: 16 }}>
+                    <ThemedText style={{ fontSize: 14 }}>
                       {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌗'}
                     </ThemedText>
                   </TouchableOpacity>
-                  {/* নতুন লেনদেন যোগ করার কুইক বাটন */}
+
+                  {/* নোটিফিকেশন বাটন */}
                   <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.text }]}
-                    onPress={() => setModalVisible(true)}
+                    style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
+                    onPress={() => setNotifModalVisible(true)}
                   >
-                    <ThemedText style={{ color: theme.background, fontWeight: '700', fontSize: 20 }}>+</ThemedText>
+                    <ThemedText style={{ fontSize: 14 }}>🔔</ThemedText>
+                    {notifications.filter(n => !n.isRead).length > 0 && (
+                      <View style={{
+                        position: 'absolute',
+                        top: -3,
+                        right: -3,
+                        backgroundColor: '#EF4444',
+                        borderRadius: 8,
+                        minWidth: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingHorizontal: 4,
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>
+                          {notifications.filter(n => !n.isRead).length}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </View>
               </ThemedView>
-
+              
               {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
               <ThemedView type="backgroundElement" style={styles.balanceCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
@@ -390,6 +415,131 @@ export default function HomeScreen() {
           }
         />
       </SafeAreaView>
+
+      {/* নোটিফিকেশন সেন্টার মডাল */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={notifModalVisible}
+        onRequestClose={() => setNotifModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView type="backgroundElement" style={[styles.modalView, { maxHeight: '80%' }]}>
+            {/* মডাল হেডার */}
+            <View style={styles.modalHeader}>
+              <ThemedText type="smallBold" style={{ fontSize: 18 }}>
+                {language === 'bn' ? '🔔 নোটিফিকেশন বক্স' : '🔔 Notification Box'}
+              </ThemedText>
+              
+              <TouchableOpacity onPress={() => setNotifModalVisible(false)} style={{ padding: 6 }}>
+                <ThemedText type="smallBold" themeColor="textSecondary">{t.close}</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* অ্যাকশন বাটনস */}
+            {notifications.length > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(150,150,150,0.1)', paddingBottom: 10 }}>
+                <TouchableOpacity onPress={() => markAllAsRead()} style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: 'rgba(150,150,150,0.1)' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text }}>
+                    {language === 'bn' ? 'সব পঠিত চিহ্নিত করুন' : 'Mark all read'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => clearAll()} style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: 'rgba(239,68,68,0.1)' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>
+                    {language === 'bn' ? 'সব মুছে ফেলুন' : 'Clear all'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* নোটিফিকেশন তালিকা */}
+            <FlatList
+              data={notifications}
+              keyExtractor={(item) => item.id}
+              ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: 'rgba(150,150,150,0.1)', marginVertical: 8 }} />}
+              ListEmptyComponent={
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <Text style={{ fontSize: 32, marginBottom: 10 }}>📭</Text>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {language === 'bn' ? 'কোনো নোটিফিকেশন নেই' : 'No notifications yet'}
+                  </ThemedText>
+                </View>
+              }
+              renderItem={({ item: notif }) => {
+                const getNotifIcon = (type?: string) => {
+                  switch (type) {
+                    case 'budget': return '⚡';
+                    case 'due': return '⏰';
+                    case 'daily': return '📝';
+                    default: return '🔔';
+                  }
+                };
+
+                const getNotifColor = (type?: string) => {
+                  switch (type) {
+                    case 'budget': return '#EF4444';
+                    case 'due': return '#F59E0B';
+                    case 'daily': return '#3B82F6';
+                    default: return '#10B981';
+                  }
+                };
+
+                const dateObj = new Date(notif.timestamp);
+                const formattedTime = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' • ' + dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+                return (
+                  <TouchableOpacity
+                    onPress={() => markAsRead(notif.id)}
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: 'row',
+                      gap: 12,
+                      paddingVertical: 4,
+                      opacity: notif.isRead ? 0.6 : 1,
+                    }}
+                  >
+                    <View style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: `${getNotifColor(notif.type)}15`,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Text style={{ fontSize: 16 }}>{getNotifIcon(notif.type)}</Text>
+                    </View>
+
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{
+                          fontSize: 14,
+                          fontWeight: notif.isRead ? '600' : 'bold',
+                          color: theme.text,
+                          flex: 1,
+                        }}>
+                          {notif.title}
+                        </Text>
+                        {!notif.isRead && (
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
+                        )}
+                      </View>
+                      <Text style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 16 }}>
+                        {notif.body}
+                      </Text>
+                      {formattedTime ? (
+                        <Text style={{ fontSize: 10, color: 'rgba(150,150,150,0.6)', marginTop: 2 }}>
+                          {formattedTime}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </ThemedView>
+        </View>
+      </Modal>
 
       {/* নতুন লেনদেন যোগ করার পপ-আপ মডাল */}
       <Modal
@@ -672,16 +822,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   balanceCard: {
     borderRadius: Spacing.four,

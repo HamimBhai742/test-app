@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,25 +9,83 @@ export interface BannerNotification {
   title: string;
   body: string;
   type?: 'daily' | 'due' | 'budget' | 'info';
+  timestamp: string;
+  isRead: boolean;
 }
 
 interface NotificationBannerContextType {
   showNotification: (title: string, body: string, type?: 'daily' | 'due' | 'budget' | 'info') => void;
+  notifications: BannerNotification[];
+  clearAll: () => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
 }
 
 const NotificationBannerContext = createContext<NotificationBannerContextType | undefined>(undefined);
 
 export const NotificationBannerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [activeBanner, setActiveBanner] = useState<BannerNotification | null>(null);
+  const [notifications, setNotifications] = useState<BannerNotification[]>([]);
+
+  // Load saved notifications on mount
+  useEffect(() => {
+    const loadSaved = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('hisabkitab_saved_notifications');
+        if (stored) {
+          setNotifications(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.warn('Error loading notifications:', e);
+      }
+    };
+    loadSaved();
+  }, []);
 
   const showNotification = (title: string, body: string, type: 'daily' | 'due' | 'budget' | 'info' = 'info') => {
     const id = Math.random().toString();
-    setActiveBanner({ id, title, body, type });
+    const newNotif: BannerNotification = {
+      id,
+      title,
+      body,
+      type,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    };
+    setActiveBanner(newNotif);
+
+    // Persist to list
+    setNotifications((prev) => {
+      const updated = [newNotif, ...prev];
+      AsyncStorage.setItem('hisabkitab_saved_notifications', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
 
     // Auto hide after 5 seconds
     setTimeout(() => {
       setActiveBanner((prev) => (prev?.id === id ? null : prev));
     }, 5000);
+  };
+
+  const clearAll = async () => {
+    setNotifications([]);
+    await AsyncStorage.removeItem('hisabkitab_saved_notifications').catch(() => {});
+  };
+
+  const markAllAsRead = async () => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, isRead: true }));
+      AsyncStorage.setItem('hisabkitab_saved_notifications', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  };
+
+  const markAsRead = async (id: string) => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+      AsyncStorage.setItem('hisabkitab_saved_notifications', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
   };
 
   const getBadgeColor = (type?: string) => {
@@ -48,7 +107,7 @@ export const NotificationBannerProvider: React.FC<{ children: ReactNode }> = ({ 
   };
 
   return (
-    <NotificationBannerContext.Provider value={{ showNotification }}>
+    <NotificationBannerContext.Provider value={{ showNotification, notifications, clearAll, markAllAsRead, markAsRead }}>
       {children}
       {activeBanner && (
         <SafeAreaView style={styles.bannerWrapper} pointerEvents="box-none">
