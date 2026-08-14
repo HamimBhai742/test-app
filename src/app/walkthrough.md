@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, integrated a native calendar/clock picker, and updated the subheader transaction count to dynamically reflect the selected filters. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, integrated a native calendar/clock picker, updated the subheader transaction count to dynamically reflect the selected filters, added support for user inputs using Bengali digits, and replaced default system alerts with a custom premium Animated Toast component featuring vector icons. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -104,7 +104,15 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 
 16. **Dynamic Filtered Items Subheader Count (`src/app/index.tsx`)**:
     - Replaced the static total transaction count badge in the subheader with the length of the actively filtered array (`filteredTransactions.length`).
-    - When selecting any category or period filters, the subheader text dynamically updates to reflect the exact number of active transactions visible on the dashboard in real-time.
+
+17. **Bengali Digit Input Parsing Support (`src/utils/number.ts`, `index.tsx`, `dues.tsx`, `explore.tsx`)**:
+    - Added `toEnglishDigits` mapping function in `src/utils/number.ts` to convert Bengali text digits (`০-৯`) into English decimal characters (`0-9`).
+    - Integrated `toEnglishDigits` into the numeric input validators of the client forms.
+
+18. **Custom Premium Animated Spring Toast Banner with Feather Vector Icons (`src/app/index.tsx`)**:
+    - Built a fluid, 60FPS physics-based animated spring Toast notification using React Native's `Animated` library.
+    - When triggered, it slides down dynamically from off-screen (`translateY: -120` to `50` with custom tension and friction) and slides back up automatically after 3 seconds.
+    - Replaced emoji indicators with premium `Feather` vector icons (`alert-circle` for errors, `alert-triangle` for warnings, `check-circle` for success statuses) matching the rest of the application's clean design system.
 
 ---
 

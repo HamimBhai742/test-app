@@ -1,6 +1,7 @@
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+import { formatNumber, getCurrencySymbol, toBanglaDigits, toEnglishDigits } from '@/utils/number';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useState, useEffect } from 'react';
+import { Feather } from '@expo/vector-icons';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -16,6 +17,7 @@ import {
   Alert,
   FlatList,
   SectionList,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -102,6 +104,35 @@ export default function HomeScreen() {
   const { language } = useLanguage();
   const t = translations[language];
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'warning' | 'error'>('error');
+  const toastY = useRef(new Animated.Value(-120)).current;
+
+  const triggerToast = (msg: string, type: 'success' | 'warning' | 'error' = 'error') => {
+    setToastMessage(msg);
+    setToastType(type);
+
+    // Reset and animate slide down
+    toastY.setValue(-120);
+    Animated.spring(toastY, {
+      toValue: 50,
+      tension: 40,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+
+    // Slide up and clear after 3 seconds
+    setTimeout(() => {
+      Animated.timing(toastY, {
+        toValue: -120,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => {
+        setToastMessage(null);
+      });
+    }, 3000);
+  };
+
   const categoryLabels: Record<string, string> = {
     Food: t.catFood,
     Shopping: t.catShopping,
@@ -118,7 +149,7 @@ export default function HomeScreen() {
 
   const handleAddCustomCategory = () => {
     if (!newCatName.trim()) {
-      alert(t.errCustomCatEmpty);
+      triggerToast(t.errCustomCatEmpty, 'warning');
       return;
     }
     const catName = newCatName.trim();
@@ -173,9 +204,9 @@ export default function HomeScreen() {
     }
 
     // ইনপুট দেওয়া টাকা সংখ্যা কিনা এবং শুন্যের চেয়ে বড় কিনা তা চেক করা হচ্ছে।
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseFloat(toEnglishDigits(amount));
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      alert(t.errAmt);
+      triggerToast(t.errAmt, 'error');
       return;
     }
 
@@ -195,10 +226,12 @@ export default function HomeScreen() {
     if (editingTx) {
       // Update existing transaction
       updateTransaction(editingTx.id, txPayload);
+      triggerToast(language === 'bn' ? 'লেনদেনটি সফলভাবে আপডেট করা হয়েছে!' : 'Transaction updated successfully!', 'success');
     } else {
       addTransaction(txPayload);
       // দৈনিক প্রথম লেনদেন সংরক্ষণ বোনাস ক্লেম করা হচ্ছে।
       claimDailyTxReward().catch(() => {});
+      triggerToast(language === 'bn' ? 'লেনদেনটি সফলভাবে যুক্ত করা হয়েছে!' : 'Transaction added successfully!', 'success');
     }
 
     // ফর্ম রিসেট করা হচ্ছে।
@@ -1057,6 +1090,29 @@ export default function HomeScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* কাস্টম টোস্ট নোটিফিকেশন */}
+      {toastMessage && (
+        <Animated.View style={[
+          styles.toastContainer,
+          { transform: [{ translateY: toastY }] },
+          toastType === 'error' && { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' },
+          toastType === 'warning' && { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' },
+          toastType === 'success' && { backgroundColor: '#D1FAE5', borderColor: '#6EE7B7' }
+        ]}>
+          <View style={{ marginRight: 8, alignItems: 'center', justifyContent: 'center' }}>
+            {toastType === 'error' && <Feather name="alert-circle" size={20} color="#991B1B" />}
+            {toastType === 'warning' && <Feather name="alert-triangle" size={20} color="#92400E" />}
+            {toastType === 'success' && <Feather name="check-circle" size={20} color="#065F46" />}
+          </View>
+          <Text style={[
+            styles.toastText,
+            { color: toastType === 'error' ? '#991B1B' : toastType === 'warning' ? '#92400E' : '#065F46' }
+          ]}>
+            {toastMessage}
+          </Text>
+        </Animated.View>
+      )}
     </ThemedView>
   );
 }
@@ -1344,6 +1400,29 @@ const styles = StyleSheet.create({
   periodTabText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 9999,
+  },
+  toastText: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
   },
   categorySummaryRow: {
     flexDirection: 'row',

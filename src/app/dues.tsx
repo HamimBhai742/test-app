@@ -1,4 +1,4 @@
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+import { formatNumber, getCurrencySymbol, toBanglaDigits, toEnglishDigits } from '@/utils/number';
 import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
@@ -74,7 +74,7 @@ function AddEditDueModal({
 
   const handleSave = () => {
     if (!personName.trim()) return;
-    const numAmt = parseFloat(amount);
+    const numAmt = parseFloat(toEnglishDigits(amount));
     if (isNaN(numAmt) || numAmt <= 0) return;
 
     onSave({

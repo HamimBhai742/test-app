@@ -1,4 +1,4 @@
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+import { formatNumber, getCurrencySymbol, toBanglaDigits, toEnglishDigits } from '@/utils/number';
 import React, { useState, useMemo } from 'react';
 import {
   ScrollView,
@@ -102,7 +102,7 @@ function BudgetEditModal({
   }, [visible, currentBudget]);
 
   const handleSave = () => {
-    const val = parseFloat(input);
+    const val = parseFloat(toEnglishDigits(input));
     if (!isNaN(val) && val > 0) {
       onSave(val);
       onClose();
@@ -202,7 +202,7 @@ function AddCategoryModal({
 
   const handleSave = () => {
     if (!name.trim()) return;
-    const bVal = parseFloat(budget);
+    const bVal = parseFloat(toEnglishDigits(budget));
     if (isNaN(bVal) || bVal <= 0) return;
     onSave(name.trim(), bVal, selectedEmoji);
     setName('');
