@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, and integrated a native calendar/clock picker. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, integrated a native calendar/clock picker, and updated the subheader transaction count to dynamically reflect the selected filters. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -24,7 +24,7 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 
 4. **Server-side Custom Creation Timestamp Support (`transaction.interface.ts`, `transaction.service.ts`)**:
    - Added optional `createdAt?: string | Date` to `ICreateTransaction` interface.
-   - Updated server-side `createTransaction` and `updateTransaction` service functions to parse and assign `createdAt` in Prisma `data` object blocks, allowing transactions to persist custom select dates and times directly in the PostgreSQL DB schema.
+   - Updated server-side `createTransaction` and `updateTransaction` service functions to parse and assign `createdAt` in Prisma `data` object blocks.
 
 ---
 
@@ -48,23 +48,17 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 
 5. **Notification Trigger Bindings (`src/services/notificationService.ts`)**:
    - Implemented `saveNotificationLocallyAndNotify` which inserts the triggered notification directly to `AsyncStorage` and calls `DeviceEventEmitter.emit()` to sync the active in-app list instantly.
-   - Connected this local save listener to all primary native notification trigger channels:
-     - `triggerPointsNotification`: Saved rewards claimed (login/welcome/daily).
-     - `triggerBudgetWarning`: Saved category budget overflow warnings.
-     - `scheduleFiveSecondTestNotification`: Saved test notifications after a 5-second delay.
+   - Connected this local save listener to all primary native notification trigger channels.
 
 6. **Dashboard Header & Notification Center Modal (`src/app/index.tsx`)**:
    - Removed the redundant header "+" button as per your feedback to make the header row look cleaner.
    - Scaled header buttons (Theme toggle & Bell button) to a modern, compact `36x36` size with soft shadows.
    - Created an unread count badge overlaying the Bell icon `🔔`.
-   - Tapping the Bell icon opens the **Notification Box** Modal, which contains:
-     - **Title Header & Close Button**.
-     - **Actions**: "সব পঠিত চিহ্নিত করুন" (Mark all read) and "সব মুছে ফেলুন" (Clear all).
-     - **Scrollable List**: Displays category icon (⚡ for budget, ⏰ for dues, 📝 for daily reward, 🔔 for defaults), text, timestamp, and a green dot for unread status. Clicking a notification marks it as read.
+   - Tapping the Bell icon opens the **Notification Box** Modal.
 
 7. **Date Grouping & Compact Ledger Cards Layout (`src/app/index.tsx`)**:
    - **SectionList Migration**: Migrated the transaction rendering FlatList to a `SectionList` to display the entire set of transactions, removing the 10-item list limit.
-   - **Date Grouping Dividers**: Configured dynamic grouping where transactions are separated by day dividers (`————— আজ —————` or `————— গতকাল —————` or full localized date format).
+   - **Date Grouping Dividers**: Configured dynamic grouping where transactions are separated by day dividers.
    - **Removed Date from Cards**: Cleaned card details by removing the redundant date string from individual transaction cards.
    - **Compact Styles**:
      - Reduced card padding to `8` (from 16).
@@ -72,46 +66,45 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
      - Scaled title font size to `14` (from 16) and reduced the inter-item list gap to `6` (from 12).
 
 8. **Optional Title Fallback & Transaction Creation Time (`src/app/index.tsx`, `src/context/TransactionContext.tsx`)**:
-   - **Optional Title**: Removed the validation constraint on the transaction description input in the Modal, showing `(ঐচ্ছিক)` / `(Optional)` in the form. If left empty, it falls back to using the category name as the description title (`finalTitle = title.trim() || category`).
+   - **Optional Title**: Removed the validation constraint on the transaction description input in the Modal, showing `(ঐচ্ছিক)` / `(Optional)` in the form. If left empty, it falls back to using the category name as the description title.
    - **Exposed Creation Time**: Modified the client `Transaction` type definition to include `createdAt?: string` and mapped it when fetching list data and saving new transactions.
-   - **Time on Ledger Cards**: Replaced the category label on the ledger cards with the formatted creation time (`formatTxTime` helper displaying e.g. `০৭:৪৫ PM` / `07:45 PM`), keeping the card compact and highly informative.
+   - **Time on Ledger Cards**: Replaced the category label on the ledger cards with the formatted creation time.
 
 9. **Horizontal Category Filters with Usage Counts (`src/app/index.tsx`)**:
    - Added a horizontal scrollable row of category chips (`ScrollView` styled) directly below the Income/Expense quick action buttons.
-   - Calculates the exact usage count of each category dynamically (`transactions.filter(t => t.category === catName).length`) and shows it next to each category badge (e.g. `🍔 Food (3)`).
+   - Calculates the exact usage count of each category dynamically and shows it next to each category badge.
    - Includes a default `🌐 সব (All)` chip showing the total number of transactions.
    - Allows users to tap on any chip to filter the transaction list dynamically by category.
 
 10. **Category Summary Banner & Highlighting (`src/app/index.tsx`)**:
-    - Introduced a category-specific income and expense overview banner (`categorySummaryRow` styled) that renders dynamically when a filter is applied (`selectedCategory !== null`).
-    - Highlighted the summary banner by tinting the background with a premium light blue color (`rgba(59, 130, 246, 0.08)`) and adding a vibrant left blue indicator bar (`borderLeftWidth: 4, borderLeftColor: "#3B82F6"`), making it stand out as a premium active-status tracker.
+    - Introduced a category-specific income and expense overview banner (`categorySummaryRow` styled) that renders dynamically when a filter is applied.
+    - Highlighted the summary banner by tinting the background with a premium light blue color and adding a vibrant left blue indicator bar.
 
 11. **Dynamic Bengali Digit & Currency Symbol Localization Utility (`src/utils/number.ts`)**:
     - Created a shared utility `src/utils/number.ts` exporting `formatNumber()`, `getCurrencySymbol()`, and `toBanglaDigits()`.
-    - Detects active language statically using `getCurrentLanguage()` from the `LanguageContext` so it works anywhere (even outside react rendering cycle).
+    - Detects active language statically using `getCurrentLanguage()` from the `LanguageContext` so it works anywhere.
     - Applied these shared localizations dynamically to all amounts, points, rank statistics, counts, and currency labels across all primary screen components in the app.
 
 12. **Dynamic Category Title Update and Time Preservation on Edit (`src/app/index.tsx`, `src/context/TransactionContext.tsx`)**:
     - Updated `handleAddTransaction` logic during edits. If the user had not written a custom title, changing the category now dynamically updates the transaction's title to match the newly selected category name.
-    - Fixed the optimistic state updater and database response parser inside `updateTransaction` of `TransactionContext.tsx` to preserve and re-map the original `createdAt` timestamp when a transaction is edited, ensuring the time display remains visible on the ledger cards after update operations.
+    - Fixed the optimistic state updater and database response parser inside `updateTransaction` of `TransactionContext.tsx` to preserve and re-map the original `createdAt` timestamp when a transaction is edited.
 
 13. **Sticky Top Container & Isolated Ledger Scroll (`src/app/index.tsx`)**:
-    - Extracted all non-scrollable dashboard elements (App Header, Balance Card, Quick Buttons, Category Scroll Filters, and Category Summary Banner) out of the `SectionList`'s header container and placed them inside a static parent view wrapper (`fixedHeaderContainer` styled).
-    - Configured the transaction `SectionList` container to occupy `flex: 1` underneath. This ensures the header and balance metrics remain fully fixed at the top of the viewport, and only the transaction list cards scroll below them, creating a native and high-performance scrolling experience.
+    - Extracted all non-scrollable dashboard elements out of the `SectionList`'s header container and placed them inside a static parent view wrapper (`fixedHeaderContainer` styled).
+    - Configured the transaction `SectionList` container to occupy `flex: 1` underneath.
 
 14. **Segmented Period Filtering on Balance metrics & Ledger (`src/app/index.tsx`)**:
-    - Embedded a premium segmented tab switcher row (`periodTabRow` styled) inside the main Balance Card at the top.
-    - Features three dynamic period tabs:
-      - **Today (`আজ` / `Today`)**
-      - **Current Month (e.g. `আগস্ট` / `Aug` based dynamically on active date)**
-      - **Total (`মোট` / `Total`)**
-    - Tapping a period tab dynamically filters both the balance card calculations (calculating Net Balance, Income, and Expenses for the selected range only) and the ledger transaction list below.
+    - Embedded a premium segmented tab switcher row inside the main Balance Card at the top.
+    - Features three dynamic period tabs: Today, Current Month, and Total.
 
 15. **Native Calendar & Clock Date/Time Picker (`src/app/index.tsx`, `@react-native-community/datetimepicker`)**:
-    - Integrated `@react-native-community/datetimepicker` in the "Add Transaction" modal form, replacing the manual text input field with native, interactive calendar and clock selector buttons.
+    - Integrated `@react-native-community/datetimepicker` in the "Add Transaction" modal form.
     - Form sets current date and time dynamically by default on mount.
-    - Tapping the Date button pops open the Android/iOS native Calendar picker dialog. Tapping the Time button pops open the native Clock picker.
-    - Preserved the helper date shortcut tags (`আজ`, `গতকাল`, `২ দিন আগে`, `৭ দিন আগে`) and wired them to instantly update the selected calendar day while maintaining the selected custom time.
+    - Preserved the helper date shortcut tags.
+
+16. **Dynamic Filtered Items Subheader Count (`src/app/index.tsx`)**:
+    - Replaced the static total transaction count badge in the subheader with the length of the actively filtered array (`filteredTransactions.length`).
+    - When selecting any category or period filters, the subheader text dynamically updates to reflect the exact number of active transactions visible on the dashboard in real-time.
 
 ---
 

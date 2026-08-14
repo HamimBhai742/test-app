@@ -548,7 +548,7 @@ export default function HomeScreen() {
             <View style={styles.recentHeader}>
               <ThemedText type="smallBold">{language === 'bn' ? 'লেনদেন সমূহ' : 'All Transactions'}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length} {language === 'bn' ? 'টি লেনদেন' : 'transactions'}
+                {language === 'bn' ? toBanglaDigits(filteredTransactions.length.toString()) : filteredTransactions.length} {language === 'bn' ? 'টি লেনদেন' : 'transactions'}
               </ThemedText>
             </View>
           }
