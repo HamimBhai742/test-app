@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, integrated a native calendar/clock picker, updated the subheader transaction count to dynamically reflect the selected filters, added support for user inputs using Bengali digits, replaced default system alerts with a custom premium Animated Toast component featuring vector icons, and updated the modal save buttons to toggle enabled states dynamically based on amount inputs. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, integrated a native calendar/clock picker, updated the subheader transaction count to dynamically reflect the selected filters, added support for user inputs using Bengali digits, replaced default system alerts with a custom premium Animated Toast component featuring vector icons, updated the modal save buttons to toggle enabled states dynamically based on amount inputs, implemented a robust, timezone-proof local date comparison for transaction period filters, resolved SectionList redrawing caches on Android, resolved subheader count text wrapping constraints, resolved balance card stats label text wrapping layouts, and resolved category filter chip count mismatches. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -114,8 +114,23 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
     - Replaced emoji indicators with premium `Feather` vector icons (`alert-circle` for errors, `alert-triangle` for warnings, `check-circle` for success statuses).
 
 19. **Conditional Save Button Disable on Empty Amount (`src/app/index.tsx`)**:
-    - Configured the transaction submittal save button (`TouchableOpacity` container) to automatically lock and disable (`disabled={!amount.trim()}`) when the amount input is left empty.
-    - Styled the disabled state to grey out dynamically (`opacity: 0.5` and background tinted to matches `theme.backgroundSelected`) and dim the text color to `theme.textSecondary`. Once the user enters a character, it instantly activates and displays its full vibrant green (`#10B981`) or red (`#EF4444`) brand accent colors.
+    - Configured the transaction submittal save button to automatically lock and disable when the amount input is left empty.
+
+20. **Timezone-Proof Local Date Object Period Filtering (`src/app/index.tsx`)**:
+    - Upgraded the period filtering comparison logic from UTC ISO substrings to local timezone-aware Date objects.
+
+21. **SectionList Dynamic Key Rendering for Clean Redraws (`src/app/index.tsx`)**:
+    - Injected a dynamic `key` prop into the React Native `SectionList` wrapper to resolve Android list caching issues.
+
+22. **Subheader Count Text Wrap Prevention (`src/app/index.tsx`)**:
+    - Applied `flexShrink: 0` and `textAlign: 'right'` to the transaction subheader count labels inside `recentHeader` to prevent the word "লেনদেন" from wrapping.
+
+23. **Balance Card Stats Column Wrap Prevention (`src/app/index.tsx`)**:
+    - Added `flex: 1` styling to the stats sub-label `<ThemedText>` components inside the Balance Card `statDotContainer` row blocks.
+
+24. **Dynamic Period-Aware Category Filter Chip Counts (`src/app/index.tsx`)**:
+    - Updated the category filter chip row mapping to compute counts dynamically using `filteredByPeriodTransactions` instead of the all-time `transactions` list.
+    - When the period filter changes (e.g. to "Today" / "আজ"), the category badge numbers (such as `🌐 সব`, `🍔 খাবার দাবার` etc.) immediately re-evaluate and display count statistics specific only to the active period, resolving all count discrepancies.
 
 ---
 

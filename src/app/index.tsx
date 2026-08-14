@@ -281,17 +281,32 @@ export default function HomeScreen() {
   const allCategories = ['Food', 'Shopping', 'Utilities', 'Rent', 'Entertainment', 'Salary', 'Transport', 'Health', 'Education', 'Bills', 'Others', ...customCategories];
   const uniqueCategories = Array.from(new Set(allCategories));
 
-  // Filter transactions by selected period
+  // Filter transactions by selected period using robust Date comparison
   const filteredByPeriodTransactions = transactions.filter((tx) => {
-    const txDateStr = tx.date.split('T')[0];
-    const todayStr = getLocalDateString();
+    let txDate: Date;
+    if (tx.createdAt) {
+      txDate = new Date(tx.createdAt);
+    } else {
+      const parts = tx.date.split('T')[0].split('-');
+      if (parts.length === 3) {
+        txDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      } else {
+        txDate = new Date(tx.date);
+      }
+    }
+    
+    if (isNaN(txDate.getTime())) return true;
+    
+    const today = new Date();
     
     if (periodFilter === 'today') {
-      return txDateStr === todayStr;
+      return txDate.getFullYear() === today.getFullYear() &&
+             txDate.getMonth() === today.getMonth() &&
+             txDate.getDate() === today.getDate();
     }
     if (periodFilter === 'month') {
-      const currentYearMonth = new Date().toISOString().substring(0, 7); // "YYYY-MM"
-      return txDateStr.startsWith(currentYearMonth);
+      return txDate.getFullYear() === today.getFullYear() &&
+             txDate.getMonth() === today.getMonth();
     }
     return true; // 'total'
   });
@@ -460,7 +475,7 @@ export default function HomeScreen() {
               <View style={styles.statColumn}>
                 <View style={styles.statDotContainer}>
                   <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
                     {periodFilter === 'today' ? (language === 'bn' ? 'আজকের আয়' : "Today's Income") : periodFilter === 'month' ? (language === 'bn' ? 'এই মাসের আয়' : "This Month's Income") : t.totalInc}
                   </ThemedText>
                 </View>
@@ -472,7 +487,7 @@ export default function HomeScreen() {
               <View style={styles.statColumn}>
                 <View style={styles.statDotContainer}>
                   <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <ThemedText type="small" themeColor="textSecondary" style={{ flex: 1 }}>
                     {periodFilter === 'today' ? (language === 'bn' ? 'আজকের ব্যয়' : "Today's Expense") : periodFilter === 'month' ? (language === 'bn' ? 'এই মাসের ব্যয়' : "This Month's Expense") : t.totalExp}
                   </ThemedText>
                 </View>
@@ -519,12 +534,12 @@ export default function HomeScreen() {
                 styles.categoryFilterText,
                 { color: selectedCategory === null ? theme.background : theme.text }
               ]}>
-                🌐 {language === 'bn' ? 'সব' : 'All'} ({language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length})
+                🌐 {language === 'bn' ? 'সব' : 'All'} ({language === 'bn' ? toBanglaDigits(filteredByPeriodTransactions.length.toString()) : filteredByPeriodTransactions.length})
               </Text>
             </TouchableOpacity>
 
             {uniqueCategories.map((cat) => {
-              const count = transactions.filter((t) => t.category === cat).length;
+              const count = filteredByPeriodTransactions.filter((t) => t.category === cat).length;
               const catEmoji = getCategoryEmoji(cat);
               const isSelected = selectedCategory === cat;
               
@@ -570,6 +585,7 @@ export default function HomeScreen() {
         </View>
 
         <SectionList
+          key={`${periodFilter}-${selectedCategory}`}
           style={{ flex: 1 }}
           sections={sections}
           keyExtractor={(item) => item.id}
@@ -579,8 +595,8 @@ export default function HomeScreen() {
           ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
           ListHeaderComponent={
             <View style={styles.recentHeader}>
-              <ThemedText type="smallBold">{language === 'bn' ? 'লেনদেন সমূহ' : 'All Transactions'}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="smallBold" style={{ flexShrink: 0 }}>{language === 'bn' ? 'লেনদেন সমূহ' : 'All Transactions'}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={{ flexShrink: 0, textAlign: 'right' }}>
                 {language === 'bn' ? toBanglaDigits(filteredTransactions.length.toString()) : filteredTransactions.length} {language === 'bn' ? 'টি লেনদেন' : 'transactions'}
               </ThemedText>
             </View>
