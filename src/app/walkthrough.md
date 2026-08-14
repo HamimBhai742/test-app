@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, and updated transaction edit behaviors to support dynamic title updates and time preservation. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, and isolated the scroll container of the ledger. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -96,6 +96,10 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 12. **Dynamic Category Title Update and Time Preservation on Edit (`src/app/index.tsx`, `src/context/TransactionContext.tsx`)**:
     - Updated `handleAddTransaction` logic during edits. If the user had not written a custom title, changing the category now dynamically updates the transaction's title to match the newly selected category name.
     - Fixed the optimistic state updater and database response parser inside `updateTransaction` of `TransactionContext.tsx` to preserve and re-map the original `createdAt` timestamp when a transaction is edited, ensuring the time display remains visible on the ledger cards after update operations.
+
+13. **Sticky Top Container & Isolated Ledger Scroll (`src/app/index.tsx`)**:
+    - Extracted all non-scrollable dashboard elements (App Header, Balance Card, Quick Buttons, Category Scroll Filters, and Category Summary Banner) out of the `SectionList`'s header container and placed them inside a static parent view wrapper (`fixedHeaderContainer` styled).
+    - Configured the transaction `SectionList` container to occupy `flex: 1` underneath. This ensures the header and balance metrics remain fully fixed at the top of the viewport, and only the transaction list cards scroll below them, creating a native and high-performance scrolling experience.
 
 ---
 

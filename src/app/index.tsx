@@ -286,7 +286,182 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        {/* স্থির টপ কন্টেইনার (এটি স্ক্রোল হবে না) */}
+        <View style={styles.fixedHeaderContainer}>
+          {/* হেডার সেকশন */}
+          <ThemedView style={styles.header}>
+            <ThemedView>
+              <ThemedText type="small" themeColor="textSecondary">{t.dailyTracker}</ThemedText>
+              <ThemedText type="subtitle" style={styles.headerTitle}>{t.appTitle}</ThemedText>
+            </ThemedView>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {/* ডার্ক/লাইট থিম টগল বাটন */}
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
+                onPress={() => {
+                  setThemeMode((prev) => {
+                    if (prev === 'light') return 'dark';
+                    if (prev === 'dark') return 'system';
+                    return 'light';
+                  });
+                }}
+              >
+                <ThemedText style={{ fontSize: 14 }}>
+                  {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌗'}
+                </ThemedText>
+              </TouchableOpacity>
+
+              {/* নোটিফিকেশন বাটন */}
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
+                onPress={() => setNotifModalVisible(true)}
+              >
+                <ThemedText style={{ fontSize: 14 }}>🔔</ThemedText>
+                {notifications.filter(n => !n.isRead).length > 0 && (
+                  <View style={{
+                    position: 'absolute',
+                    top: -3,
+                    right: -3,
+                    backgroundColor: '#EF4444',
+                    borderRadius: 8,
+                    minWidth: 16,
+                    height: 16,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                  }}>
+                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>
+                      {language === 'bn' ? toBanglaDigits(notifications.filter(n => !n.isRead).length.toString()) : notifications.filter(n => !n.isRead).length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+
+          {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
+          <ThemedView type="backgroundElement" style={styles.balanceCard}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
+              {t.totalBal}
+            </ThemedText>
+            <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
+              <Text style={{ fontSize: 18, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalBalance)}
+            </ThemedText>
+
+            <View style={styles.cardDivider} />
+
+            {/* আয় ও ব্যয়ের তুলনামূলক সেকশন */}
+            <View style={styles.statsRow}>
+              <View style={styles.statColumn}>
+                <View style={styles.statDotContainer}>
+                  <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
+                  <ThemedText type="small" themeColor="textSecondary">{t.totalInc}</ThemedText>
+                </View>
+                <ThemedText style={styles.statAmountGreen}>
+                  <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalIncome)}
+                </ThemedText>
+              </View>
+
+              <View style={styles.statColumn}>
+                <View style={styles.statDotContainer}>
+                  <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
+                  <ThemedText type="small" themeColor="textSecondary">{t.totalExp}</ThemedText>
+                </View>
+                <ThemedText style={styles.statAmountRed}>
+                  <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalExpenses)}
+                </ThemedText>
+              </View>
+            </View>
+          </ThemedView>
+
+          {/* কুইক অ্যাকশন বাটন */}
+          <View style={styles.quickActionRow}>
+            <TouchableOpacity
+              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
+              onPress={() => { setType('income'); setModalVisible(true); }}
+            >
+              <ThemedText style={styles.quickButtonText}>{t.addIncome}</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
+              onPress={() => { setType('expense'); setModalVisible(true); }}
+            >
+              <ThemedText style={styles.quickButtonText}>{t.addExpense}</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {/* ক্যাটাগরি ফিল্টার স্ক্রোল রো */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryFilterContainer}
+            style={{ marginBottom: Spacing.four }}
+          >
+            <TouchableOpacity
+              style={[
+                styles.categoryFilterChip,
+                selectedCategory === null
+                  ? { backgroundColor: theme.text }
+                  : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }
+              ]}
+              onPress={() => setSelectedCategory(null)}
+            >
+              <Text style={[
+                styles.categoryFilterText,
+                { color: selectedCategory === null ? theme.background : theme.text }
+              ]}>
+                🌐 {language === 'bn' ? 'সব' : 'All'} ({language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length})
+              </Text>
+            </TouchableOpacity>
+
+            {uniqueCategories.map((cat) => {
+              const count = transactions.filter((t) => t.category === cat).length;
+              const catEmoji = getCategoryEmoji(cat);
+              const isSelected = selectedCategory === cat;
+              
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryFilterChip,
+                    isSelected
+                      ? { backgroundColor: theme.text }
+                      : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }
+                  ]}
+                  onPress={() => setSelectedCategory(isSelected ? null : cat)}
+                >
+                  <Text style={[
+                    styles.categoryFilterText,
+                    { color: isSelected ? theme.background : theme.text }
+                  ]}>
+                    {catEmoji} {categoryLabels[cat] || cat} ({language === 'bn' ? toBanglaDigits(count.toString()) : count})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* ক্যাটাগরি অনুযায়ী আয়-ব্যয় সামারি (ফিল্টার অ্যাক্টিভ থাকলে দেখাবে) */}
+          {selectedCategory !== null && (
+            <View style={styles.categorySummaryRow}>
+              <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '600' }}>
+                {categoryLabels[selectedCategory] || selectedCategory} {language === 'bn' ? 'এর মোট:' : 'Summary:'}
+              </ThemedText>
+              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>
+                  {language === 'bn' ? '+ ৳ ' : '+ TK '}{formatNumber(filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0))}
+                </Text>
+                <View style={{ width: 1, height: 12, backgroundColor: 'rgba(150, 150, 150, 0.2)' }} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#EF4444' }}>
+                  {language === 'bn' ? '- ৳ ' : '- TK '}{formatNumber(filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0))}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+
         <SectionList
+          style={{ flex: 1 }}
           sections={sections}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
@@ -294,186 +469,12 @@ export default function HomeScreen() {
           stickySectionHeadersEnabled={false}
           ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
           ListHeaderComponent={
-            <>
-              {/* হেডার সেকশন */}
-              <ThemedView style={styles.header}>
-                <ThemedView>
-                  <ThemedText type="small" themeColor="textSecondary">{t.dailyTracker}</ThemedText>
-                  <ThemedText type="subtitle" style={styles.headerTitle}>{t.appTitle}</ThemedText>
-                </ThemedView>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  {/* ডার্ক/লাইট থিম টগল বাটন */}
-                  <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
-                    onPress={() => {
-                      setThemeMode((prev) => {
-                        if (prev === 'light') return 'dark';
-                        if (prev === 'dark') return 'system';
-                        return 'light';
-                      });
-                    }}
-                  >
-                    <ThemedText style={{ fontSize: 14 }}>
-                      {themeMode === 'dark' ? '🌙' : themeMode === 'light' ? '☀️' : '🌗'}
-                    </ThemedText>
-                  </TouchableOpacity>
-
-                  {/* নোটিফিকেশন বাটন */}
-                  <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }]}
-                    onPress={() => setNotifModalVisible(true)}
-                  >
-                    <ThemedText style={{ fontSize: 14 }}>🔔</ThemedText>
-                    {notifications.filter(n => !n.isRead).length > 0 && (
-                      <View style={{
-                        position: 'absolute',
-                        top: -3,
-                        right: -3,
-                        backgroundColor: '#EF4444',
-                        borderRadius: 8,
-                        minWidth: 16,
-                        height: 16,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        paddingHorizontal: 4,
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 9, fontWeight: 'bold' }}>
-                          {language === 'bn' ? toBanglaDigits(notifications.filter(n => !n.isRead).length.toString()) : notifications.filter(n => !n.isRead).length}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </ThemedView>
-
-              {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
-              <ThemedView type="backgroundElement" style={styles.balanceCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
-                  {t.totalBal}
-                </ThemedText>
-                <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
-                  <Text style={{ fontSize: 18, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalBalance)}
-                </ThemedText>
-
-                <View style={styles.cardDivider} />
-
-                {/* আয় ও ব্যয়ের তুলনামূলক সেকশন */}
-                <View style={styles.statsRow}>
-                  <View style={styles.statColumn}>
-                    <View style={styles.statDotContainer}>
-                      <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
-                      <ThemedText type="small" themeColor="textSecondary">{t.totalInc}</ThemedText>
-                    </View>
-                    <ThemedText style={styles.statAmountGreen}>
-                      <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalIncome)}
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.statColumn}>
-                    <View style={styles.statDotContainer}>
-                      <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
-                      <ThemedText type="small" themeColor="textSecondary">{t.totalExp}</ThemedText>
-                    </View>
-                    <ThemedText style={styles.statAmountRed}>
-                      <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalExpenses)}
-                    </ThemedText>
-                  </View>
-                </View>
-              </ThemedView>
-
-              {/* কুইক অ্যাকশন বাটন */}
-              <View style={styles.quickActionRow}>
-                <TouchableOpacity
-                  style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
-                  onPress={() => { setType('income'); setModalVisible(true); }}
-                >
-                  <ThemedText style={styles.quickButtonText}>{t.addIncome}</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
-                  onPress={() => { setType('expense'); setModalVisible(true); }}
-                >
-                  <ThemedText style={styles.quickButtonText}>{t.addExpense}</ThemedText>
-                </TouchableOpacity>
-              </View>
-
-              {/* ক্যাটাগরি ফিল্টার স্ক্রোল রো */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoryFilterContainer}
-                style={{ marginBottom: Spacing.four }}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.categoryFilterChip,
-                    selectedCategory === null
-                      ? { backgroundColor: theme.text }
-                      : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }
-                  ]}
-                  onPress={() => setSelectedCategory(null)}
-                >
-                  <Text style={[
-                    styles.categoryFilterText,
-                    { color: selectedCategory === null ? theme.background : theme.text }
-                  ]}>
-                    🌐 {language === 'bn' ? 'সব' : 'All'} ({language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length})
-                  </Text>
-                </TouchableOpacity>
-
-                {uniqueCategories.map((cat) => {
-                  const count = transactions.filter((t) => t.category === cat).length;
-                  const catEmoji = getCategoryEmoji(cat);
-                  const isSelected = selectedCategory === cat;
-                  
-                  return (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[
-                        styles.categoryFilterChip,
-                        isSelected
-                          ? { backgroundColor: theme.text }
-                          : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }
-                      ]}
-                      onPress={() => setSelectedCategory(isSelected ? null : cat)}
-                    >
-                      <Text style={[
-                        styles.categoryFilterText,
-                        { color: isSelected ? theme.background : theme.text }
-                      ]}>
-                        {catEmoji} {categoryLabels[cat] || cat} ({language === 'bn' ? toBanglaDigits(count.toString()) : count})
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              {/* ক্যাটাগরি অনুযায়ী আয়-ব্যয় সামারি (ফিল্টার অ্যাক্টিভ থাকলে দেখাবে) */}
-              {selectedCategory !== null && (
-                <View style={styles.categorySummaryRow}>
-                  <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '600' }}>
-                    {categoryLabels[selectedCategory] || selectedCategory} {language === 'bn' ? 'এর মোট:' : 'Summary:'}
-                  </ThemedText>
-                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>
-                      + TK {formatNumber(filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0))}
-                    </Text>
-                    <View style={{ width: 1, height: 12, backgroundColor: 'rgba(150, 150, 150, 0.2)' }} />
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#EF4444' }}>
-                      - TK {formatNumber(filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0))}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* লেনদেনের তালিকা হেডার */}
-              <View style={styles.recentHeader}>
-                <ThemedText type="smallBold">{language === 'bn' ? 'লেনদেন সমূহ' : 'All Transactions'}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length} {language === 'bn' ? 'টি লেনদেন' : 'transactions'}
-                </ThemedText>
-              </View>
-            </>
+            <View style={styles.recentHeader}>
+              <ThemedText type="smallBold">{language === 'bn' ? 'লেনদেন সমূহ' : 'All Transactions'}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length} {language === 'bn' ? 'টি লেনদেন' : 'transactions'}
+              </ThemedText>
+            </View>
           }
           ListEmptyComponent={
             <ThemedView type="backgroundElement" style={styles.emptyContainer}>
@@ -938,8 +939,15 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+    paddingTop: 8,
     paddingBottom: BottomTabInset + Spacing.five,
+  },
+  fixedHeaderContainer: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
