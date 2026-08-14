@@ -1,3 +1,4 @@
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   ScrollView,
@@ -18,7 +19,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { PDFExportModal } from '@/components/pdf-export-modal';
 import { useAuth } from '@/context/AuthContext';
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+
+
 import { Feather } from '@expo/vector-icons';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

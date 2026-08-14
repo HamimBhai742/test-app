@@ -1,3 +1,4 @@
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   ScrollView,
@@ -18,7 +19,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTransactions } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+
+
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

@@ -1,3 +1,4 @@
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
@@ -19,7 +20,8 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/context/LanguageContext';
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+
+
 import { translations } from '@/constants/translations';
 import { useDues, DueItem } from '@/context/DueContext';
 import { Feather } from '@expo/vector-icons';
@@ -354,7 +356,7 @@ export default function DuesScreen() {
           <View style={styles.netRow}>
             <Text style={[styles.netLbl, { color: theme.textSecondary }]}>{t.netBalance}:</Text>
             <Text style={[styles.netVal, { color: netBalance >= 0 ? '#10B981' : '#EF4444' }]}>
-              {netBalance >= 0 ? `+ TK ${formatNumber(netBalance)}` : `- TK ${formatNumber(Math.abs(netBalance))}`}
+              {netBalance >= 0 ? `+ ${getCurrencySymbol()}${formatNumber(netBalance)}` : `- ${getCurrencySymbol()}${formatNumber(Math.abs(netBalance))}`}
             </Text>
           </View>
         </ThemedView>

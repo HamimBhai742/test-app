@@ -1,3 +1,4 @@
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -50,7 +51,8 @@ import {
   NotificationSettings,
 } from '@/services/notificationService';
 import { useNotificationBanner } from '@/context/NotificationBannerContext';
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+
+
 
 let GoogleSignin: any = null;
 let statusCodes: any = {};

@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, and localized all numbers and currency symbols dynamically across all screens. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, and verified full screen localization compatibility. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -60,7 +60,7 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 
 7. **Date Grouping & Compact Ledger Cards Layout (`src/app/index.tsx`)**:
    - **SectionList Migration**: Migrated the transaction rendering FlatList to a `SectionList` to display the entire set of transactions, removing the 10-item list limit.
-   - **Date Grouping Dividers**: Configured dynamic grouping where transactions are separated by day dividers (`————— আজ —————` or `—————獲得昨日—————` or full localized date format).
+   - **Date Grouping Dividers**: Configured dynamic grouping where transactions are separated by day dividers (`————— আজ —————` or `————— গতকাল —————` or full localized date format).
    - **Removed Date from Cards**: Cleaned card details by removing the redundant date string from individual transaction cards.
    - **Compact Styles**:
      - Reduced card padding to `8` (from 16).
@@ -86,8 +86,8 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
     - Created a shared utility `src/utils/number.ts` exporting `formatNumber()`, `getCurrencySymbol()`, and `toBanglaDigits()`.
     - Detects active language statically using `getCurrentLanguage()` from the `LanguageContext` so it works anywhere (even outside react rendering cycle).
     - Applied these shared localizations dynamically to all amounts, points, rank statistics, counts, and currency labels across all primary screen components in the app:
-      - **Dashboard Ledger (`index.tsx`)**
-      - **Dues Ledger (`dues.tsx`)**
+      - **Dashboard Ledger (`index.tsx`)**: Replaced all remaining hardcoded `TK` labels with dynamic `{getCurrencySymbol()}` rendering.
+      - **Dues Ledger (`dues.tsx`)**: Replaced remaining template literal currency tags with `{getCurrencySymbol()}` tags.
       - **Goals & Investments (`explore.tsx`)**
       - **Live Expense Analytics (`stats.tsx`)**
       - **Monthly Summary Report (`report.tsx`)**

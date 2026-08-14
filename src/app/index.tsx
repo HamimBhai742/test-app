@@ -1,3 +1,4 @@
+import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import React, { useState, useEffect } from 'react';
 import {
   Platform,
@@ -13,6 +14,7 @@ import {
   Text,
   Alert,
   FlatList,
+  SectionList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,7 +25,8 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 // ট্রানজেকশন সম্পর্কিত স্টেট ও টাইপ ইমপোর্ট করা হচ্ছে।
 import { useTransactions, Transaction } from '@/context/TransactionContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+
+
 import { translations } from '@/constants/translations';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
@@ -67,6 +70,7 @@ export default function HomeScreen() {
   // Notification center state
   const { notifications, clearAll, markAllAsRead, markAsRead } = useNotificationBanner();
   const [notifModalVisible, setNotifModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Load custom categories from AsyncStorage on mount
   useEffect(() => {
@@ -138,11 +142,7 @@ export default function HomeScreen() {
 
   // ফর্ম সাবমিট করার হ্যান্ডলার ফাংশন।
   const handleAddTransaction = () => {
-    // শিরোনাম ফাকা আছে কিনা যাচাই করা হচ্ছে।
-    if (!title.trim()) {
-      alert(t.errDesc);
-      return;
-    }
+    const finalTitle = title.trim() || (categoryLabels[category] || category);
 
     // ইনপুট দেওয়া টাকা সংখ্যা কিনা এবং শুন্যের চেয়ে বড় কিনা তা চেক করা হচ্ছে।
     const parsedAmount = parseFloat(amount);
@@ -157,7 +157,7 @@ export default function HomeScreen() {
     const finalDate = txDate && dateRegex.test(txDate) ? txDate : getLocalDateString();
 
     const txPayload = {
-      title: title.trim(),
+      title: finalTitle,
       amount: parsedAmount,
       type,
       category,
@@ -201,21 +201,88 @@ export default function HomeScreen() {
     }
   };
 
-  // "আরও দেখুন" টগল স্টেট — ডিফল্টে সাম্প্রতিক ১০টি দেখায়
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
-  const recentTransactions = showAllTransactions
-    ? transactions
-    : transactions.slice(0, 10);
+  const getCategoryEmoji = (category: string) => {
+    switch (category) {
+      case 'Food': return '🍔';
+      case 'Shopping': return '🛒';
+      case 'Utilities': return '⚡';
+      case 'Rent': return '🏠';
+      case 'Entertainment': return '🎬';
+      case 'Salary': return '💼';
+      case 'Transport': return '🚗';
+      case 'Health': return '🏥';
+      case 'Education': return '🎓';
+      case 'Bills': return '🧾';
+      default: return '🏷️';
+    }
+  };
+
+  const allCategories = ['Food', 'Shopping', 'Utilities', 'Rent', 'Entertainment', 'Salary', 'Transport', 'Health', 'Education', 'Bills', 'Others', ...customCategories];
+  const uniqueCategories = Array.from(new Set(allCategories));
+
+  // Filter transactions by selected category
+  const filteredTransactions = selectedCategory
+    ? transactions.filter((t) => t.category === selectedCategory)
+    : transactions;
+
+  // Group and sort transactions by date descending
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const formatDateHeader = (dateStr: string) => {
+    const today = getLocalDateString();
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toISOString().split('T')[0];
+
+    if (dateStr === today) {
+      return language === 'bn' ? 'আজ' : 'Today';
+    }
+    if (dateStr === yesterday) {
+      return language === 'bn' ? 'গতকাল' : 'Yesterday';
+    }
+    
+    const dateObj = new Date(dateStr);
+    if (isNaN(dateObj.getTime())) return dateStr;
+    return dateObj.toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTxTime = (createdAtStr?: string) => {
+    if (!createdAtStr) return '';
+    const dateObj = new Date(createdAtStr);
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const sections: { title: string; data: Transaction[] }[] = [];
+  sortedTransactions.forEach((tx) => {
+    const dateStr = tx.date.split('T')[0];
+    let section = sections.find((s) => s.title === dateStr);
+    if (!section) {
+      section = { title: dateStr, data: [] };
+      sections.push(section);
+    }
+    section.data.push(tx);
+  });
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <FlatList
-          data={recentTransactions}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
+          stickySectionHeadersEnabled={false}
+          ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
           ListHeaderComponent={
             <>
               {/* হেডার সেকশন */}
@@ -268,14 +335,14 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
               </ThemedView>
-              
+
               {/* প্রধান ব্যালেন্স কার্ড - যেখানে মোট হিসাব প্রিমিয়াম ডিজাইনে দেখানো হচ্ছে */}
               <ThemedView type="backgroundElement" style={styles.balanceCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.balanceLabel}>
                   {t.totalBal}
                 </ThemedText>
                 <ThemedText style={[styles.balanceAmount, { color: totalBalance >= 0 ? '#10B981' : '#EF4444' }]}>
-                  <Text style={{ fontSize: 18, fontWeight: '500' }}>TK </Text>{formatNumber(totalBalance)}
+                  <Text style={{ fontSize: 18, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalBalance)}
                 </ThemedText>
 
                 <View style={styles.cardDivider} />
@@ -288,7 +355,7 @@ export default function HomeScreen() {
                       <ThemedText type="small" themeColor="textSecondary">{t.totalInc}</ThemedText>
                     </View>
                     <ThemedText style={styles.statAmountGreen}>
-                      <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalIncome)}
+                      <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalIncome)}
                     </ThemedText>
                   </View>
 
@@ -298,7 +365,7 @@ export default function HomeScreen() {
                       <ThemedText type="small" themeColor="textSecondary">{t.totalExp}</ThemedText>
                     </View>
                     <ThemedText style={styles.statAmountRed}>
-                      <Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(totalExpenses)}
+                      <Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(totalExpenses)}
                     </ThemedText>
                   </View>
                 </View>
@@ -306,14 +373,13 @@ export default function HomeScreen() {
 
               {/* কুইক অ্যাকশন বাটন */}
               <View style={styles.quickActionRow}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
                   onPress={() => { setType('income'); setModalVisible(true); }}
                 >
                   <ThemedText style={styles.quickButtonText}>{t.addIncome}</ThemedText>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
                   onPress={() => { setType('expense'); setModalVisible(true); }}
                 >
@@ -321,10 +387,81 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* সাম্প্রতিক লেনদেনের তালিকা (Recent Transactions) হেডার */}
+              {/* ক্যাটাগরি ফিল্টার স্ক্রোল রো */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryFilterContainer}
+                style={{ marginBottom: Spacing.four }}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.categoryFilterChip,
+                    selectedCategory === null
+                      ? { backgroundColor: theme.text }
+                      : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }
+                  ]}
+                  onPress={() => setSelectedCategory(null)}
+                >
+                  <Text style={[
+                    styles.categoryFilterText,
+                    { color: selectedCategory === null ? theme.background : theme.text }
+                  ]}>
+                    🌐 {language === 'bn' ? 'সব' : 'All'} ({language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length})
+                  </Text>
+                </TouchableOpacity>
+
+                {uniqueCategories.map((cat) => {
+                  const count = transactions.filter((t) => t.category === cat).length;
+                  const catEmoji = getCategoryEmoji(cat);
+                  const isSelected = selectedCategory === cat;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[
+                        styles.categoryFilterChip,
+                        isSelected
+                          ? { backgroundColor: theme.text }
+                          : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected }
+                      ]}
+                      onPress={() => setSelectedCategory(isSelected ? null : cat)}
+                    >
+                      <Text style={[
+                        styles.categoryFilterText,
+                        { color: isSelected ? theme.background : theme.text }
+                      ]}>
+                        {catEmoji} {categoryLabels[cat] || cat} ({language === 'bn' ? toBanglaDigits(count.toString()) : count})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* ক্যাটাগরি অনুযায়ী আয়-ব্যয় সামারি (ফিল্টার অ্যাক্টিভ থাকলে দেখাবে) */}
+              {selectedCategory !== null && (
+                <View style={styles.categorySummaryRow}>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '600' }}>
+                    {categoryLabels[selectedCategory] || selectedCategory} {language === 'bn' ? 'এর মোট:' : 'Summary:'}
+                  </ThemedText>
+                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>
+                      + TK {formatNumber(filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0))}
+                    </Text>
+                    <View style={{ width: 1, height: 12, backgroundColor: 'rgba(150, 150, 150, 0.2)' }} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#EF4444' }}>
+                      - TK {formatNumber(filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0))}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* লেনদেনের তালিকা হেডার */}
               <View style={styles.recentHeader}>
-                <ThemedText type="smallBold">{t.recentTx}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{t.last5}</ThemedText>
+                <ThemedText type="smallBold">{language === 'bn' ? 'লেনদেন সমূহ' : 'All Transactions'}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {language === 'bn' ? toBanglaDigits(transactions.length.toString()) : transactions.length} {language === 'bn' ? 'টি লেনদেন' : 'transactions'}
+                </ThemedText>
               </View>
             </>
           }
@@ -333,6 +470,13 @@ export default function HomeScreen() {
               <ThemedText type="small" themeColor="textSecondary">{t.noTxYet}</ThemedText>
             </ThemedView>
           }
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeaderContainer}>
+              <View style={styles.sectionHeaderLine} />
+              <ThemedText style={styles.sectionHeaderText}>{formatDateHeader(title)}</ThemedText>
+              <View style={styles.sectionHeaderLine} />
+            </View>
+          )}
           renderItem={({ item: tx }) => (
             <ThemedView type="backgroundElement" style={styles.transactionItem}>
               <View style={styles.txIconContainer}>
@@ -353,9 +497,11 @@ export default function HomeScreen() {
               
               <View style={styles.txInfo}>
                 <ThemedText style={styles.txTitle}>{tx.title}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {categoryLabels[tx.category] || tx.category} • {tx.date}
-                </ThemedText>
+                {tx.createdAt ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {formatTxTime(tx.createdAt)}
+                  </ThemedText>
+                ) : null}
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -364,7 +510,7 @@ export default function HomeScreen() {
                     styles.txAmount,
                     { color: tx.type === 'income' ? '#10B981' : '#EF4444' }
                   ]}>
-                    {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>TK </Text>{formatNumber(tx.amount)}
+                    {tx.type === 'income' ? '+ ' : '- '}<Text style={{ fontSize: 12, fontWeight: '500' }}>{getCurrencySymbol()}</Text>{formatNumber(tx.amount)}
                   </ThemedText>
                 </View>
 
@@ -387,29 +533,6 @@ export default function HomeScreen() {
               </View>
             </ThemedView>
           )}
-          ListFooterComponent={
-            transactions.length > 10 ? (
-              <TouchableOpacity
-                style={{
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  marginTop: 4,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: 'rgba(150,150,150,0.18)',
-                  marginBottom: 16,
-                }}
-                onPress={() => setShowAllTransactions((prev) => !prev)}
-                activeOpacity={0.7}
-              >
-                <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '700' }}>
-                  {showAllTransactions
-                    ? t.showLessTx
-                    : t.showAllTx.replace('{count}', transactions.length.toString())}
-                </ThemedText>
-              </TouchableOpacity>
-            ) : null
-          }
         />
       </SafeAreaView>
 
@@ -593,7 +716,7 @@ export default function HomeScreen() {
 
                 {/* শিরোনাম ইনপুট */}
                 <View style={styles.inputContainer}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.descLabel}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.descLabel}{language === 'bn' ? ' (ঐচ্ছিক)' : ' (Optional)'}</ThemedText>
                   <TextInput
                     style={[styles.textInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
                     placeholder={t.descPlaceholder}
@@ -917,28 +1040,28 @@ const styles = StyleSheet.create({
   },
   transactionItem: {
     flexDirection: 'row',
-    padding: Spacing.three,
+    padding: 8,
     borderRadius: Spacing.three,
     alignItems: 'center',
     gap: Spacing.three,
   },
   txIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(150, 150, 150, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   txIcon: {
-    fontSize: 20,
+    fontSize: 16,
   },
   txInfo: {
     flex: 1,
     gap: 2,
   },
   txTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   txAmountContainer: {
@@ -1032,5 +1155,50 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  categoryFilterContainer: {
+    paddingHorizontal: 2,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  categoryFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryFilterText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  categorySummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(150, 150, 150, 0.05)',
+    borderRadius: Spacing.two,
+    marginBottom: Spacing.four,
+    borderWidth: 1,
+    borderColor: 'rgba(150, 150, 150, 0.08)',
+  },
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  sectionHeaderLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(150, 150, 150, 0.15)',
+  },
+  sectionHeaderText: {
+    paddingHorizontal: Spacing.three,
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(150, 150, 150, 0.6)',
   },
 });
