@@ -1,4 +1,5 @@
 import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState, useEffect } from 'react';
 import {
   Platform,
@@ -56,8 +57,9 @@ export default function HomeScreen() {
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState<string>('Food');
-  // তারিখ ইনপুট — ডিফল্ট আজকের তারিখ
-  const [txDate, setTxDate] = useState<string>(getLocalDateString());
+  const [selectedDateTime, setSelectedDateTime] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Custom categories state created by user
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -135,7 +137,15 @@ export default function HomeScreen() {
     setAmount(tx.amount.toString());
     setType(tx.type);
     setCategory(tx.category);
-    setTxDate(tx.date);
+    
+    let initialDateTime = new Date();
+    if (tx.createdAt) {
+      initialDateTime = new Date(tx.createdAt);
+    } else if (tx.date) {
+      initialDateTime = new Date(tx.date);
+    }
+    setSelectedDateTime(initialDateTime);
+    
     setModalVisible(true);
   };
 
@@ -144,7 +154,7 @@ export default function HomeScreen() {
     setAmount('');
     setType('expense');
     setCategory('Food');
-    setTxDate(getLocalDateString());
+    setSelectedDateTime(new Date());
     setEditingTx(null);
   };
 
@@ -170,9 +180,8 @@ export default function HomeScreen() {
     }
 
     // নতুন ট্রানজেকশন যুক্ত করা হচ্ছে।
-    // Validate date format YYYY-MM-DD
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    const finalDate = txDate && dateRegex.test(txDate) ? txDate : getLocalDateString();
+    const finalDate = selectedDateTime.toISOString().split('T')[0];
+    const finalCreatedAt = selectedDateTime.toISOString();
 
     const txPayload = {
       title: finalTitle,
@@ -180,6 +189,7 @@ export default function HomeScreen() {
       type,
       category,
       date: finalDate,
+      createdAt: finalCreatedAt,
     };
 
     if (editingTx) {
@@ -836,22 +846,42 @@ export default function HomeScreen() {
                   </View>
                 </View>
 
-                {/* তারিখ ইনপুট */}
+                {/* তারিখ ও সময় নির্বাচন */}
                 <View style={styles.inputContainer}>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>
-                    {t.txDateLabel}
+                    📅 {language === 'bn' ? 'তারিখ ও সময়' : 'Date & Time'}
                   </ThemedText>
-                  <TextInput
-                    style={[styles.textInput, { color: theme.text, borderColor: theme.backgroundSelected }]}
-                    placeholder={getLocalDateString()}
-                    placeholderTextColor={theme.textSecondary}
-                    value={txDate}
-                    onChangeText={setTxDate}
-                    keyboardType="numbers-and-punctuation"
-                    maxLength={10}
-                  />
+                  
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[{ borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundSelected, flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }]}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>
+                        📅 {selectedDateTime.toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </ThemedText>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[{ borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundSelected, flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }]}
+                      onPress={() => setShowTimePicker(true)}
+                    >
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>
+                        ⏰ {selectedDateTime.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+
                   {/* Quick date shortcuts */}
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
                     {[
                       { label: t.dateToday, days: 0 },
                       { label: t.dateYesterday, days: 1 },
@@ -860,7 +890,9 @@ export default function HomeScreen() {
                     ].map(({ label, days }) => {
                       const d = new Date();
                       d.setDate(d.getDate() - days);
-                      const val = getLocalDateString(d);
+                      const isSameDay = selectedDateTime.getFullYear() === d.getFullYear() &&
+                                        selectedDateTime.getMonth() === d.getMonth() &&
+                                        selectedDateTime.getDate() === d.getDate();
                       return (
                         <TouchableOpacity
                           key={label}
@@ -868,11 +900,15 @@ export default function HomeScreen() {
                             paddingHorizontal: 10,
                             paddingVertical: 4,
                             borderRadius: 10,
-                            backgroundColor: txDate === val ? theme.text : theme.backgroundSelected,
+                            backgroundColor: isSameDay ? theme.text : theme.backgroundSelected,
                           }}
-                          onPress={() => setTxDate(val)}
+                          onPress={() => {
+                            const updated = new Date(d);
+                            updated.setHours(selectedDateTime.getHours(), selectedDateTime.getMinutes());
+                            setSelectedDateTime(updated);
+                          }}
                         >
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: txDate === val ? theme.background : theme.text }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: isSameDay ? theme.background : theme.text }}>
                             {label}
                           </Text>
                         </TouchableOpacity>
@@ -880,6 +916,38 @@ export default function HomeScreen() {
                     })}
                   </View>
                 </View>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={selectedDateTime}
+                    mode="date"
+                    display="default"
+                    onChange={(event, date) => {
+                      setShowDatePicker(false);
+                      if (date) {
+                        const updated = new Date(selectedDateTime);
+                        updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                        setSelectedDateTime(updated);
+                      }
+                    }}
+                  />
+                )}
+
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={selectedDateTime}
+                    mode="time"
+                    display="default"
+                    onChange={(event, time) => {
+                      setShowTimePicker(false);
+                      if (time) {
+                        const updated = new Date(selectedDateTime);
+                        updated.setHours(time.getHours(), time.getMinutes());
+                        setSelectedDateTime(updated);
+                      }
+                    }}
+                  />
+                )}
 
                 {/* ক্যাটাগরি সিলেকশন */}
                 <View style={styles.inputContainer}>

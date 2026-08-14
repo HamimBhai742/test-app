@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, and added period-based segment filters inside the balance card. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, updated transaction edit behaviors, isolated the scroll container of the ledger, added period-based segment filters inside the balance card, and integrated a native calendar/clock picker. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -21,6 +21,10 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 3. **ObjectID Regex & Casting updates**:
    - Updated ObjectID hex length checks (`/^[0-9a-fA-F]{24}$/`) in service modules (`goal.service.ts`, `due.service.ts`, `investment.service.ts`) to `/^[0-9a-fA-F-]{24,36}$/` to support both legacy and UUID format keys.
    - Cast database `history` and `logs` `JsonValue` collections to `ISavingsLog[]` and `IInvestmentLog[]` respectively to resolve typescript casting constraints.
+
+4. **Server-side Custom Creation Timestamp Support (`transaction.interface.ts`, `transaction.service.ts`)**:
+   - Added optional `createdAt?: string | Date` to `ICreateTransaction` interface.
+   - Updated server-side `createTransaction` and `updateTransaction` service functions to parse and assign `createdAt` in Prisma `data` object blocks, allowing transactions to persist custom select dates and times directly in the PostgreSQL DB schema.
 
 ---
 
@@ -85,13 +89,7 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
 11. **Dynamic Bengali Digit & Currency Symbol Localization Utility (`src/utils/number.ts`)**:
     - Created a shared utility `src/utils/number.ts` exporting `formatNumber()`, `getCurrencySymbol()`, and `toBanglaDigits()`.
     - Detects active language statically using `getCurrentLanguage()` from the `LanguageContext` so it works anywhere (even outside react rendering cycle).
-    - Applied these shared localizations dynamically to all amounts, points, rank statistics, counts, and currency labels across all primary screen components in the app:
-      - **Dashboard Ledger (`index.tsx`)**: Replaced all remaining hardcoded `TK` labels with dynamic `{getCurrencySymbol()}` rendering.
-      - **Dues Ledger (`dues.tsx`)**: Replaced remaining template literal currency tags with `{getCurrencySymbol()}` tags.
-      - **Goals & Investments (`explore.tsx`)**
-      - **Live Expense Analytics (`stats.tsx`)**
-      - **Monthly Summary Report (`report.tsx`)**
-      - **Profile and Settings (`profile.tsx`)**
+    - Applied these shared localizations dynamically to all amounts, points, rank statistics, counts, and currency labels across all primary screen components in the app.
 
 12. **Dynamic Category Title Update and Time Preservation on Edit (`src/app/index.tsx`, `src/context/TransactionContext.tsx`)**:
     - Updated `handleAddTransaction` logic during edits. If the user had not written a custom title, changing the category now dynamically updates the transaction's title to match the newly selected category name.
@@ -108,7 +106,12 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
       - **Current Month (e.g. `আগস্ট` / `Aug` based dynamically on active date)**
       - **Total (`মোট` / `Total`)**
     - Tapping a period tab dynamically filters both the balance card calculations (calculating Net Balance, Income, and Expenses for the selected range only) and the ledger transaction list below.
-    - The labels on the balance card adapt dynamically to reflect the selected period (e.g. `আজকের ব্যালেন্স`, `এই মাসের আয়` etc.).
+
+15. **Native Calendar & Clock Date/Time Picker (`src/app/index.tsx`, `@react-native-community/datetimepicker`)**:
+    - Integrated `@react-native-community/datetimepicker` in the "Add Transaction" modal form, replacing the manual text input field with native, interactive calendar and clock selector buttons.
+    - Form sets current date and time dynamically by default on mount.
+    - Tapping the Date button pops open the Android/iOS native Calendar picker dialog. Tapping the Time button pops open the native Clock picker.
+    - Preserved the helper date shortcut tags (`আজ`, `গতকাল`, `২ দিন আগে`, `৭ দিন আগে`) and wired them to instantly update the selected calendar day while maintaining the selected custom time.
 
 ---
 
