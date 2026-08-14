@@ -142,7 +142,17 @@ export default function HomeScreen() {
 
   // ফর্ম সাবমিট করার হ্যান্ডলার ফাংশন।
   const handleAddTransaction = () => {
-    const finalTitle = title.trim() || (categoryLabels[category] || category);
+    let finalTitle = title.trim();
+    
+    // Check if the title is empty OR matches the old category's name (which means it was a default title)
+    const isOldCategoryTitle = editingTx && (
+      title.trim() === (categoryLabels[editingTx.category] || editingTx.category) ||
+      title.trim() === editingTx.category
+    );
+    
+    if (!finalTitle || isOldCategoryTitle) {
+      finalTitle = categoryLabels[category] || category;
+    }
 
     // ইনপুট দেওয়া টাকা সংখ্যা কিনা এবং শুন্যের চেয়ে বড় কিনা তা চেক করা হচ্ছে।
     const parsedAmount = parseFloat(amount);

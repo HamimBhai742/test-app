@@ -309,7 +309,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const updateTransaction = async (id: string, updatedTx: Omit<Transaction, 'id'>) => {
     // Optimistic UI update
     setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...updatedTx, id } : t))
+      prev.map((t) => (t.id === id ? { ...t, ...updatedTx } : t))
     );
 
     try {
@@ -335,6 +335,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           category: data.data.category || 'Others',
           date: data.data.date ||
             (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : getLocalDateString()),
+          createdAt: data.data.createdAt,
         };
         setTransactions((prev) => prev.map((t) => (t.id === id ? savedTx : t)));
       }

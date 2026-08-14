@@ -1,6 +1,6 @@
 # Walkthrough - Database Migration, Auth Fixes, Spacing, and Notification Center
 
-We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, and verified full screen localization compatibility. Below is a detailed summary of the changes made and the verification results.
+We have completed the database migration to PostgreSQL (Neon DB), resolved the authentication state synchronization bugs, implemented the visual spacing corrections, designed a local **Notification Center** on the dashboard, refactored the transaction ledger layout to date-grouped sections, made transaction titles optional, added transaction time to the cards, integrated a horizontal category-based transaction filter row with usage counts, highlighted the category-specific income and expense summary banner, localized all numbers and currency symbols dynamically across all screens, verified full screen localization compatibility, and updated transaction edit behaviors to support dynamic title updates and time preservation. Below is a detailed summary of the changes made and the verification results.
 
 ---
 
@@ -92,6 +92,10 @@ We have completed the database migration to PostgreSQL (Neon DB), resolved the a
       - **Live Expense Analytics (`stats.tsx`)**
       - **Monthly Summary Report (`report.tsx`)**
       - **Profile and Settings (`profile.tsx`)**
+
+12. **Dynamic Category Title Update and Time Preservation on Edit (`src/app/index.tsx`, `src/context/TransactionContext.tsx`)**:
+    - Updated `handleAddTransaction` logic during edits. If the user had not written a custom title, changing the category now dynamically updates the transaction's title to match the newly selected category name.
+    - Fixed the optimistic state updater and database response parser inside `updateTransaction` of `TransactionContext.tsx` to preserve and re-map the original `createdAt` timestamp when a transaction is edited, ensuring the time display remains visible on the ledger cards after update operations.
 
 ---
 
