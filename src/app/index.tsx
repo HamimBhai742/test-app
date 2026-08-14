@@ -212,6 +212,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
           ListHeaderComponent={
             <>
               {/* হেডার সেকশন */}
@@ -756,6 +757,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: Spacing.three,
   },
   emptyContainer: {
     borderRadius: Spacing.three,

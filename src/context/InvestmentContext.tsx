@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { useAuth } from './AuthContext';
 import { API_BASE_URL } from '@/constants/config';
 import { getLocalDateString } from '@/utils/date';
 
@@ -40,55 +41,46 @@ const getApiBaseUrl = () => {
   return API_BASE_URL;
 };
 
-const getAuthToken = async () => {
-  try {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        return localStorage.getItem('hisab_kitab_auth_token') || localStorage.getItem('token');
-      }
-    } else {
-      try {
-        return await SecureStore.getItemAsync('hisab_kitab_auth_token');
-      } catch {
-        return await AsyncStorage.getItem('hisab_kitab_auth_token');
-      }
-    }
-  } catch (e) {
-    return null;
-  }
-  return null;
-};
+// Authentication token is retrieved from AuthContext instead of raw storage
 
 export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [investments, setInvestments] = useState<InvestmentProject[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { token, logout } = useAuth();
 
   // Load investments
   const loadInvestments = async () => {
+    if (!token) {
+      setInvestments([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const token = await getAuthToken();
-      if (token) {
-        const response = await fetch(`${getApiBaseUrl()}/investments`, {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (response.ok) {
-          const json = await response.json();
-          if (json.success && Array.isArray(json.data)) {
-            setInvestments(json.data);
-            const value = JSON.stringify(json.data);
-            if (Platform.OS === 'web') {
-              if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
-            } else {
-              await AsyncStorage.setItem(STORAGE_KEY, value);
-            }
-            setIsLoading(false);
-            return;
+      const response = await fetch(`${getApiBaseUrl()}/investments`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const json = await response.json();
+        if (json.success && Array.isArray(json.data)) {
+          setInvestments(json.data);
+          const value = JSON.stringify(json.data);
+          if (Platform.OS === 'web') {
+            if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
+          } else {
+            await AsyncStorage.setItem(STORAGE_KEY, value);
           }
+          setIsLoading(false);
+          return;
         }
+      } else if (response.status === 401 || response.status === 403) {
+        await logout();
+        setInvestments([]);
+        setIsLoading(false);
+        return;
       }
     } catch (e) {
       console.warn('Failed to fetch investments from backend, using local:', e);
@@ -117,7 +109,7 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
 
   useEffect(() => {
     loadInvestments();
-  }, []);
+  }, [token]);
 
   // Save investments locally helper
   const saveInvestmentsLocal = async (updated: InvestmentProject[]) => {
@@ -150,7 +142,6 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     await saveInvestmentsLocal(updated);
 
     try {
-      const token = await getAuthToken();
       if (token) {
         const response = await fetch(`${getApiBaseUrl()}/investments`, {
           method: 'POST',
@@ -197,7 +188,6 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     if (id.startsWith('temp_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         await fetch(`${getApiBaseUrl()}/investments/${id}`, {
           method: 'DELETE',
@@ -229,7 +219,6 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     if (id.startsWith('temp_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         await fetch(`${getApiBaseUrl()}/investments/${id}`, {
           method: 'PATCH',
@@ -273,7 +262,6 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     if (investmentId.startsWith('temp_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         const response = await fetch(`${getApiBaseUrl()}/investments/${investmentId}/logs`, {
           method: 'POST',
@@ -326,7 +314,6 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     if (investmentId.startsWith('temp_') || logId.startsWith('temp_log_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         await fetch(`${getApiBaseUrl()}/investments/${investmentId}/logs/${logId}`, {
           method: 'DELETE',
@@ -367,7 +354,6 @@ export const InvestmentProvider: React.FC<{ children: ReactNode }> = ({ children
     if (investmentId.startsWith('temp_') || logId.startsWith('temp_log_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         await fetch(`${getApiBaseUrl()}/investments/${investmentId}/logs/${logId}`, {
           method: 'PATCH',

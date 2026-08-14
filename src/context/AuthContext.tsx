@@ -165,6 +165,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(data.data);
                 await setStorageItem(STORAGE_KEY_USER, JSON.stringify(data.data));
               }
+            } else if (response.status === 401 || response.status === 403) {
+              // Token expired or invalid! Invalidate session cleanly.
+              await logout();
             }
           } catch (profileErr) {
             console.warn('Error syncing profile on startup:', profileErr);

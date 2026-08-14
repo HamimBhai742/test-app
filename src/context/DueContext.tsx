@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { useAuth } from './AuthContext';
 import { scheduleDueReminder, cancelDueReminder } from '@/services/notificationService';
 import { API_BASE_URL } from '@/constants/config';
 import { getLocalDateString } from '@/utils/date';
@@ -38,22 +39,7 @@ const getApiBaseUrl = () => {
   return API_BASE_URL;
 };
 
-const getAuthToken = async () => {
-  try {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        return localStorage.getItem('hisab_kitab_auth_token') || localStorage.getItem('token');
-      }
-    } else {
-      try {
-        return await SecureStore.getItemAsync('hisab_kitab_auth_token');
-      } catch {
-        return await AsyncStorage.getItem('hisab_kitab_auth_token');
-      }
-    }
-  } catch (e) {}
-  return null;
-};
+// Authentication token is retrieved from AuthContext instead of raw storage
 
 const DEFAULT_DUES: DueItem[] = [];
 
@@ -62,6 +48,7 @@ const DueContext = createContext<DueContextType | undefined>(undefined);
 export function DueProvider({ children }: { children: React.ReactNode }) {
   const [dues, setDues] = useState<DueItem[]>(DEFAULT_DUES);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { token, logout } = useAuth();
 
   const saveLocal = (items: DueItem[]) => {
     setDues(items);
@@ -76,13 +63,17 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchDues = async () => {
+    if (!token) {
+      setDues([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const token = await getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}/dues`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -93,6 +84,11 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
           setIsLoading(false);
           return;
         }
+      } else if (response.status === 401 || response.status === 403) {
+        await logout();
+        setDues([]);
+        setIsLoading(false);
+        return;
       }
     } catch (e) {
       console.warn('Backend fetch dues failed, using local dues:', e);
@@ -116,7 +112,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchDues();
-  }, []);
+  }, [token]);
 
   const addDue = async (item: Omit<DueItem, 'id' | 'isSettled' | 'createdAt'>) => {
     const tempId = `temp_${Date.now()}`;
@@ -135,12 +131,12 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const token = await getAuthToken();
+      if (!token) return;
       const response = await fetch(`${getApiBaseUrl()}/dues`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(item),
       });
@@ -175,12 +171,12 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     cancelDueReminder(id);
 
     try {
-      const token = await getAuthToken();
+      if (!token) return;
       await fetch(`${getApiBaseUrl()}/dues/${id}/settle`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
       });
     } catch (e) {
@@ -194,12 +190,12 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     cancelDueReminder(id);
 
     try {
-      const token = await getAuthToken();
+      if (!token) return;
       await fetch(`${getApiBaseUrl()}/dues/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
       });
     } catch (e) {
@@ -223,12 +219,12 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     if (id.startsWith('temp_')) return;
 
     try {
-      const token = await getAuthToken();
+      if (!token) return;
       await fetch(`${getApiBaseUrl()}/dues/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(updatedFields),
       });

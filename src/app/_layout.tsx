@@ -60,10 +60,10 @@ export default function TabLayout() {
     // ThemeProvider এর মাধ্যমে অ্যাপের লাইট/ডার্ক মোড সেটআপ করা হচ্ছে।
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <LanguageProvider>
-        <InvestmentProvider>
-          <TransactionProvider>
-            <DueProvider>
-              <AuthProvider>
+        <AuthProvider>
+          <InvestmentProvider>
+            <TransactionProvider>
+              <DueProvider>
                 <SecurityProvider>
                   <PointsProvider>
                     <GoalProvider>
@@ -73,10 +73,10 @@ export default function TabLayout() {
                     </GoalProvider>
                   </PointsProvider>
                 </SecurityProvider>
-              </AuthProvider>
-            </DueProvider>
-          </TransactionProvider>
-        </InvestmentProvider>
+              </DueProvider>
+            </TransactionProvider>
+          </InvestmentProvider>
+        </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { usePoints } from './PointsContext';
 import { useLanguage } from './LanguageContext';
+import { useAuth } from './AuthContext';
 import { translations } from '@/constants/translations';
 import { API_BASE_URL } from '@/constants/config';
 import { getLocalDateString } from '@/utils/date';
@@ -45,24 +46,7 @@ const getApiBaseUrl = () => {
   return API_BASE_URL;
 };
 
-const getAuthToken = async () => {
-  try {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        return localStorage.getItem('hisab_kitab_auth_token') || localStorage.getItem('token');
-      }
-    } else {
-      try {
-        return await SecureStore.getItemAsync('hisab_kitab_auth_token');
-      } catch {
-        return await AsyncStorage.getItem('hisab_kitab_auth_token');
-      }
-    }
-  } catch (e) {
-    return null;
-  }
-  return null;
-};
+// Authentication token is retrieved from AuthContext instead of raw storage
 
 export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [goals, setGoals] = useState<GoalItem[]>([]);
@@ -70,33 +54,41 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { addPoints } = usePoints();
   const { language } = useLanguage();
   const t = translations[language];
+  const { token, logout } = useAuth();
 
   // Load goals
   const loadGoals = async () => {
+    if (!token) {
+      setGoals([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const token = await getAuthToken();
-      if (token) {
-        const response = await fetch(`${getApiBaseUrl()}/goals`, {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (response.ok) {
-          const json = await response.json();
-          if (json.success && Array.isArray(json.data)) {
-            setGoals(json.data);
-            const value = JSON.stringify(json.data);
-            if (Platform.OS === 'web') {
-              if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
-            } else {
-              await AsyncStorage.setItem(STORAGE_KEY, value);
-            }
-            setIsLoading(false);
-            return;
+      const response = await fetch(`${getApiBaseUrl()}/goals`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const json = await response.json();
+        if (json.success && Array.isArray(json.data)) {
+          setGoals(json.data);
+          const value = JSON.stringify(json.data);
+          if (Platform.OS === 'web') {
+            if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
+          } else {
+            await AsyncStorage.setItem(STORAGE_KEY, value);
           }
+          setIsLoading(false);
+          return;
         }
+      } else if (response.status === 401 || response.status === 403) {
+        await logout();
+        setGoals([]);
+        setIsLoading(false);
+        return;
       }
     } catch (e) {
       console.warn('Backend fetch goals failed, using local:', e);
@@ -125,7 +117,7 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     loadGoals();
-  }, []);
+  }, [token]);
 
   // Local helper to update state & storage
   const saveGoalsLocal = async (updated: GoalItem[]) => {
@@ -162,7 +154,6 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await saveGoalsLocal(updated);
 
     try {
-      const token = await getAuthToken();
       if (token) {
         const response = await fetch(`${getApiBaseUrl()}/goals`, {
           method: 'POST',
@@ -210,7 +201,6 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (id.startsWith('temp_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         await fetch(`${getApiBaseUrl()}/goals/${id}`, {
           method: 'DELETE',
@@ -268,7 +258,6 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (id.startsWith('temp_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         const targetGoal = updated.find((g) => g.id === id);
         if (targetGoal) {
@@ -340,7 +329,6 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (goalId.startsWith('temp_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         const response = await fetch(`${getApiBaseUrl()}/goals/${goalId}/savings`, {
           method: 'POST',
@@ -398,7 +386,6 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (goalId.startsWith('temp_') || savingsLogId.startsWith('temp_log_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         await fetch(`${getApiBaseUrl()}/goals/${goalId}/savings/${savingsLogId}`, {
           method: 'DELETE',
@@ -464,7 +451,6 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (goalId.startsWith('temp_') || savingsLogId.startsWith('temp_log_')) return;
 
     try {
-      const token = await getAuthToken();
       if (token) {
         await fetch(`${getApiBaseUrl()}/goals/${goalId}/savings/${savingsLogId}`, {
           method: 'PATCH',

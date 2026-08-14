@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { useAuth } from './AuthContext';
 import { triggerBudgetWarning } from '@/services/notificationService';
 import { API_BASE_URL } from '@/constants/config';
 import { DEFAULT_BUDGETS as SHARED_DEFAULT_BUDGETS } from '@/constants/budgetDefaults';
@@ -35,41 +36,28 @@ const getApiBaseUrl = () => {
   return API_BASE_URL;
 };
 
-const getAuthToken = async () => {
-  try {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        return localStorage.getItem('hisab_kitab_auth_token') || localStorage.getItem('token');
-      }
-    } else {
-      try {
-        return await SecureStore.getItemAsync('hisab_kitab_auth_token');
-      } catch {
-        return await AsyncStorage.getItem('hisab_kitab_auth_token');
-      }
-    }
-  } catch (e) {}
-  return null;
-};
+// Authentication token is retrieved from AuthContext instead of raw storage
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
 export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { token, logout } = useAuth();
 
   // Fetch transactions from Backend API
   const fetchTransactions = async () => {
+    if (!token) {
+      setTransactions([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const token = await getAuthToken();
-
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const response = await fetch(`${getApiBaseUrl()}/transactions`, {
         method: 'GET',
@@ -84,11 +72,12 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           amount: Number(item.amount),
           type: item.type,
           category: item.category || 'Others',
-          // Fallback: use createdAt date if 'date' field is missing from server response
           date: item.date ||
             (item.createdAt ? item.createdAt.toString().split('T')[0] : getLocalDateString()),
         }));
         setTransactions(mappedTx);
+      } else if (response.status === 401 || response.status === 403) {
+        await logout();
       }
     } catch (error) {
       console.warn('Backend fetch error:', error);
@@ -99,7 +88,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, [token]);
 
   // Helper to check and trigger budget notifications
   const checkBudgetNotification = async (
@@ -281,14 +270,12 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     checkBudgetNotification(newTx, transactions).catch(() => {});
 
     try {
-      const token = await getAuthToken();
+      if (!token) return;
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const response = await fetch(`${getApiBaseUrl()}/transactions`, {
         method: 'POST',
@@ -323,9 +310,11 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
 
     try {
-      const token = await getAuthToken();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (!token) return;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
 
       const response = await fetch(`${getApiBaseUrl()}/transactions/${id}`, {
         method: 'PATCH',
@@ -360,14 +349,12 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     cleanupTriggeredAlerts(updatedTransactions).catch(() => {});
 
     try {
-      const token = await getAuthToken();
+      if (!token) return;
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       await fetch(`${getApiBaseUrl()}/transactions/${id}`, {
         method: 'DELETE',
@@ -383,14 +370,12 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     setTransactions([]);
 
     try {
-      const token = await getAuthToken();
+      if (!token) return;
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       await fetch(`${getApiBaseUrl()}/transactions/all`, {
         method: 'DELETE',
