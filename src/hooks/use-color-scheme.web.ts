@@ -6,7 +6,9 @@ export function useColorScheme() {
   const { colorScheme } = useThemeMode();
 
   useEffect(() => {
-    setHasHydrated(true);
+    queueMicrotask(() => {
+      setHasHydrated(true);
+    });
   }, []);
 
   if (hasHydrated) {

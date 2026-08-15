@@ -1,7 +1,7 @@
 import { formatNumber, getCurrencySymbol, toBanglaDigits, toEnglishDigits } from '@/utils/number';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -36,8 +36,8 @@ import { useThemeMode } from '@/context/ThemeContext';
 import { usePoints } from '@/context/PointsContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalDateString } from '@/utils/date';
-import { scheduleFiveSecondTestNotification } from '@/services/notificationService';
 import { useNotificationBanner } from '@/context/NotificationBannerContext';
+import { RecurringModal } from '@/components/recurring-modal';
 
 const CUSTOM_CATS_KEY = 'hisabkitab_custom_categories_home';
 
@@ -48,7 +48,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { themeMode, setThemeMode } = useThemeMode();
   // useTransactions কাস্টম হুক ব্যবহার করে ব্যালেন্স, মোট আয়, মোট ব্যয় এবং ট্রানজেকশন ডেটা আনা হচ্ছে।
-  const { transactions, totalBalance, totalIncome, totalExpenses, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
   const { claimDailyTxReward } = usePoints();
 
   // নতুন লেনদেন যোগ করার পপ-আপ (Modal) দেখানোর জন্য স্টেট।
@@ -76,6 +76,15 @@ export default function HomeScreen() {
   const [notifModalVisible, setNotifModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [periodFilter, setPeriodFilter] = useState<'today' | 'month' | 'total'>('total');
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
+  const [showRecurringModal, setShowRecurringModal] = useState<boolean>(false);
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterMinAmount, setFilterMinAmount] = useState<string>('');
+  const [filterMaxAmount, setFilterMaxAmount] = useState<string>('');
+  const [filterSort, setFilterSort] = useState<'date_desc' | 'date_asc' | 'amount_high' | 'amount_low'>('date_desc');
 
   const getCurrentMonthName = () => {
     const monthsBn = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
@@ -106,7 +115,7 @@ export default function HomeScreen() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'warning' | 'error'>('error');
-  const toastY = useRef(new Animated.Value(-120)).current;
+  const [toastY] = useState(() => new Animated.Value(-120));
 
   const triggerToast = (msg: string, type: 'success' | 'warning' | 'error' = 'error') => {
     setToastMessage(msg);
@@ -311,10 +320,35 @@ export default function HomeScreen() {
     return true; // 'total'
   });
 
-  // Filter transactions by selected category
-  const filteredTransactions = selectedCategory
-    ? filteredByPeriodTransactions.filter((t) => t.category === selectedCategory)
-    : filteredByPeriodTransactions;
+  // Filter transactions by selected category, search query, and filter modal options
+  const filteredTransactions = filteredByPeriodTransactions.filter((tx) => {
+    if (selectedCategory && tx.category !== selectedCategory) return false;
+    
+    // Type filter
+    if (filterType !== 'all' && tx.type !== filterType) return false;
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const titleMatch = tx.title.toLowerCase().includes(q);
+      const catMatch = (categoryLabels[tx.category] || tx.category).toLowerCase().includes(q);
+      if (!titleMatch && !catMatch) return false;
+    }
+
+    // Min amount
+    if (filterMinAmount) {
+      const minVal = parseFloat(toEnglishDigits(filterMinAmount));
+      if (!isNaN(minVal) && tx.amount < minVal) return false;
+    }
+
+    // Max amount
+    if (filterMaxAmount) {
+      const maxVal = parseFloat(toEnglishDigits(filterMaxAmount));
+      if (!isNaN(maxVal) && tx.amount > maxVal) return false;
+    }
+
+    return true;
+  });
 
   // Calculate dynamic stats based on selected period
   const periodIncome = filteredByPeriodTransactions
@@ -327,8 +361,20 @@ export default function HomeScreen() {
 
   const periodBalance = periodIncome - periodExpenses;
 
-  // Group and sort transactions by date descending
-  const sortedTransactions = [...filteredTransactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Group and sort transactions according to selected filterSort
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    if (filterSort === 'amount_high') return b.amount - a.amount;
+    if (filterSort === 'amount_low') return a.amount - b.amount;
+    if (filterSort === 'date_asc') {
+      const dateA = new Date(a.createdAt || a.date).getTime();
+      const dateB = new Date(b.createdAt || b.date).getTime();
+      return dateA - dateB;
+    }
+    // Default: date_desc
+    const dateA = new Date(a.createdAt || a.date).getTime();
+    const dateB = new Date(b.createdAt || b.date).getTime();
+    return dateB - dateA;
+  });
 
   const formatDateHeader = (dateStr: string) => {
     const today = getLocalDateString();
@@ -511,6 +557,51 @@ export default function HomeScreen() {
               onPress={() => { setType('expense'); setModalVisible(true); }}
             >
               <ThemedText style={styles.quickButtonText}>{t.addExpense}</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
+              onPress={() => setShowRecurringModal(true)}
+            >
+              <ThemedText style={styles.quickButtonText}>🔁 {language === 'bn' ? 'অটো' : 'Auto'}</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Bar & Filter Toggle Row */}
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: Spacing.three, alignItems: 'center' }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.backgroundElement, borderRadius: 14, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.backgroundSelected }}>
+              <Feather name="search" size={18} color="#64748B" />
+              <TextInput
+                style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, color: theme.text, fontSize: 14 }}
+                placeholder={language === 'bn' ? 'খুঁজুন (টাইটেল বা ক্যাটাগরি)...' : 'Search transactions...'}
+                placeholderTextColor="#64748B"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery ? (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Feather name="x-circle" size={16} color="#64748B" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: (filterType !== 'all' || filterMinAmount || filterMaxAmount || filterSort !== 'date_desc') ? '#208AEF' : theme.backgroundElement,
+                paddingHorizontal: 14,
+                paddingVertical: 11,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: theme.backgroundSelected,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              onPress={() => setShowFilterModal(true)}
+            >
+              <Feather name="sliders" size={16} color={(filterType !== 'all' || filterMinAmount || filterMaxAmount || filterSort !== 'date_desc') ? '#FFFFFF' : theme.text} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: (filterType !== 'all' || filterMinAmount || filterMaxAmount || filterSort !== 'date_desc') ? '#FFFFFF' : theme.text }}>
+                {language === 'bn' ? 'ফিল্টার' : 'Filter'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -1114,6 +1205,162 @@ export default function HomeScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* 🗂️ Advanced Filter Modal */}
+      <Modal
+        animationType="slide"
+        transparent
+        visible={showFilterModal}
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterModal(false)}
+        >
+          <View style={styles.modalViewContainer}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalView, { backgroundColor: theme.backgroundElement }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle">🗂️ {language === 'bn' ? 'অ্যাডভান্সড ফিল্টার' : 'Advanced Filter'}</ThemedText>
+                <TouchableOpacity onPress={() => setShowFilterModal(false)} style={styles.closeButton}>
+                  <ThemedText style={{ fontSize: 18 }}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                {/* Type Filter */}
+                <View style={{ marginBottom: 16 }}>
+                  <ThemedText type="smallBold" style={{ marginBottom: 8 }}>
+                    {language === 'bn' ? 'লেনদেনের ধরন:' : 'Transaction Type:'}
+                  </ThemedText>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {[
+                      { id: 'all', label: language === 'bn' ? 'সব' : 'All' },
+                      { id: 'income', label: language === 'bn' ? 'আয়' : 'Income' },
+                      { id: 'expense', label: language === 'bn' ? 'ব্যয়' : 'Expense' },
+                    ].map((tItem) => (
+                      <TouchableOpacity
+                        key={tItem.id}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 10,
+                          borderRadius: 10,
+                          alignItems: 'center',
+                          backgroundColor: filterType === tItem.id ? '#208AEF' : theme.backgroundSelected,
+                        }}
+                        onPress={() => setFilterType(tItem.id as any)}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: filterType === tItem.id ? '#FFFFFF' : theme.text }}>
+                          {tItem.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Amount Range Filter */}
+                <View style={{ marginBottom: 16 }}>
+                  <ThemedText type="smallBold" style={{ marginBottom: 8 }}>
+                    {language === 'bn' ? 'টাকার পরিমাণ লিমিট:' : 'Amount Range:'}
+                  </ThemedText>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TextInput
+                      style={[styles.textInput, { flex: 1, backgroundColor: theme.backgroundSelected, color: theme.text, height: 42, fontSize: 13 }]}
+                      placeholder={language === 'bn' ? 'সর্বনিম্ন ৳' : 'Min ৳'}
+                      placeholderTextColor="#64748B"
+                      keyboardType="numeric"
+                      value={filterMinAmount}
+                      onChangeText={setFilterMinAmount}
+                    />
+                    <TextInput
+                      style={[styles.textInput, { flex: 1, backgroundColor: theme.backgroundSelected, color: theme.text, height: 42, fontSize: 13 }]}
+                      placeholder={language === 'bn' ? 'সর্বোচ্চ ৳' : 'Max ৳'}
+                      placeholderTextColor="#64748B"
+                      keyboardType="numeric"
+                      value={filterMaxAmount}
+                      onChangeText={setFilterMaxAmount}
+                    />
+                  </View>
+                </View>
+
+                {/* Sorting Filter */}
+                <View style={{ marginBottom: 16 }}>
+                  <ThemedText type="smallBold" style={{ marginBottom: 8 }}>
+                    {language === 'bn' ? 'সাজানোর নিয়ম:' : 'Sort By:'}
+                  </ThemedText>
+                  <View style={{ gap: 8 }}>
+                    {[
+                      { id: 'date_desc', label: language === 'bn' ? '📅 নতুন থেকে পুরাতন (Newest First)' : '📅 Newest First' },
+                      { id: 'date_asc', label: language === 'bn' ? '📅 পুরাতন থেকে নতুন (Oldest First)' : '📅 Oldest First' },
+                      { id: 'amount_high', label: language === 'bn' ? '💰 বেশি টাকা থেকে কম (Highest Amount)' : '💰 Highest Amount' },
+                      { id: 'amount_low', label: language === 'bn' ? '💰 কম টাকা থেকে বেশি (Lowest Amount)' : '💰 Lowest Amount' },
+                    ].map((sItem) => (
+                      <TouchableOpacity
+                        key={sItem.id}
+                        style={{
+                          paddingVertical: 10,
+                          paddingHorizontal: 12,
+                          borderRadius: 10,
+                          backgroundColor: filterSort === sItem.id ? 'rgba(32, 138, 239, 0.15)' : theme.backgroundSelected,
+                          borderWidth: 1,
+                          borderColor: filterSort === sItem.id ? '#208AEF' : 'transparent',
+                        }}
+                        onPress={() => setFilterSort(sItem.id as any)}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: filterSort === sItem.id ? '#208AEF' : theme.text }}>
+                          {sItem.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </ScrollView>
+
+              {/* Action Buttons */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <TouchableOpacity
+                  style={[styles.submitButton, { flex: 1, backgroundColor: theme.backgroundSelected, marginTop: 0 }]}
+                  onPress={() => {
+                    setFilterType('all');
+                    setFilterMinAmount('');
+                    setFilterMaxAmount('');
+                    setFilterSort('date_desc');
+                    setSelectedCategory(null);
+                    setSearchQuery('');
+                  }}
+                >
+                  <Text style={{ color: theme.text, fontWeight: '600' }}>
+                    {language === 'bn' ? 'রিসেট করুন' : 'Reset All'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.submitButton, { flex: 1, backgroundColor: '#208AEF', marginTop: 0 }]}
+                  onPress={() => setShowFilterModal(false)}
+                >
+                  <Text style={styles.submitButtonText}>
+                    ✓ {language === 'bn' ? 'প্রয়োগ করুন' : 'Apply Filter'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 🔁 Recurring Modal Component */}
+      <RecurringModal
+        visible={showRecurringModal}
+        onClose={() => setShowRecurringModal(false)}
+        onAddTransaction={(tx) => {
+          addTransaction(tx);
+          triggerToast(language === 'bn' ? 'অটো লেনদেন যুক্ত করা হয়েছে!' : 'Recurring transaction logged!', 'success');
+        }}
+      />
 
       {/* কাস্টম টোস্ট নোটিফিকেশন */}
       {toastMessage && (

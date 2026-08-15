@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { formatNumber, getCurrencySymbol, toBanglaDigits } from '@/utils/number';
 import React, { useState, useEffect } from 'react';
 import {
@@ -20,16 +22,12 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { GOOGLE_CLIENT_ID } from '@/constants/config';
+import { GOOGLE_CLIENT_ID, API_BASE_URL } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeMode } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -47,16 +45,17 @@ import {
   getNotificationSettings,
   saveNotificationSettings,
   registerForPushNotificationsAsync,
-  scheduleFiveSecondTestNotification,
   NotificationSettings,
 } from '@/services/notificationService';
-import { useNotificationBanner } from '@/context/NotificationBannerContext';
 
-
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 let GoogleSignin: any = null;
 let statusCodes: any = {};
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const gModule = require('@react-native-google-signin/google-signin');
   GoogleSignin = gModule.GoogleSignin;
   statusCodes = gModule.statusCodes || {};
@@ -72,18 +71,17 @@ try {
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { showNotification } = useNotificationBanner();
   const { themeMode, setThemeMode } = useThemeMode();
-  const { user, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout, forgotPassword, verifyResetOtp, resetPassword, requestFinancialReport } = useAuth();
+  const { user, token, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout, forgotPassword, verifyResetOtp, resetPassword, requestFinancialReport } = useAuth();
   
   // Custom Auth State to support login/signup & OTP
-  const { transactions, totalBalance, totalIncome, totalExpenses, deleteTransaction, deleteAllTransactions } = useTransactions();
+  const { transactions, totalBalance, totalIncome, totalExpenses, deleteAllTransactions } = useTransactions();
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authStep, setAuthStep] = useState<'auth' | 'otp'>('auth');
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const { language, setLanguage } = useLanguage();
   const t = translations[language];
-  const { isPinSet, isLockEnabled, isBiometricEnabled, setupPin, verifyPin, toggleLock, toggleBiometrics, autoLockDelay, updateAutoLockDelay, lockApp } = useSecurity();
+  const { isPinSet, isLockEnabled, setupPin, verifyPin, toggleLock, autoLockDelay, updateAutoLockDelay } = useSecurity();
 
   // Security PIN Modal states
   const [showPinModal, setShowPinModal] = useState<boolean>(false);
@@ -93,13 +91,13 @@ export default function ProfileScreen() {
   const [pinModalError, setPinModalError] = useState<string>('');
 
   // PIN Input Animation variables
-  const modalShakeAnim = React.useRef(new Animated.Value(0)).current;
-  const modalCellScales = React.useRef([
+  const [modalShakeAnim] = useState(() => new Animated.Value(0));
+  const [modalCellScales] = useState(() => [
     new Animated.Value(1),
     new Animated.Value(1),
     new Animated.Value(1),
     new Animated.Value(1),
-  ]).current;
+  ]);
   const pinTextInputRef = React.useRef<any>(null);
   const otpInputRef = React.useRef<any>(null);
 
@@ -131,6 +129,65 @@ export default function ProfileScreen() {
   const [showLeaderboardPage, setShowLeaderboardPage] = useState<boolean>(false);
   const [showInvestmentPage, setShowInvestmentPage] = useState<boolean>(false);
   const [showGoalPage, setShowGoalPage] = useState<boolean>(false);
+
+  // Change Password Modal States
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
+  const [oldPasswordInput, setOldPasswordInput] = useState<string>('');
+  const [newPasswordInput, setNewPasswordInput] = useState<string>('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState<string>('');
+  const [changePasswordError, setChangePasswordError] = useState<string>('');
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState<string>('');
+  const [changePasswordLoading, setChangePasswordLoading] = useState<boolean>(false);
+
+  const handleChangePasswordSubmit = async () => {
+    if (!oldPasswordInput.trim()) {
+      setChangePasswordError(language === 'bn' ? 'পুরাতন পাসওয়ার্ড লিখুন' : 'Enter current password');
+      return;
+    }
+    if (!newPasswordInput || newPasswordInput.length < 6) {
+      setChangePasswordError(language === 'bn' ? 'নতুন পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে' : 'New password must be at least 6 characters');
+      return;
+    }
+    if (newPasswordInput !== confirmPasswordInput) {
+      setChangePasswordError(language === 'bn' ? 'নতুন পাসওয়ার্ড দুইটি মিলছে না' : 'New passwords do not match');
+      return;
+    }
+
+    setChangePasswordLoading(true);
+    setChangePasswordError('');
+    setChangePasswordSuccess('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          oldPassword: oldPasswordInput,
+          newPassword: newPasswordInput,
+        }),
+      });
+      const json = await response.json();
+      if (response.ok && json.success) {
+        setChangePasswordSuccess(language === 'bn' ? 'পাসওয়ার্ড পরিবর্তন সফল হয়েছে!' : 'Password changed successfully!');
+        setOldPasswordInput('');
+        setNewPasswordInput('');
+        setConfirmPasswordInput('');
+        setTimeout(() => {
+          setShowChangePasswordModal(false);
+          setChangePasswordSuccess('');
+        }, 1200);
+      } else {
+        setChangePasswordError(json.message || (language === 'bn' ? 'পুরাতন পাসওয়ার্ডটি ভুল!' : 'Incorrect current password'));
+      }
+    } catch (e) {
+      setChangePasswordError(language === 'bn' ? 'নেটওয়ার্ক ত্রুটি' : 'Network error');
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
 
   // Points & Rewards Context
   const { points, userBadge, dailyLoginEarnedToday, dailyTxEarnedToday, getLeaderboard } = usePoints();
@@ -188,13 +245,13 @@ export default function ProfileScreen() {
   const [forgotLoading, setForgotLoading] = useState(false);
 
   // Forgot Password Premium Animations
-  const forgotFadeAnim = React.useRef(new Animated.Value(1)).current;
-  const forgotSlideAnim = React.useRef(new Animated.Value(0)).current;
-  const stepIndicatorScales = {
-    email: React.useRef(new Animated.Value(1.25)).current,
-    otp: React.useRef(new Animated.Value(1.0)).current,
-    reset: React.useRef(new Animated.Value(1.0)).current,
-  };
+  const [forgotFadeAnim] = useState(() => new Animated.Value(1));
+  const [forgotSlideAnim] = useState(() => new Animated.Value(0));
+  const [stepIndicatorScales] = useState(() => ({
+    email: new Animated.Value(1.25),
+    otp: new Animated.Value(1.0),
+    reset: new Animated.Value(1.0),
+  }));
 
   const transitionForgotStep = (nextStep: 'email' | 'otp' | 'reset') => {
     const steps = ['email', 'otp', 'reset'] as const;
@@ -1811,6 +1868,28 @@ export default function ProfileScreen() {
               </>
             )}
 
+            {/* Change Account Password Button */}
+            <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => {
+                setOldPasswordInput('');
+                setNewPasswordInput('');
+                setConfirmPasswordInput('');
+                setChangePasswordError('');
+                setChangePasswordSuccess('');
+                setShowChangePasswordModal(true);
+              }}
+            >
+              <ThemedText style={styles.actionIcon}>🛡️</ThemedText>
+              <View style={styles.actionTextContainer}>
+                <ThemedText type="small">{language === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}</ThemedText>
+                <ThemedText type="code" themeColor="textSecondary" style={styles.actionValue}>
+                  {language === 'bn' ? 'অ্যাকাউন্ট সিকিউরিটি' : 'Account Security'}
+                </ThemedText>
+              </View>
+            </TouchableOpacity>
+
           </View>
 
           {/* ⚙️ Card 2: App Preferences Section */}
@@ -2320,6 +2399,105 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </Modal>
+
+        {/* Change Password Modal */}
+        <Modal
+          visible={showChangePasswordModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowChangePasswordModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowChangePasswordModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>
+                  🛡️ {language === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}
+                </ThemedText>
+                <TouchableOpacity onPress={() => setShowChangePasswordModal(false)} style={styles.modalCloseBtn}>
+                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {changePasswordError ? (
+                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: 10, borderRadius: 10, marginBottom: 12 }}>
+                  <ThemedText style={{ color: '#EF4444', fontSize: 13 }}>⚠️ {changePasswordError}</ThemedText>
+                </View>
+              ) : null}
+
+              {changePasswordSuccess ? (
+                <View style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', padding: 10, borderRadius: 10, marginBottom: 12 }}>
+                  <ThemedText style={{ color: '#22C55E', fontSize: 13 }}>✨ {changePasswordSuccess}</ThemedText>
+                </View>
+              ) : null}
+
+              <View style={{ gap: 12, marginVertical: 10 }}>
+                <View>
+                  <ThemedText type="small" style={{ marginBottom: 6 }}>
+                    {language === 'bn' ? 'পুরাতন পাসওয়ার্ড' : 'Current Password'}
+                  </ThemedText>
+                  <TextInput
+                    style={{ height: 46, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, backgroundColor: theme.backgroundSelected, color: theme.text }}
+                    secureTextEntry
+                    placeholder="••••••••"
+                    placeholderTextColor="#64748B"
+                    value={oldPasswordInput}
+                    onChangeText={setOldPasswordInput}
+                  />
+                </View>
+
+                <View>
+                  <ThemedText type="small" style={{ marginBottom: 6 }}>
+                    {language === 'bn' ? 'নতুন পাসওয়ার্ড (অন্তত ৬ অক্ষর)' : 'New Password (min 6 chars)'}
+                  </ThemedText>
+                  <TextInput
+                    style={{ height: 46, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, backgroundColor: theme.backgroundSelected, color: theme.text }}
+                    secureTextEntry
+                    placeholder="••••••••"
+                    placeholderTextColor="#64748B"
+                    value={newPasswordInput}
+                    onChangeText={setNewPasswordInput}
+                  />
+                </View>
+
+                <View>
+                  <ThemedText type="small" style={{ marginBottom: 6 }}>
+                    {language === 'bn' ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm New Password'}
+                  </ThemedText>
+                  <TextInput
+                    style={{ height: 46, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, backgroundColor: theme.backgroundSelected, color: theme.text }}
+                    secureTextEntry
+                    placeholder="••••••••"
+                    placeholderTextColor="#64748B"
+                    value={confirmPasswordInput}
+                    onChangeText={setConfirmPasswordInput}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, { marginTop: 10, opacity: changePasswordLoading ? 0.7 : 1 }]}
+                  onPress={handleChangePasswordSubmit}
+                  disabled={changePasswordLoading}
+                >
+                  {changePasswordLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                      ✓ {language === 'bn' ? 'পাসওয়ার্ড সেভ করুন' : 'Save New Password'}
+                    </ThemedText>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
 
         {/* About Us Modal */}

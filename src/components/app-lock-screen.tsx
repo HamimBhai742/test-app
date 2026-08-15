@@ -63,13 +63,13 @@ export function AppLockScreen() {
   }, [lockoutUntil]);
 
   // Animations setup
-  const shakeAnim = React.useRef(new Animated.Value(0)).current;
-  const dotScales = React.useRef([
+  const [shakeAnim] = useState(() => new Animated.Value(0));
+  const [dotScales] = useState(() => [
     new Animated.Value(1),
     new Animated.Value(1),
     new Animated.Value(1),
     new Animated.Value(1),
-  ]).current;
+  ]);
 
   const triggerShake = () => {
     Animated.sequence([

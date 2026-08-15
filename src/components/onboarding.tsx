@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Dimensions,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -20,8 +19,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'expo-router';
+
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
@@ -60,7 +58,7 @@ export const getOnboardingCompleted = async (): Promise<boolean> => {
         }
       } catch {}
     }
-  } catch (e) {}
+  } catch {}
   return memoryOnboardingState ?? false;
 };
 
@@ -76,7 +74,7 @@ export const setOnboardingCompleted = async (completed: boolean): Promise<void> 
       await AsyncStorage.setItem(STORAGE_KEY, val).catch(() => {});
       await SecureStore.setItemAsync(SECURE_KEY, val).catch(() => {});
     }
-  } catch (e) {}
+  } catch {}
 };
 
 interface OnboardingProps {

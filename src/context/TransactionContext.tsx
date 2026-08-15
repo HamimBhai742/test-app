@@ -1,8 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import { useAuth } from './AuthContext';
 import { triggerBudgetWarning } from '@/services/notificationService';
 import { API_BASE_URL } from '@/constants/config';
@@ -80,7 +77,15 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [token, logout]);
 
   useEffect(() => {
-    fetchTransactions();
+    let isMounted = true;
+    queueMicrotask(() => {
+      if (isMounted) {
+        fetchTransactions();
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
   }, [fetchTransactions]);
 
   // Helper to check and trigger budget notifications

@@ -217,7 +217,7 @@ export default function StatsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
 
   // Pulsing animation for the green LIVE dot
-  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  const [pulseAnim] = useState(() => new Animated.Value(0.4));
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -463,15 +463,16 @@ export default function StatsScreen() {
 
     const maxWeekly = Math.max(...trendData.map((d) => d.amount), 1);
 
-    // Summary stats row
     const incomes = filteredTransactions.filter((tx) => tx.type === 'income');
     const totalIncome = incomes.reduce((acc, tx) => acc + tx.amount, 0);
     const netBalance = totalIncome - totalExp;
+    const savingsRate = totalIncome > 0 ? Math.max(0, Math.round(((totalIncome - totalExp) / totalIncome) * 100)) : 0;
 
     return {
       totalExpense: totalExp,
       totalIncome,
       netBalance,
+      savingsRate,
       expensesCount: expenses.length,
       breakdown,
       maxAmount,
@@ -613,7 +614,7 @@ export default function StatsScreen() {
                   {getCurrencySymbol()}{formatNumber(Math.abs(expenseStats.netBalance))}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
-                  {expenseStats.netBalance >= 0 ? t.savingsWord : t.deficitWord}
+                  {expenseStats.netBalance >= 0 ? `${t.savingsWord} (${expenseStats.savingsRate}%)` : t.deficitWord}
                 </Text>
               </View>
             </View>
