@@ -23,6 +23,7 @@ import {
   UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -135,6 +136,9 @@ export default function ProfileScreen() {
   const [oldPasswordInput, setOldPasswordInput] = useState<string>('');
   const [newPasswordInput, setNewPasswordInput] = useState<string>('');
   const [confirmPasswordInput, setConfirmPasswordInput] = useState<string>('');
+  const [showOldPasswordInput, setShowOldPasswordInput] = useState<boolean>(false);
+  const [showNewPasswordInput, setShowNewPasswordInput] = useState<boolean>(false);
+  const [showConfirmPasswordInput, setShowConfirmPasswordInput] = useState<boolean>(false);
   const [changePasswordError, setChangePasswordError] = useState<string>('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState<string>('');
   const [changePasswordLoading, setChangePasswordLoading] = useState<boolean>(false);
@@ -2415,84 +2419,242 @@ export default function ProfileScreen() {
           >
             <TouchableOpacity
               activeOpacity={1}
-              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
+              style={[
+                styles.modalContainer,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                  borderRadius: 24,
+                  padding: 20,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 20,
+                  elevation: 8,
+                },
+              ]}
               onPress={(e) => e.stopPropagation()}
             >
-              <View style={styles.modalHeader}>
-                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>
-                  🛡️ {language === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}
-                </ThemedText>
-                <TouchableOpacity onPress={() => setShowChangePasswordModal(false)} style={styles.modalCloseBtn}>
-                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
-                </TouchableOpacity>
+              {/* Absolute Top Right Close Button */}
+              <TouchableOpacity
+                onPress={() => setShowChangePasswordModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: theme.backgroundSelected,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10,
+                }}
+              >
+                <Feather name="x" size={18} color={theme.text} />
+              </TouchableOpacity>
+
+              {/* Header */}
+              <View style={[styles.modalHeader, { marginBottom: 16, paddingRight: 32 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(32, 138, 239, 0.12)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    <Feather name="shield" size={22} color="#208AEF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="subtitle" style={{ fontSize: 18, fontWeight: '700' }}>
+                      {language === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}
+                    </ThemedText>
+                    <ThemedText style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                      {language === 'bn' ? 'অ্যাকাউন্টের নিরাপত্তার জন্য নতুন পাসওয়ার্ড সেট করুন' : 'Update your account security password'}
+                    </ThemedText>
+                  </View>
+                </View>
               </View>
 
+              {/* Feedback Alerts */}
               {changePasswordError ? (
-                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: 10, borderRadius: 10, marginBottom: 12 }}>
-                  <ThemedText style={{ color: '#EF4444', fontSize: 13 }}>⚠️ {changePasswordError}</ThemedText>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: 'rgba(239, 68, 68, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    borderRadius: 12,
+                    marginBottom: 14,
+                    gap: 8,
+                  }}
+                >
+                  <Feather name="alert-circle" size={16} color="#EF4444" />
+                  <ThemedText style={{ color: '#EF4444', fontSize: 13, flex: 1 }}>
+                    {changePasswordError}
+                  </ThemedText>
                 </View>
               ) : null}
 
               {changePasswordSuccess ? (
-                <View style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', padding: 10, borderRadius: 10, marginBottom: 12 }}>
-                  <ThemedText style={{ color: '#22C55E', fontSize: 13 }}>✨ {changePasswordSuccess}</ThemedText>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderColor: 'rgba(34, 197, 94, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    borderRadius: 12,
+                    marginBottom: 14,
+                    gap: 8,
+                  }}
+                >
+                  <Feather name="check-circle" size={16} color="#22C55E" />
+                  <ThemedText style={{ color: '#22C55E', fontSize: 13, flex: 1 }}>
+                    {changePasswordSuccess}
+                  </ThemedText>
                 </View>
               ) : null}
 
-              <View style={{ gap: 12, marginVertical: 10 }}>
+              {/* Form Fields */}
+              <View style={{ gap: 14 }}>
+                {/* Current Password */}
                 <View>
-                  <ThemedText type="small" style={{ marginBottom: 6 }}>
+                  <ThemedText type="small" style={{ marginBottom: 6, fontWeight: '600', color: theme.text }}>
                     {language === 'bn' ? 'পুরাতন পাসওয়ার্ড' : 'Current Password'}
                   </ThemedText>
-                  <TextInput
-                    style={{ height: 46, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, backgroundColor: theme.backgroundSelected, color: theme.text }}
-                    secureTextEntry
-                    placeholder="••••••••"
-                    placeholderTextColor="#64748B"
-                    value={oldPasswordInput}
-                    onChangeText={setOldPasswordInput}
-                  />
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      height: 48,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: theme.border || 'rgba(150, 150, 150, 0.2)',
+                      backgroundColor: theme.backgroundSelected,
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    <Feather name="lock" size={16} color="#64748B" style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, height: '100%', fontSize: 14, color: theme.text }}
+                      secureTextEntry={!showOldPasswordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor="#94A3B8"
+                      value={oldPasswordInput}
+                      onChangeText={setOldPasswordInput}
+                    />
+                    <TouchableOpacity onPress={() => setShowOldPasswordInput(!showOldPasswordInput)} style={{ padding: 4 }}>
+                      <Feather name={showOldPasswordInput ? 'eye-off' : 'eye'} size={18} color="#64748B" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
+                {/* New Password */}
                 <View>
-                  <ThemedText type="small" style={{ marginBottom: 6 }}>
+                  <ThemedText type="small" style={{ marginBottom: 6, fontWeight: '600', color: theme.text }}>
                     {language === 'bn' ? 'নতুন পাসওয়ার্ড (অন্তত ৬ অক্ষর)' : 'New Password (min 6 chars)'}
                   </ThemedText>
-                  <TextInput
-                    style={{ height: 46, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, backgroundColor: theme.backgroundSelected, color: theme.text }}
-                    secureTextEntry
-                    placeholder="••••••••"
-                    placeholderTextColor="#64748B"
-                    value={newPasswordInput}
-                    onChangeText={setNewPasswordInput}
-                  />
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      height: 48,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: theme.border || 'rgba(150, 150, 150, 0.2)',
+                      backgroundColor: theme.backgroundSelected,
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    <Feather name="key" size={16} color="#64748B" style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, height: '100%', fontSize: 14, color: theme.text }}
+                      secureTextEntry={!showNewPasswordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor="#94A3B8"
+                      value={newPasswordInput}
+                      onChangeText={setNewPasswordInput}
+                    />
+                    <TouchableOpacity onPress={() => setShowNewPasswordInput(!showNewPasswordInput)} style={{ padding: 4 }}>
+                      <Feather name={showNewPasswordInput ? 'eye-off' : 'eye'} size={18} color="#64748B" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
+                {/* Confirm New Password */}
                 <View>
-                  <ThemedText type="small" style={{ marginBottom: 6 }}>
+                  <ThemedText type="small" style={{ marginBottom: 6, fontWeight: '600', color: theme.text }}>
                     {language === 'bn' ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm New Password'}
                   </ThemedText>
-                  <TextInput
-                    style={{ height: 46, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, backgroundColor: theme.backgroundSelected, color: theme.text }}
-                    secureTextEntry
-                    placeholder="••••••••"
-                    placeholderTextColor="#64748B"
-                    value={confirmPasswordInput}
-                    onChangeText={setConfirmPasswordInput}
-                  />
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      height: 48,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: theme.border || 'rgba(150, 150, 150, 0.2)',
+                      backgroundColor: theme.backgroundSelected,
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    <Feather name="check-square" size={16} color="#64748B" style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, height: '100%', fontSize: 14, color: theme.text }}
+                      secureTextEntry={!showConfirmPasswordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor="#94A3B8"
+                      value={confirmPasswordInput}
+                      onChangeText={setConfirmPasswordInput}
+                    />
+                    <TouchableOpacity onPress={() => setShowConfirmPasswordInput(!showConfirmPasswordInput)} style={{ padding: 4 }}>
+                      <Feather name={showConfirmPasswordInput ? 'eye-off' : 'eye'} size={18} color="#64748B" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
+                {/* Save Button */}
                 <TouchableOpacity
-                  style={[styles.primaryButton, { marginTop: 10, opacity: changePasswordLoading ? 0.7 : 1 }]}
+                  style={[
+                    styles.primaryButton,
+                    {
+                      backgroundColor: '#208AEF',
+                      height: 50,
+                      borderRadius: 14,
+                      marginTop: 8,
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      shadowColor: '#208AEF',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 8,
+                      elevation: 4,
+                      opacity: changePasswordLoading ? 0.7 : 1,
+                    },
+                  ]}
                   onPress={handleChangePasswordSubmit}
                   disabled={changePasswordLoading}
                 >
                   {changePasswordLoading ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                      ✓ {language === 'bn' ? 'পাসওয়ার্ড সেভ করুন' : 'Save New Password'}
-                    </ThemedText>
+                    <>
+                      <Feather name="check" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
+                        {language === 'bn' ? 'পাসওয়ার্ড সেভ করুন' : 'Save New Password'}
+                      </Text>
+                    </>
                   )}
                 </TouchableOpacity>
               </View>
