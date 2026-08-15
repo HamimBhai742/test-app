@@ -121,6 +121,15 @@ export default function ProfileScreen() {
     ]).start();
   };
 
+  useEffect(() => {
+    if (showPinModal) {
+      const timer = setTimeout(() => {
+        pinTextInputRef.current?.focus();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [showPinModal, pinStep]);
+
   // Info Modals (About, Contact, Privacy, Google Auth, Leaderboard)
   const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
   const [showContactModal, setShowContactModal] = useState<boolean>(false);
@@ -2316,14 +2325,23 @@ export default function ProfileScreen() {
                     <Feather name="key" size={22} color="#208AEF" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <ThemedText type="subtitle" style={{ fontSize: 17, fontWeight: '700' }}>
+                    <ThemedText type="subtitle" style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
                       {pinStep === 'verify_old'
-                        ? t.verifyOldPinPrompt
+                        ? (language === 'bn' ? 'বর্তমান পিন দিন' : 'Enter Current PIN')
                         : pinStep === 'create'
-                        ? t.setupPinPrompt
+                        ? (language === 'bn' ? 'নতুন পিন সেট করুন' : 'Set New PIN')
                         : pinStep === 'confirm'
-                        ? t.confirmPinPrompt
-                        : t.disablePinPrompt}
+                        ? (language === 'bn' ? 'পিন নিশ্চিত করুন' : 'Confirm PIN')
+                        : (language === 'bn' ? 'পিন সিকিউরিটি বন্ধ' : 'Disable PIN')}
+                    </ThemedText>
+                    <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                      {pinStep === 'verify_old'
+                        ? (language === 'bn' ? 'পিন পরিবর্তন করতে ৪ ডিজিটের পিন লিখুন' : 'Enter your current 4-digit PIN to change PIN')
+                        : pinStep === 'create'
+                        ? (language === 'bn' ? 'অ্যাকাউন্টের জন্য নতুন ৪ ডিজিটের পিন দিন' : 'Enter a new 4-digit PIN for your account')
+                        : pinStep === 'confirm'
+                        ? (language === 'bn' ? 'নিশ্চিত করতে পিনটি পুনরায় লিখুন' : 'Re-enter your 4-digit PIN to confirm')
+                        : (language === 'bn' ? 'লক বন্ধ করতে বর্তমান ৪ ডিজিটের পিন দিন' : 'Enter current 4-digit PIN to turn off lock')}
                     </ThemedText>
                   </View>
                 </View>
@@ -2336,11 +2354,7 @@ export default function ProfileScreen() {
               ) : null}
 
               {/* Custom Animated 4-Cell PIN Code Input Grid */}
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={() => pinTextInputRef.current?.focus()}
-                style={{ width: '100%', marginVertical: 18 }}
-              >
+              <View style={{ width: '100%', marginVertical: 18, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
                 <Animated.View style={{ flexDirection: 'row', gap: 14, justifyContent: 'center', transform: [{ translateX: modalShakeAnim }] }}>
                   {[0, 1, 2, 3].map((index) => {
                     const hasVal = pinInputTemp.length > index;
@@ -2367,25 +2381,33 @@ export default function ProfileScreen() {
                     );
                   })}
                 </Animated.View>
-              </TouchableOpacity>
 
-              {/* Hidden text input to receive native keyboard entries */}
-              <TextInput
-                ref={pinTextInputRef}
-                style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
-                keyboardType="numeric"
-                maxLength={4}
-                value={pinInputTemp}
-                onChangeText={(text) => {
-                  const clean = text.replace(/[^0-9]/g, '');
-                  if (clean.length > pinInputTemp.length) {
-                    animateModalCell(pinInputTemp.length);
-                  }
-                  setPinInputTemp(clean);
-                  setPinModalError('');
-                }}
-                autoFocus
-              />
+                {/* Direct overlay TextInput so clicking anywhere on cells focuses keyboard */}
+                <TextInput
+                  ref={pinTextInputRef}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    opacity: 0.01,
+                    zIndex: 20,
+                  }}
+                  keyboardType="numeric"
+                  maxLength={4}
+                  value={pinInputTemp}
+                  onChangeText={(text) => {
+                    const clean = text.replace(/[^0-9]/g, '');
+                    if (clean.length > pinInputTemp.length) {
+                      animateModalCell(pinInputTemp.length);
+                    }
+                    setPinInputTemp(clean);
+                    setPinModalError('');
+                  }}
+                  autoFocus
+                />
+              </View>
 
               <TouchableOpacity
                 style={[styles.primaryButton, { backgroundColor: pinStep === 'disable' ? '#EF4444' : '#208AEF', marginTop: 16 }]}
@@ -2449,12 +2471,12 @@ export default function ProfileScreen() {
               >
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
                   {pinStep === 'verify_old'
-                    ? (language === 'bn' ? 'যাচাই করুন ➔' : 'Verify PIN ➔')
+                    ? (language === 'bn' ? 'যাচাই করুন' : 'Verify PIN')
                     : pinStep === 'create'
-                    ? (language === 'bn' ? 'পরবর্তীধাপ ➔' : 'Next ➔')
+                    ? (language === 'bn' ? 'পরবর্তী' : 'Next')
                     : pinStep === 'confirm'
-                    ? (language === 'bn' ? 'সেভ করুন ✓' : 'Save PIN ✓')
-                    : (language === 'bn' ? 'লক বন্ধ করুন ✓' : 'Turn Off Lock ✓')}
+                    ? (language === 'bn' ? 'সেভ করুন' : 'Save PIN')
+                    : (language === 'bn' ? 'লক বন্ধ করুন' : 'Turn Off Lock')}
                 </ThemedText>
               </TouchableOpacity>
             </TouchableOpacity>
