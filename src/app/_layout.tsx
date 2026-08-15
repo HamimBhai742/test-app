@@ -27,7 +27,7 @@ SplashScreen.preventAutoHideAsync();
 
 function MainContent() {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     getOnboardingCompleted().then((completed) => {
@@ -40,15 +40,21 @@ function MainContent() {
     setShowOnboarding(false);
   };
 
+  const isReady = !isLoading && showOnboarding !== null;
+
   return (
     <>
-      <AnimatedSplashOverlay />
-      <AppLockScreen />
-      {showOnboarding === true && (
-        <OnboardingScreen onComplete={handleOnboardingComplete} />
-      )}
-      {showOnboarding === false && (
-        !user ? <ProfileScreen /> : <AppTabs />
+      <AnimatedSplashOverlay isReady={isReady} />
+      {isReady && (
+        <>
+          <AppLockScreen />
+          {showOnboarding === true && (
+            <OnboardingScreen onComplete={handleOnboardingComplete} />
+          )}
+          {showOnboarding === false && (
+            !user ? <ProfileScreen /> : <AppTabs />
+          )}
+        </>
       )}
     </>
   );

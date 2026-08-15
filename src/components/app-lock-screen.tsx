@@ -17,7 +17,7 @@ import { translations } from '@/constants/translations';
 import { useAuth } from '@/context/AuthContext';
 
 export function AppLockScreen() {
-  const { isLocked, lockoutUntil, failedAttempts, verifyPin, resetPinByRecovery, unlockApp } = useSecurity();
+  const { isLocked, lockoutUntil, failedAttempts, verifyPin, resetPinByRecovery, unlockApp, isBiometricEnabled, authenticateWithBiometrics } = useSecurity();
   const { language } = useLanguage();
   const t = translations[language];
   const { user } = useAuth();
@@ -101,8 +101,8 @@ export function AppLockScreen() {
       setErrorMsg('');
 
       if (nextPin.length === 4) {
-        setTimeout(() => {
-          const success = verifyPin(nextPin);
+        setTimeout(async () => {
+          const success = await verifyPin(nextPin);
           if (!success) {
             setErrorMsg(t.wrongPinError);
             triggerShake();
@@ -263,6 +263,21 @@ export function AppLockScreen() {
         >
           <Text style={styles.forgotBtnText}>{t.forgotPinBtn}</Text>
         </TouchableOpacity>
+
+        {/* Biometric Unlock Button */}
+        {isBiometricEnabled && Platform.OS !== 'web' && (
+          <TouchableOpacity
+            style={styles.biometricBtn}
+            onPress={async () => {
+              const success = await authenticateWithBiometrics();
+              if (!success) {
+                setErrorMsg('Biometric verification failed. Try PIN.');
+              }
+            }}
+          >
+            <Text style={styles.biometricBtnText}>🔑 Use Fingerprint / Face ID</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Forgot PIN Recovery Modal */}
         <Modal
@@ -466,6 +481,21 @@ const styles = StyleSheet.create({
   },
   forgotBtnText: {
     color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  biometricBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    backgroundColor: '#1E293B',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#334155',
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  biometricBtnText: {
+    color: '#94A3B8',
     fontSize: 14,
     fontWeight: '600',
   },

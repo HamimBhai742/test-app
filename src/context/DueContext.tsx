@@ -35,12 +35,6 @@ interface DueContextType {
 
 const STORAGE_KEY = '@hisabkitab_dues';
 
-const getApiBaseUrl = () => {
-  return API_BASE_URL;
-};
-
-// Authentication token is retrieved from AuthContext instead of raw storage
-
 const DEFAULT_DUES: DueItem[] = [];
 
 const DueContext = createContext<DueContextType | undefined>(undefined);
@@ -70,7 +64,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
     }
     setIsLoading(true);
     try {
-      const response = await fetch(`${getApiBaseUrl()}/dues`, {
+      const response = await fetch(`${API_BASE_URL}/dues`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -132,7 +126,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (!token) return;
-      const response = await fetch(`${getApiBaseUrl()}/dues`, {
+      const response = await fetch(`${API_BASE_URL}/dues`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,7 +166,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (!token) return;
-      await fetch(`${getApiBaseUrl()}/dues/${id}/settle`, {
+      await fetch(`${API_BASE_URL}/dues/${id}/settle`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -191,7 +185,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (!token) return;
-      await fetch(`${getApiBaseUrl()}/dues/${id}`, {
+      await fetch(`${API_BASE_URL}/dues/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -220,7 +214,7 @@ export function DueProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (!token) return;
-      await fetch(`${getApiBaseUrl()}/dues/${id}`, {
+      await fetch(`${API_BASE_URL}/dues/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

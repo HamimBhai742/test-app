@@ -6,7 +6,7 @@ import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 import classes from './animated-icon.module.css';
 const DURATION = 300;
 
-export function AnimatedSplashOverlay() {
+export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean }) {
   return null;
 }
 

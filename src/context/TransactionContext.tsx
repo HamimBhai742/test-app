@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -32,13 +32,6 @@ interface TransactionContextType {
   refreshTransactions: () => Promise<void>;
 }
 
-// Get Base API URL based on platform & Expo host IP
-const getApiBaseUrl = () => {
-  return API_BASE_URL;
-};
-
-// Authentication token is retrieved from AuthContext instead of raw storage
-
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
 export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -47,7 +40,7 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const { token, logout } = useAuth();
 
   // Fetch transactions from Backend API
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     if (!token) {
       setTransactions([]);
       setIsLoading(false);
@@ -55,14 +48,12 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     setIsLoading(true);
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      };
-
-      const response = await fetch(`${getApiBaseUrl()}/transactions`, {
+      const response = await fetch(`${API_BASE_URL}/transactions`, {
         method: 'GET',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       const data = await response.json();
@@ -86,11 +77,11 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, logout]);
 
   useEffect(() => {
     fetchTransactions();
-  }, [token]);
+  }, [fetchTransactions]);
 
   // Helper to check and trigger budget notifications
   const checkBudgetNotification = async (
@@ -102,19 +93,6 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       // 1. Load user's custom budgets from AsyncStorage
       const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
-      // Default budgets matching explore.tsx
-      const defaultBudgets: Record<string, number> = {
-        Food: 3000,
-        Shopping: 4000,
-        Utilities: 2500,
-        Rent: 12000,
-        Entertainment: 500,
-        Transport: 2500,
-        Health: 2000,
-        Education: 3000,
-        Bills: 1800,
-        Others: 1000,
-      };
       const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : SHARED_DEFAULT_BUDGETS;
 
       // 2. Filter transactions for the current month's expenses
@@ -198,18 +176,6 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const cleanupTriggeredAlerts = async (allTransactions: Transaction[]) => {
     try {
       const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
-      const defaultBudgets: Record<string, number> = {
-        Food: 3000,
-        Shopping: 4000,
-        Utilities: 2500,
-        Rent: 12000,
-        Entertainment: 500,
-        Transport: 2500,
-        Health: 2000,
-        Education: 3000,
-        Bills: 1800,
-        Others: 1000,
-      };
       const budgets: Record<string, number> = storedBudgets ? JSON.parse(storedBudgets) : SHARED_DEFAULT_BUDGETS;
 
       const getMonthKey = (dateStr?: string) => {
@@ -271,17 +237,19 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Budget warning check for new expenses
     checkBudgetNotification(newTx, transactions).catch(() => {});
 
+    if (!token) {
+      // No token — rollback optimistic update
+      setTransactions((prev) => prev.filter((t) => t.id !== tempId));
+      return;
+    }
+
     try {
-      if (!token) return;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      };
-
-      const response = await fetch(`${getApiBaseUrl()}/transactions`, {
+      const response = await fetch(`${API_BASE_URL}/transactions`, {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(newTx),
       });
 
@@ -299,8 +267,13 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           createdAt: data.data.createdAt,
         };
         setTransactions((prev) => prev.map((t) => (t.id === tempId ? savedTx : t)));
+      } else {
+        // ✅ API returned non-OK — rollback optimistic update
+        setTransactions((prev) => prev.filter((t) => t.id !== tempId));
       }
     } catch (error) {
+      // ✅ Network error — rollback optimistic update
+      setTransactions((prev) => prev.filter((t) => t.id !== tempId));
       console.warn('Error adding transaction to backend:', error);
     }
   };
@@ -312,16 +285,14 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
       prev.map((t) => (t.id === id ? { ...t, ...updatedTx } : t))
     );
 
+    if (!token) return;
     try {
-      if (!token) return;
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      };
-
-      const response = await fetch(`${getApiBaseUrl()}/transactions/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'PATCH',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(updatedTx),
       });
 
@@ -348,21 +319,16 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const deleteTransaction = async (id: string) => {
     const updatedTransactions = transactions.filter((t) => t.id !== id);
     setTransactions(updatedTransactions);
-
-    // Recalculate and clean up triggered alerts cache based on updated transactions
     cleanupTriggeredAlerts(updatedTransactions).catch(() => {});
 
+    if (!token) return;
     try {
-      if (!token) return;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      };
-
-      await fetch(`${getApiBaseUrl()}/transactions/${id}`, {
+      await fetch(`${API_BASE_URL}/transactions/${id}`, {
         method: 'DELETE',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
       });
     } catch (error) {
       console.warn('Error deleting transaction from backend:', error);
@@ -373,17 +339,14 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const deleteAllTransactions = async () => {
     setTransactions([]);
 
+    if (!token) return;
     try {
-      if (!token) return;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      };
-
-      await fetch(`${getApiBaseUrl()}/transactions/all`, {
+      await fetch(`${API_BASE_URL}/transactions/all`, {
         method: 'DELETE',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
       });
     } catch (error) {
       console.warn('Error clearing transactions from backend:', error);

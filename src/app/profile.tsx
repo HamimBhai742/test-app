@@ -2259,7 +2259,7 @@ export default function ProfileScreen() {
                   }
 
                   if (pinStep === 'verify_old') {
-                    const isValid = verifyPin(pinInputTemp);
+                    const isValid = await verifyPin(pinInputTemp);
                     if (isValid) {
                       setPinStep('create');
                       setPinInputTemp('');
@@ -2274,7 +2274,7 @@ export default function ProfileScreen() {
                   }
 
                   if (pinStep === 'disable') {
-                    const isValid = verifyPin(pinInputTemp);
+                    const isValid = await verifyPin(pinInputTemp);
                     if (isValid) {
                       await toggleLock(false);
                       setShowPinModal(false);

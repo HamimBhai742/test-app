@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { Platform, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 export type AutoLockDelayOption = 'instant' | '30s' | '1m';
 
@@ -14,13 +16,14 @@ interface SecurityContextType {
   failedAttempts: number;
   lockoutUntil: number | null;
   setupPin: (newPin: string) => Promise<boolean>;
-  verifyPin: (inputPin: string) => boolean;
+  verifyPin: (inputPin: string) => Promise<boolean>;
   toggleLock: (enabled: boolean) => Promise<void>;
   toggleBiometrics: (enabled: boolean) => Promise<void>;
   updateAutoLockDelay: (option: AutoLockDelayOption) => Promise<void>;
   unlockApp: () => void;
   lockApp: () => void;
   resetPinByRecovery: (newPin: string) => Promise<boolean>;
+  authenticateWithBiometrics: () => Promise<boolean>;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -150,9 +153,14 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
   const setupPin = async (newPin: string): Promise<boolean> => {
     if (!newPin || newPin.length !== 4) return false;
     try {
-      await setStorageItem(KEY_PIN, newPin);
+      // Hash the PIN before storing — never store raw PIN
+      const hashedPin = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        newPin + 'hk_pin_salt_v1'
+      );
+      await setStorageItem(KEY_PIN, hashedPin);
       await setStorageItem(KEY_LOCK_ENABLED, 'true');
-      setSavedPin(newPin);
+      setSavedPin(hashedPin);
       setIsPinSet(true);
       setIsLockEnabled(true);
       setIsLocked(true);
@@ -165,26 +173,61 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const verifyPin = (inputPin: string): boolean => {
+  const verifyPin = async (inputPin: string): Promise<boolean> => {
     // Check if locked out
     if (lockoutUntil && Date.now() < lockoutUntil) {
       return false;
     }
 
-    if (inputPin === savedPin) {
-      setIsLocked(false);
-      setFailedAttempts(0);
-      setLockoutUntil(null);
-      return true;
-    } else {
-      const nextAttempts = failedAttempts + 1;
-      setFailedAttempts(nextAttempts);
+    try {
+      // Hash the input and compare with stored hash
+      const hashedInput = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        inputPin + 'hk_pin_salt_v1'
+      );
 
-      // Lockout for 30 seconds after 3 consecutive wrong attempts
-      if (nextAttempts >= 3) {
-        const lockoutTime = Date.now() + 30000;
-        setLockoutUntil(lockoutTime);
+      if (hashedInput === savedPin) {
+        setIsLocked(false);
+        setFailedAttempts(0);
+        setLockoutUntil(null);
+        return true;
+      } else {
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
+        if (nextAttempts >= 3) {
+          setLockoutUntil(Date.now() + 30000);
+        }
+        return false;
       }
+    } catch (e) {
+      console.warn('Error verifying PIN:', e);
+      return false;
+    }
+  };
+
+  // Real biometric authentication using device hardware
+  const authenticateWithBiometrics = async (): Promise<boolean> => {
+    try {
+      if (Platform.OS === 'web') return false;
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware || !isEnrolled) return false;
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'হিসাব কিতাব unlock করুন',
+        fallbackLabel: 'PIN ব্যবহার করুন',
+        disableDeviceFallback: false,
+        cancelLabel: 'বাতিল',
+      });
+
+      if (result.success) {
+        setIsLocked(false);
+        setFailedAttempts(0);
+        setLockoutUntil(null);
+      }
+      return result.success;
+    } catch (e) {
+      console.warn('Biometric auth error:', e);
       return false;
     }
   };
@@ -255,6 +298,7 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
         unlockApp,
         lockApp,
         resetPinByRecovery,
+        authenticateWithBiometrics,
       }}
     >
       {children}
