@@ -224,6 +224,7 @@ export default function ProfileScreen() {
     registerForPushNotificationsAsync();
   }, []);
 
+
   // Google Modal Inputs
   const [googleEmailInput, setGoogleEmailInput] = useState<string>('mdhamim5088@gmail.com');
   const [googleNameInput, setGoogleNameInput] = useState<string>('Hamim Ahmed');
@@ -798,8 +799,8 @@ export default function ProfileScreen() {
   };
 
   const handleOpenTimePicker = () => {
-    const h24 = notifSettings.dailyHour;
-    const m = notifSettings.dailyMinute;
+    const h24 = notifSettings.dailyHour ?? 21;
+    const m = notifSettings.dailyMinute ?? 0;
     const isPm = h24 >= 12;
     const h12 = h24 > 12 ? h24 - 12 : h24 === 0 ? 12 : h24;
     setCustomHour(h12);
@@ -3065,21 +3066,69 @@ export default function ProfileScreen() {
           >
             <TouchableOpacity
               activeOpacity={1}
-              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, maxWidth: 390 }]}
+              style={[
+                styles.modalContainer,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border || 'rgba(150, 150, 150, 0.2)',
+                  borderWidth: 1,
+                  borderRadius: 24,
+                  padding: 20,
+                  maxWidth: 390,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 20,
+                  elevation: 8,
+                },
+              ]}
               onPress={(e) => e.stopPropagation()}
             >
-              <View style={styles.modalHeader}>
-                <ThemedText type="subtitle" style={{ flex: 1 }}>
-                  {language === 'bn' ? 'রিমাইন্ডার সময় নির্বাচন ⏰' : 'Select Reminder Time ⏰'}
-                </ThemedText>
-                <TouchableOpacity onPress={() => setShowTimePickerModal(false)} style={styles.modalCloseBtn}>
-                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
-                </TouchableOpacity>
-              </View>
+              {/* Close Button */}
+              <TouchableOpacity
+                onPress={() => setShowTimePickerModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: theme.backgroundSelected,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10,
+                }}
+              >
+                <Feather name="x" size={18} color={theme.text} />
+              </TouchableOpacity>
 
-              <ThemedText themeColor="textSecondary" style={{ fontSize: 13, marginBottom: 12 }}>
-                {language === 'bn' ? 'প্রতিদিন কোন সময়ে হিসাব লেখার নোটিফিকেশন পেতে চান?' : 'When would you like to receive daily accounting reminders?'}
-              </ThemedText>
+              {/* Header */}
+              <View style={[styles.modalHeader, { marginBottom: 14, paddingRight: 32 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    <Feather name="clock" size={22} color="#3B82F6" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="subtitle" style={{ fontSize: 18, fontWeight: '700', color: theme.text }}>
+                      {language === 'bn' ? 'রিমাইন্ডার সময় নির্বাচন' : 'Select Reminder Time'}
+                    </ThemedText>
+                    <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                      {language === 'bn' ? 'প্রতিদিনের হিসাব লেখার সময় সেট করুন' : 'Set daily accounting notification time'}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
 
               {/* Preset Time Grid */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 8, justifyContent: 'space-between' }}>
@@ -3097,8 +3146,17 @@ export default function ProfileScreen() {
                       key={idx}
                       activeOpacity={0.8}
                       onPress={() => {
+                        const h24 = item.hour;
+                        const min = item.minute;
+                        const isPm = h24 >= 12;
+                        let h12 = h24 % 12;
+                        if (h12 === 0) h12 = 12;
+
+                        setCustomHour(h12);
+                        setCustomMinute(min);
+                        setCustomAmPm(isPm ? 'PM' : 'AM');
+
                         saveNotificationSettings({ dailyHour: item.hour, dailyMinute: item.minute }).then(setNotifSettings);
-                        setShowTimePickerModal(false);
                       }}
                       style={{
                         paddingHorizontal: 12,
