@@ -2253,24 +2253,80 @@ export default function ProfileScreen() {
         <Modal
           visible={showPinModal}
           transparent
-          animationType="slide"
+          animationType="fade"
           onRequestClose={() => setShowPinModal(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
-              <View style={styles.modalHeader}>
-                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>
-                  {pinStep === 'verify_old'
-                    ? t.verifyOldPinPrompt
-                    : pinStep === 'create'
-                    ? t.setupPinPrompt
-                    : pinStep === 'confirm'
-                    ? t.confirmPinPrompt
-                    : t.disablePinPrompt}
-                </ThemedText>
-                <TouchableOpacity onPress={() => setShowPinModal(false)} style={styles.modalCloseBtn}>
-                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
-                </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalOverlay}
+            onPress={() => setShowPinModal(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[
+                styles.modalContainer,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border || 'rgba(150, 150, 150, 0.2)',
+                  borderWidth: 1,
+                  borderRadius: 24,
+                  padding: 20,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 20,
+                  elevation: 8,
+                },
+              ]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <TouchableOpacity
+                onPress={() => setShowPinModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: theme.backgroundSelected,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10,
+                }}
+              >
+                <Feather name="x" size={18} color={theme.text} />
+              </TouchableOpacity>
+
+              {/* Header */}
+              <View style={[styles.modalHeader, { marginBottom: 16, paddingRight: 32 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(32, 138, 239, 0.12)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    <Feather name="key" size={22} color="#208AEF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="subtitle" style={{ fontSize: 17, fontWeight: '700' }}>
+                      {pinStep === 'verify_old'
+                        ? t.verifyOldPinPrompt
+                        : pinStep === 'create'
+                        ? t.setupPinPrompt
+                        : pinStep === 'confirm'
+                        ? t.confirmPinPrompt
+                        : t.disablePinPrompt}
+                    </ThemedText>
+                  </View>
+                </View>
               </View>
 
               {pinModalError ? (
@@ -2299,13 +2355,13 @@ export default function ProfileScreen() {
                           borderWidth: 2,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: theme.backgroundElement,
-                          borderColor: isFocused ? '#208AEF' : (hasVal ? '#208AEF' : theme.textSecondary + '33'),
+                          backgroundColor: theme.backgroundSelected,
+                          borderColor: isFocused ? '#208AEF' : (hasVal ? '#208AEF' : (theme.border || 'rgba(150, 150, 150, 0.2)')),
                           transform: [{ scale: modalCellScales[index] }]
                         }}
                       >
                         {hasVal ? (
-                          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: theme.text }} />
+                          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#208AEF' }} />
                         ) : null}
                       </Animated.View>
                     );
@@ -2401,8 +2457,8 @@ export default function ProfileScreen() {
                     : (language === 'bn' ? 'লক বন্ধ করুন ✓' : 'Turn Off Lock ✓')}
                 </ThemedText>
               </TouchableOpacity>
-            </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
 
         {/* Change Password Modal */}
