@@ -195,7 +195,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign In Handler
   const login = async (email: string, password: string): Promise<AuthResponse> => {
-    setIsLoading(true);
     try {
       const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
         method: 'POST',
@@ -225,14 +224,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         success: false,
         message: 'NETWORK_ERROR',
       };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Sign Up Handler (Requires OTP Verification)
   const register = async (name: string, email: string, password: string): Promise<RegisterResponse> => {
-    setIsLoading(true);
     try {
       const response = await fetch(`${getApiBaseUrl()}/auth/register`, {
         method: 'POST',
@@ -258,14 +254,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         success: false,
         message: 'NETWORK_ERROR',
       };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Verify OTP Handler
   const verifyOtp = async (email: string, otp: string): Promise<AuthResponse> => {
-    setIsLoading(true);
     try {
       const response = await fetch(`${getApiBaseUrl()}/auth/verify-otp`, {
         method: 'POST',
@@ -292,8 +285,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('Verify OTP Error:', error);
       return { success: false, message: 'NETWORK_ERROR' };
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -321,7 +312,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Google Login Handler (Using real Google OAuth token or Google user profile payload)
   const loginWithGoogle = async (googleData?: { idToken?: string; email?: string; name?: string; avatar?: string }): Promise<AuthResponse> => {
-    setIsLoading(true);
     try {
       const response = await fetch(`${getApiBaseUrl()}/auth/google-login`, {
         method: 'POST',
@@ -353,14 +343,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('Google Sign In Network Error:', error);
       return { success: false, message: 'সার্ভার কানেকশন এরর! ইন্টারনেট বা ব্যাকএন্ড চেক করুন' };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Update Profile Handler (Name & Avatar/Photo)
   const updateProfile = async (dataToUpdate: { name?: string; avatar?: string }): Promise<AuthResponse> => {
-    setIsLoading(true);
     try {
       if (token) {
         const response = await fetch(`${getApiBaseUrl()}/user/me`, {
@@ -409,8 +396,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true, user: updatedUser };
       }
       return { success: false, message: 'NETWORK_ERROR' };
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -461,7 +446,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Logout Handler
   const logout = async () => {
-    setIsLoading(true);
     try {
       setUser(null);
       setToken(null);
@@ -469,8 +453,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await removeStorageItem(STORAGE_KEY_TOKEN);
     } catch (error) {
       console.error('Logout Error:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
