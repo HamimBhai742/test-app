@@ -9,18 +9,11 @@ const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
 export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean }) {
-  const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (isReady && !animate) {
-      setAnimate(true);
-    }
-  }, [isReady, animate]);
 
   if (!visible) return null;
 
@@ -53,7 +46,7 @@ export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean })
     </View>
   );
 
-  return animate ? (
+  return isReady ? (
     <Animated.View
       entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
         'worklet';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -17,27 +17,50 @@ interface CustomDatePickerProps {
   label?: string;
 }
 
+function parseDateString(valueStr: string) {
+  if (valueStr) {
+    const parts = valueStr.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+        return { year: y, month: m, day: d };
+      }
+    }
+  }
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+}
+
 export function CustomDatePicker({ value, onChange, label }: CustomDatePickerProps) {
   const theme = useTheme();
   const { language } = useLanguage();
   const t = translations[language];
   const [showModal, setShowModal] = useState(false);
 
-  // Parse initial date
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth()); // 0-11
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const initialParsed = parseDateString(value);
+  const [year, setYear] = useState(initialParsed.year);
+  const [month, setMonth] = useState(initialParsed.month); // 0-11
+  const [selectedDay, setSelectedDay] = useState(initialParsed.day);
+  const [prevValue, setPrevValue] = useState(value);
 
-  useEffect(() => {
-    if (value) {
-      const parts = value.split('-');
-      if (parts.length === 3) {
-        setYear(parseInt(parts[0], 10));
-        setMonth(parseInt(parts[1], 10) - 1);
-        setSelectedDay(parseInt(parts[2], 10));
-      }
-    }
-  }, [value, showModal]);
+  // Sync state during render if value prop changes
+  if (value !== prevValue) {
+    setPrevValue(value);
+    const parsed = parseDateString(value);
+    setYear(parsed.year);
+    setMonth(parsed.month);
+    setSelectedDay(parsed.day);
+  }
+
+  const handleOpenModal = () => {
+    const parsed = parseDateString(value);
+    setYear(parsed.year);
+    setMonth(parsed.month);
+    setSelectedDay(parsed.day);
+    setShowModal(true);
+  };
 
   // Calendar calculations
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -118,7 +141,7 @@ export function CustomDatePicker({ value, onChange, label }: CustomDatePickerPro
       {label && <Text style={[styles.label, { color: theme.text }]}>{label}</Text>}
       <TouchableOpacity
         style={[styles.pickerButton, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
-        onPress={() => setShowModal(true)}
+        onPress={handleOpenModal}
       >
         <Text style={[styles.pickerButtonText, { color: theme.text }]}>📅 {displayDate()}</Text>
       </TouchableOpacity>

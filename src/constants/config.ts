@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 // Determine the base API URL dynamically for local testing.
 // - On Android Emulator: 'http://10.0.2.2:5042/api/v1' is used as a fallback.
 // - On physical Android/iOS devices running via Expo Go: it automatically extracts the computer's local IP address.
-const getDynamicLocalUrl = () => {
+export const getDynamicLocalUrl = () => {
   const hostUri = Constants.expoConfig?.hostUri || '';
   const ip = hostUri.split(':')[0];
   if (ip) {

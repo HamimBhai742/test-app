@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,7 +10,6 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useLanguage } from '@/context/LanguageContext';
@@ -54,7 +54,7 @@ export function RecurringModal({ visible, onClose, onAddTransaction }: Recurring
   const [category, setCategory] = useState<string>('Rent');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
 
-  const fetchRecurring = async () => {
+  const fetchRecurring = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
@@ -70,13 +70,21 @@ export function RecurringModal({ visible, onClose, onAddTransaction }: Recurring
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
+    let isMounted = true;
     if (visible) {
-      fetchRecurring();
+      queueMicrotask(() => {
+        if (isMounted) {
+          fetchRecurring();
+        }
+      });
     }
-  }, [visible, token]);
+    return () => {
+      isMounted = false;
+    };
+  }, [visible, fetchRecurring]);
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -114,6 +122,7 @@ export function RecurringModal({ visible, onClose, onAddTransaction }: Recurring
         setShowAddForm(false);
         setTitle('');
         setAmount('');
+        setCategory('Rent');
       }
     } catch (e) {
       console.warn('Error creating recurring:', e);
@@ -187,6 +196,14 @@ export function RecurringModal({ visible, onClose, onAddTransaction }: Recurring
                   keyboardType="numeric"
                   value={amount}
                   onChangeText={setAmount}
+                />
+
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.backgroundSelected, color: theme.text }]}
+                  placeholder={language === 'bn' ? 'ক্যাটাগরি (যেমন: Rent, Utility)' : 'Category (e.g. Rent, Utility)'}
+                  placeholderTextColor="#64748B"
+                  value={category}
+                  onChangeText={setCategory}
                 />
 
                 {/* Type Selection */}

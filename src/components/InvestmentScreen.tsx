@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,7 +14,6 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Spacing, MaxContentWidth } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -131,13 +130,18 @@ function EditInvestmentModal({
   const [budget, setBudget] = useState('');
   const [desc, setDesc] = useState('');
 
-  useEffect(() => {
-    if (project) {
+  const [prevProject, setPrevProject] = useState<InvestmentProject | null>(null);
+  const [prevVisible, setPrevVisible] = useState(false);
+
+  if (project !== prevProject || visible !== prevVisible) {
+    setPrevProject(project);
+    setPrevVisible(visible);
+    if (project && visible) {
       setName(project.name);
       setBudget(project.targetBudget ? project.targetBudget.toString() : '');
       setDesc(project.description || '');
     }
-  }, [project, visible]);
+  }
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -304,13 +308,18 @@ function EditLogModal({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
 
-  useEffect(() => {
-    if (log) {
+  const [prevLog, setPrevLog] = useState<InvestmentLog | null>(null);
+  const [prevVisible, setPrevVisible] = useState(false);
+
+  if (log !== prevLog || visible !== prevVisible) {
+    setPrevLog(log);
+    setPrevVisible(visible);
+    if (log && visible) {
       setTitle(log.title);
       setAmount(log.amount.toString());
       setDate(log.date);
     }
-  }, [log, visible]);
+  }
 
   const handleSave = () => {
     if (!title.trim() || !amount.trim()) return;

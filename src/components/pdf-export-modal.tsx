@@ -7,7 +7,6 @@ import {
   Modal,
   ScrollView,
   Linking,
-  Platform,
   Pressable,
   ActivityIndicator,
 } from 'react-native';

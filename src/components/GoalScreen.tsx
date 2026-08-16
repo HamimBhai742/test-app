@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,7 +14,6 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Spacing, MaxContentWidth } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -133,13 +132,18 @@ function EditGoalModal({
   const [target, setTarget] = useState('');
   const [desc, setDesc] = useState('');
 
-  useEffect(() => {
-    if (goal) {
+  const [prevGoal, setPrevGoal] = useState<GoalItem | null>(null);
+  const [prevVisible, setPrevVisible] = useState(false);
+
+  if (goal !== prevGoal || visible !== prevVisible) {
+    setPrevGoal(goal);
+    setPrevVisible(visible);
+    if (goal && visible) {
       setName(goal.name);
       setTarget(goal.targetAmount.toString());
       setDesc(goal.description || '');
     }
-  }, [goal, visible]);
+  }
 
   const handleSave = () => {
     if (!name.trim() || !target.trim()) return;
@@ -308,13 +312,18 @@ function EditSavingsModal({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
 
-  useEffect(() => {
-    if (log) {
+  const [prevLog, setPrevLog] = useState<SavingsLog | null>(null);
+  const [prevVisible, setPrevVisible] = useState(false);
+
+  if (log !== prevLog || visible !== prevVisible) {
+    setPrevLog(log);
+    setPrevVisible(visible);
+    if (log && visible) {
       setTitle(log.note || '');
       setAmount(log.amount.toString());
       setDate(log.date);
     }
-  }, [log, visible]);
+  }
 
   const handleSave = () => {
     if (!title.trim() || !amount.trim()) return;
