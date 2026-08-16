@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Hisab Kitab",
-    "slug": "hisab-kitab",
+    "slug": "my-test-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
