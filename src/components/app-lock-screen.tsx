@@ -16,6 +16,7 @@ import { useSecurity } from '@/context/SecurityContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/constants/translations';
 import { useAuth } from '@/context/AuthContext';
+import { Feather } from '@expo/vector-icons';
 
 export function AppLockScreen() {
   const { isLocked, lockoutUntil, failedAttempts, verifyPin, resetPinByRecovery, unlockApp, isBiometricEnabled, authenticateWithBiometrics } = useSecurity();
@@ -43,6 +44,8 @@ export function AppLockScreen() {
   const [recoverySuccessMsg, setRecoverySuccessMsg] = useState<string>('');
 
   const otpInputRef = useRef<TextInput>(null);
+  const newPinInputRef = useRef<TextInput>(null);
+  const confirmPinInputRef = useRef<TextInput>(null);
 
   // Reset PIN input and error message when screen becomes locked
   const [prevIsLocked, setPrevIsLocked] = useState(isLocked);
@@ -201,26 +204,17 @@ export function AppLockScreen() {
       setGeneratedOtp(mockOtp);
       setRecoveryLoading(false);
 
-      if (result.success || result.message !== 'NETWORK_ERROR') {
-        setRecoveryStep('verify_otp');
-        setOtpTimer(60);
-        setInputOtp('');
-        setRecoverySuccessMsg(`${trimmedEmail} ঠিকানায় ৬ ডিজিটের OTP পাঠানো হয়েছে`);
-        setTimeout(() => otpInputRef.current?.focus(), 300);
-      } else {
-        // Fallback for local testing if offline
-        setRecoveryStep('verify_otp');
-        setOtpTimer(60);
-        setInputOtp('');
-        setRecoverySuccessMsg(`${trimmedEmail} ঠিকানায় OTP পাঠানো হয়েছে (ডিফল্ট: 123456)`);
-        setTimeout(() => otpInputRef.current?.focus(), 300);
-      }
+      setRecoveryStep('verify_otp');
+      setOtpTimer(60);
+      setInputOtp('');
+      setRecoverySuccessMsg('');
+      setTimeout(() => otpInputRef.current?.focus(), 300);
     } catch (e) {
       setRecoveryLoading(false);
       setRecoveryStep('verify_otp');
       setOtpTimer(60);
       setInputOtp('');
-      setRecoverySuccessMsg(`${trimmedEmail} ঠিকানায় OTP পাঠানো হয়েছে (ডিফল্ট: 123456)`);
+      setRecoverySuccessMsg('');
       setTimeout(() => otpInputRef.current?.focus(), 300);
     }
   };
@@ -462,104 +456,194 @@ export function AppLockScreen() {
           </TouchableOpacity>
         )}
 
-        {/* 3-Step Professional Recovery & OTP Modal */}
+        {/* Modern 3-Step Security Recovery & OTP Verification Modal */}
         <Modal
           visible={showRecoveryModal}
           transparent
-          animationType="slide"
+          animationType="fade"
           onRequestClose={resetRecoveryStates}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              {/* Modal Header */}
+              {/* Header Header Row */}
               <View style={styles.modalHeaderRow}>
-                <View>
-                  <Text style={styles.modalTitle}>
-                    {recoveryStep === 'request'
-                      ? '🔑 পিন রিকভারি'
-                      : recoveryStep === 'verify_otp'
-                      ? '🔢 OTP ভেরিফিকেশন'
-                      : '🔐 নতুন পিন সেট করুন'}
-                  </Text>
+                <View style={styles.modalHeaderTitleGroup}>
+                  <View style={styles.modalIconBadge}>
+                    <Feather
+                      name={
+                        recoveryStep === 'request'
+                          ? 'mail'
+                          : recoveryStep === 'verify_otp'
+                          ? 'shield'
+                          : 'key'
+                      }
+                      size={18}
+                      color="#60A5FA"
+                    />
+                  </View>
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.modalTitle}>
+                      {recoveryStep === 'request'
+                        ? 'পিন রিকভারি'
+                        : recoveryStep === 'verify_otp'
+                        ? 'OTP ভেরিফিকেশন'
+                        : 'নতুন পিন সেট'}
+                    </Text>
+                    <Text style={styles.modalSubtitle}>
+                      {recoveryStep === 'request'
+                        ? 'ধাপ ১/৩ • ইমেইল ভেরিফিকেশন'
+                        : recoveryStep === 'verify_otp'
+                        ? 'ধাপ ২/৩ • ৬ ডিজিটের কোড'
+                        : 'ধাপ ৩/৩ • পিন আপডেট'}
+                    </Text>
+                  </View>
                 </View>
-                <TouchableOpacity onPress={resetRecoveryStates}>
-                  <Text style={styles.modalCloseIcon}>✕</Text>
+                <TouchableOpacity style={styles.modalCloseBtn} onPress={resetRecoveryStates} activeOpacity={0.7}>
+                  <Feather name="x" size={18} color="#94A3B8" />
                 </TouchableOpacity>
               </View>
 
-              {/* Step Progress Pills Bar */}
-              <View style={styles.stepProgressRow}>
-                <View style={[styles.stepPill, recoveryStep === 'request' && styles.stepPillActive, recoveryStep !== 'request' && styles.stepPillCompleted]}>
-                  <Text style={[styles.stepPillText, styles.stepPillTextActive]}>1. ইমেইল</Text>
+              {/* Modern Step Stepper Row */}
+              <View style={styles.stepperContainer}>
+                {/* Step 1 */}
+                <View style={styles.stepItem}>
+                  <View
+                    style={[
+                      styles.stepBadge,
+                      recoveryStep === 'request' && styles.stepBadgeActive,
+                      recoveryStep !== 'request' && styles.stepBadgeCompleted,
+                    ]}
+                  >
+                    {recoveryStep !== 'request' ? (
+                      <Feather name="check" size={12} color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.stepBadgeText}>1</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.stepLabel, recoveryStep === 'request' && styles.stepLabelActive]}>
+                    ইমেইল
+                  </Text>
                 </View>
-                <View style={styles.stepConnector} />
-                <View style={[styles.stepPill, recoveryStep === 'verify_otp' && styles.stepPillActive, recoveryStep === 'set_pin' && styles.stepPillCompleted]}>
-                  <Text style={[styles.stepPillText, recoveryStep !== 'request' && styles.stepPillTextActive]}>2. OTP</Text>
+
+                <View style={[styles.stepConnectorLine, recoveryStep !== 'request' && styles.stepConnectorActive]} />
+
+                {/* Step 2 */}
+                <View style={styles.stepItem}>
+                  <View
+                    style={[
+                      styles.stepBadge,
+                      recoveryStep === 'verify_otp' && styles.stepBadgeActive,
+                      recoveryStep === 'set_pin' && styles.stepBadgeCompleted,
+                      recoveryStep === 'request' && styles.stepBadgePending,
+                    ]}
+                  >
+                    {recoveryStep === 'set_pin' ? (
+                      <Feather name="check" size={12} color="#FFFFFF" />
+                    ) : (
+                      <Text style={[styles.stepBadgeText, recoveryStep === 'verify_otp' && styles.stepBadgeTextActive]}>2</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.stepLabel, recoveryStep === 'verify_otp' && styles.stepLabelActive]}>
+                    OTP কোড
+                  </Text>
                 </View>
-                <View style={styles.stepConnector} />
-                <View style={[styles.stepPill, recoveryStep === 'set_pin' && styles.stepPillActive]}>
-                  <Text style={[styles.stepPillText, recoveryStep === 'set_pin' && styles.stepPillTextActive]}>3. নতুন পিন</Text>
+
+                <View style={[styles.stepConnectorLine, recoveryStep === 'set_pin' && styles.stepConnectorActive]} />
+
+                {/* Step 3 */}
+                <View style={styles.stepItem}>
+                  <View
+                    style={[
+                      styles.stepBadge,
+                      recoveryStep === 'set_pin' && styles.stepBadgeActive,
+                      recoveryStep !== 'set_pin' && styles.stepBadgePending,
+                    ]}
+                  >
+                    <Text style={[styles.stepBadgeText, recoveryStep === 'set_pin' && styles.stepBadgeTextActive]}>3</Text>
+                  </View>
+                  <Text style={[styles.stepLabel, recoveryStep === 'set_pin' && styles.stepLabelActive]}>
+                    নতুন পিন
+                  </Text>
                 </View>
               </View>
 
-              {/* Alert Feedback Messages */}
+              {/* Alert & Error Notification Box */}
               {recoveryError ? (
                 <View style={styles.errorBox}>
-                  <Text style={styles.errorTextMsg}>⚠️ {recoveryError}</Text>
+                  <Feather name="alert-circle" size={15} color="#F87171" style={{ marginRight: 8 }} />
+                  <Text style={styles.errorTextMsg}>{recoveryError}</Text>
                 </View>
               ) : null}
 
               {recoverySuccessMsg ? (
                 <View style={styles.successBox}>
-                  <Text style={styles.successTextMsg}>✨ {recoverySuccessMsg}</Text>
+                  <Feather name="check-circle" size={15} color="#34D399" style={{ marginRight: 8 }} />
+                  <Text style={styles.successTextMsg}>{recoverySuccessMsg}</Text>
                 </View>
               ) : null}
 
-              {/* STEP 1: Enter Email & Request OTP */}
+              {/* STEP 1: Enter Email */}
               {recoveryStep === 'request' && (
                 <View style={styles.recoveryStepBox}>
                   <Text style={styles.recoveryDesc}>
-                    আপনার অ্যাকাউন্টের ইমেইল অ্যাড্রেস লিখুন। আমরা ৬ ডিজিটের ভেরিফিকেশন OTP পাঠাব।
+                    আপনার নিবন্ধিত ইমেইল ঠিকানা প্রদান করুন। আমরা একটি সিকিউরিটি OTP কোড পাঠাব।
                   </Text>
-                  <Text style={styles.inputLabelText}>নিবন্ধিত ইমেইল ঠিকানা:</Text>
-                  <TextInput
-                    style={[styles.modalInput, { textAlign: 'left', marginBottom: 18 }]}
-                    placeholder="your.email@gmail.com"
-                    placeholderTextColor="#64748B"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={recoveryEmailInput}
-                    onChangeText={setRecoveryEmailInput}
-                  />
+
+                  <Text style={styles.inputLabelText}>নিবন্ধিত ইমেইল ঠিকানা</Text>
+                  <View style={styles.inputWrapper}>
+                    <Feather name="mail" size={16} color="#64748B" style={styles.inputLeadingIcon} />
+                    <TextInput
+                      style={styles.modalInputWithIcon}
+                      placeholder="name@example.com"
+                      placeholderTextColor="#475569"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={recoveryEmailInput}
+                      onChangeText={setRecoveryEmailInput}
+                    />
+                  </View>
 
                   <TouchableOpacity
-                    style={styles.actionBtn}
+                    style={styles.primaryActionBtn}
                     onPress={handleSendRecoveryOtp}
                     disabled={recoveryLoading}
+                    activeOpacity={0.8}
                   >
                     {recoveryLoading ? (
                       <ActivityIndicator color="#ffffff" size="small" />
                     ) : (
-                      <Text style={styles.actionBtnText}>📩 ইমেইল OTP পাঠান</Text>
+                      <View style={styles.btnRowContent}>
+                        <Text style={styles.primaryActionBtnText}>OTP কোড পাঠান</Text>
+                        <Feather name="arrow-right" size={16} color="#FFF" style={{ marginLeft: 6 }} />
+                      </View>
                     )}
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* STEP 2: Professional Individual Digit OTP Verification Page */}
+              {/* STEP 2: Verify OTP Code */}
               {recoveryStep === 'verify_otp' && (
                 <View style={styles.recoveryStepBox}>
-                  <Text style={styles.recoveryDesc}>
-                    <Text style={{ fontWeight: '700', color: '#60A5FA' }}>{recoveryEmailInput}</Text> ঠিকানায় ৬ ডিজিটের ওটিপি পাঠানো হয়েছে:
+                  {/* Clean Email Chip Header */}
+                  <View style={styles.emailChipCard}>
+                    <View style={styles.emailChipIcon}>
+                      <Feather name="mail" size={14} color="#60A5FA" />
+                    </View>
+                    <Text style={styles.emailChipText} numberOfLines={1}>
+                      {recoveryEmailInput}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.otpSubInstruction}>
+                    উপরের ইমেইলে পাঠানো ৬ ডিজিটের সিকিউরিটি OTP প্রবেশ করান:
                   </Text>
 
-                  {/* Individual Animated 6-Digit OTP Container */}
+                  {/* 6 Digit Box OTP Code */}
                   <TouchableOpacity
                     activeOpacity={1}
                     onPress={() => otpInputRef.current?.focus()}
                     style={styles.otpInteractiveContainer}
                   >
-                    {/* Hidden Invisible TextInput */}
                     <TextInput
                       ref={otpInputRef}
                       value={inputOtp}
@@ -571,7 +655,6 @@ export function AppLockScreen() {
                       style={styles.hiddenOtpInput}
                     />
 
-                    {/* Animated 6 Digit Boxes */}
                     <Animated.View
                       style={[
                         styles.otpBoxesRow,
@@ -596,101 +679,201 @@ export function AppLockScreen() {
                               { transform: [{ scale: otpBoxScales[idx] }] }
                             ]}
                           >
-                            <Text
-                              style={[
-                                styles.otpDigitText,
-                                isFilled && styles.otpDigitTextFilled,
-                                otpVerified && styles.otpDigitTextSuccess
-                              ]}
-                            >
-                              {digit || (isFocused ? '|' : '•')}
-                            </Text>
+                            {isFilled ? (
+                              <Text
+                                style={[
+                                  styles.otpDigitText,
+                                  styles.otpDigitTextFilled,
+                                  otpVerified && styles.otpDigitTextSuccess,
+                                ]}
+                              >
+                                {digit}
+                              </Text>
+                            ) : isFocused ? (
+                              <View style={styles.activeFocusCursor} />
+                            ) : (
+                              <View style={styles.inactiveDotPlaceholder} />
+                            )}
                           </Animated.View>
                         );
                       })}
                     </Animated.View>
                   </TouchableOpacity>
 
-                  {/* Resend Timer Row */}
-                  <View style={styles.resendRow}>
+                  {/* Resend OTP Row */}
+                  <View style={styles.resendRowContainer}>
                     {otpTimer > 0 ? (
-                      <Text style={styles.resendTimerText}>
-                        কোড পাননি? পুনরায় পাঠান (<Text style={styles.timerBold}>{otpTimer}s</Text>)
-                      </Text>
+                      <View style={styles.resendTimerBadge}>
+                        <Feather name="clock" size={13} color="#64748B" style={{ marginRight: 5 }} />
+                        <Text style={styles.resendTimerText}>
+                          পুনরায় কোড পাঠান (<Text style={styles.timerBold}>{otpTimer}s</Text>)
+                        </Text>
+                      </View>
                     ) : (
-                      <TouchableOpacity onPress={handleResendOtp} disabled={recoveryLoading}>
-                        <Text style={styles.resendLinkText}>🔄 পুনরায় OTP কোড পাঠান</Text>
+                      <TouchableOpacity
+                        style={styles.resendBtnLink}
+                        onPress={handleResendOtp}
+                        disabled={recoveryLoading}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="rotate-cw" size={13} color="#60A5FA" style={{ marginRight: 6 }} />
+                        <Text style={styles.resendLinkText}>পুনরায় OTP কোড পাঠান</Text>
                       </TouchableOpacity>
                     )}
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.actionBtn, { marginTop: 12 }]}
+                    style={[
+                      styles.primaryActionBtn,
+                      { marginTop: 12 },
+                      (recoveryLoading || inputOtp.length !== 6) && styles.primaryActionBtnDisabled,
+                    ]}
                     onPress={() => handleVerifyOtp()}
                     disabled={recoveryLoading || inputOtp.length !== 6}
+                    activeOpacity={0.8}
                   >
                     {recoveryLoading ? (
                       <ActivityIndicator color="#ffffff" size="small" />
                     ) : (
-                      <Text style={styles.actionBtnText}>✓ OTP ভেরিফাই করুন</Text>
+                      <View style={styles.btnRowContent}>
+                        <Feather name="check-circle" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.primaryActionBtnText}>OTP ভেরিফাই করুন</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     style={styles.backStepBtn}
                     onPress={() => setRecoveryStep('request')}
+                    activeOpacity={0.7}
                   >
-                    <Text style={styles.backStepBtnText}>← ইমেইল পরিবর্তন করুন</Text>
+                    <Feather name="arrow-left" size={14} color="#94A3B8" style={{ marginRight: 6 }} />
+                    <Text style={styles.backStepBtnText}>ইমেইল পরিবর্তন করুন</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* STEP 3: Open New PIN Set Option/Page (After Successful OTP Verification) */}
+              {/* STEP 3: Set New PIN */}
               {recoveryStep === 'set_pin' && (
                 <View style={styles.recoveryStepBox}>
                   <Text style={styles.recoveryDesc}>
                     আপনার সিকিউরিটি লকের জন্য নতুন ৪ ডিজিটের পিন কোড সেট করুন।
                   </Text>
 
-                  <Text style={styles.inputLabelText}>নতুন ৪ ডিজিটের পিন কোড:</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="••••"
-                    placeholderTextColor="#64748B"
-                    keyboardType="numeric"
-                    maxLength={4}
-                    secureTextEntry
-                    value={newPinRecovery}
-                    onChangeText={(val) => {
-                      setNewPinRecovery(val.replace(/[^0-9]/g, ''));
-                      setRecoveryError('');
-                    }}
-                  />
+                  {/* New PIN 4-Digit Box Container */}
+                  <Text style={styles.inputLabelText}>নতুন ৪ ডিজিটের পিন</Text>
+                  <TouchableOpacity
+                    activeOpacity={1}
+                    onPress={() => newPinInputRef.current?.focus()}
+                    style={styles.pinInteractiveContainer}
+                  >
+                    <TextInput
+                      ref={newPinInputRef}
+                      value={newPinRecovery}
+                      onChangeText={(val) => {
+                        setNewPinRecovery(val.replace(/[^0-9]/g, '').slice(0, 4));
+                        setRecoveryError('');
+                      }}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      caretHidden
+                      autoFocus
+                      style={styles.hiddenOtpInput}
+                    />
 
-                  <Text style={[styles.inputLabelText, { marginTop: 12 }]}>পিন কোড নিশ্চিত করুন (Confirm PIN):</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="••••"
-                    placeholderTextColor="#64748B"
-                    keyboardType="numeric"
-                    maxLength={4}
-                    secureTextEntry
-                    value={confirmPinRecovery}
-                    onChangeText={(val) => {
-                      setConfirmPinRecovery(val.replace(/[^0-9]/g, ''));
-                      setRecoveryError('');
-                    }}
-                  />
+                    <View style={styles.pinBoxesRow}>
+                      {[0, 1, 2, 3].map((idx) => {
+                        const digit = newPinRecovery[idx] || '';
+                        const isFilled = digit.length > 0;
+                        const isFocused =
+                          newPinRecovery.length === idx || (newPinRecovery.length === 4 && idx === 3);
+
+                        return (
+                          <View
+                            key={idx}
+                            style={[
+                              styles.pinDigitBox,
+                              isFilled && styles.pinDigitBoxFilled,
+                              isFocused && styles.pinDigitBoxFocused,
+                              recoveryError ? styles.pinDigitBoxError : null,
+                            ]}
+                          >
+                            {isFilled ? (
+                              <Text style={styles.pinDotSymbol}>•</Text>
+                            ) : isFocused ? (
+                              <View style={styles.activeFocusCursor} />
+                            ) : (
+                              <View style={styles.inactiveDotPlaceholder} />
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Confirm PIN 4-Digit Box Container */}
+                  <Text style={[styles.inputLabelText, { marginTop: 14 }]}>কনফার্ম পিন কোড</Text>
+                  <TouchableOpacity
+                    activeOpacity={1}
+                    onPress={() => confirmPinInputRef.current?.focus()}
+                    style={styles.pinInteractiveContainer}
+                  >
+                    <TextInput
+                      ref={confirmPinInputRef}
+                      value={confirmPinRecovery}
+                      onChangeText={(val) => {
+                        setConfirmPinRecovery(val.replace(/[^0-9]/g, '').slice(0, 4));
+                        setRecoveryError('');
+                      }}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      caretHidden
+                      style={styles.hiddenOtpInput}
+                    />
+
+                    <View style={styles.pinBoxesRow}>
+                      {[0, 1, 2, 3].map((idx) => {
+                        const digit = confirmPinRecovery[idx] || '';
+                        const isFilled = digit.length > 0;
+                        const isFocused =
+                          confirmPinRecovery.length === idx || (confirmPinRecovery.length === 4 && idx === 3);
+
+                        return (
+                          <View
+                            key={idx}
+                            style={[
+                              styles.pinDigitBox,
+                              isFilled && styles.pinDigitBoxFilled,
+                              isFocused && styles.pinDigitBoxFocused,
+                              recoveryError ? styles.pinDigitBoxError : null,
+                            ]}
+                          >
+                            {isFilled ? (
+                              <Text style={styles.pinDotSymbol}>•</Text>
+                            ) : isFocused ? (
+                              <View style={styles.activeFocusCursor} />
+                            ) : (
+                              <View style={styles.inactiveDotPlaceholder} />
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.actionBtn, { marginTop: 20 }]}
+                    style={[styles.primaryActionBtn, { marginTop: 22 }]}
                     onPress={handleConfirmPinReset}
                     disabled={recoveryLoading}
+                    activeOpacity={0.8}
                   >
                     {recoveryLoading ? (
                       <ActivityIndicator color="#ffffff" size="small" />
                     ) : (
-                      <Text style={styles.actionBtnText}>✓ নতুন পিন সেভ ও অ্যাপ খুলুন</Text>
+                      <View style={styles.btnRowContent}>
+                        <Feather name="check" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.primaryActionBtnText}>পিন সেভ ও অ্যাপ আনলক</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -826,7 +1009,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.82)',
+    backgroundColor: 'rgba(11, 15, 25, 0.88)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -834,98 +1017,158 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#181E2A',
+    backgroundColor: '#161B26',
     borderRadius: 24,
-    padding: 22,
+    padding: 24,
     borderWidth: 1,
-    borderColor: '#2E3A52',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    elevation: 12,
   },
   modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 20,
+  },
+  modalHeaderTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    letterSpacing: -0.2,
   },
-  modalCloseIcon: {
-    fontSize: 20,
-    color: '#94A3B8',
-    padding: 4,
+  modalSubtitle: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 2,
   },
-  stepProgressRow: {
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#212836',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  stepperContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
     backgroundColor: '#0F131C',
-    borderRadius: 12,
-    padding: 6,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#263044',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  stepPill: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: 8,
+  stepItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    gap: 6,
   },
-  stepPillActive: {
-    backgroundColor: '#208AEF',
+  stepBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#1E293B',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  stepPillCompleted: {
-    backgroundColor: 'rgba(32, 138, 239, 0.2)',
+  stepBadgeActive: {
+    backgroundColor: '#3B82F6',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  stepPillText: {
-    fontSize: 11.5,
-    fontWeight: '600',
+  stepBadgeCompleted: {
+    backgroundColor: '#10B981',
+  },
+  stepBadgePending: {
+    backgroundColor: '#1E293B',
+  },
+  stepBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#64748B',
   },
-  stepPillTextActive: {
+  stepBadgeTextActive: {
     color: '#FFFFFF',
-    fontWeight: '700',
   },
-  stepConnector: {
-    width: 8,
-    height: 1,
-    backgroundColor: '#334155',
+  stepLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  stepLabelActive: {
+    color: '#F1F5F9',
+    fontWeight: '600',
+  },
+  stepConnectorLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#1E293B',
+    marginHorizontal: 8,
+    borderRadius: 1,
+  },
+  stepConnectorActive: {
+    backgroundColor: '#3B82F6',
   },
   errorBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: 'rgba(239, 68, 68, 0.25)',
   },
   errorTextMsg: {
-    color: '#EF4444',
+    color: '#F87171',
     fontSize: 12.5,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '500',
+    flex: 1,
   },
   successBox: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
   },
   successTextMsg: {
-    color: '#10B981',
+    color: '#34D399',
     fontSize: 12.5,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '500',
+    flex: 1,
   },
   recoveryStepBox: {
     width: '100%',
@@ -933,31 +1176,66 @@ const styles = StyleSheet.create({
   recoveryDesc: {
     color: '#94A3B8',
     fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 16,
+    lineHeight: 20,
+    marginBottom: 18,
     textAlign: 'center',
   },
   inputLabelText: {
     color: '#CBD5E1',
     fontSize: 12.5,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  modalInput: {
-    width: '100%',
-    height: 48,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#0F131C',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#2E3A52',
-    color: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 14,
-    fontSize: 16,
+    height: 48,
+  },
+  inputLeadingIcon: {
+    marginRight: 10,
+  },
+  modalInputWithIcon: {
+    flex: 1,
+    height: '100%',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  emailChipCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginBottom: 10,
+    maxWidth: '90%',
+  },
+  emailChipIcon: {
+    marginRight: 6,
+  },
+  emailChipText: {
+    color: '#93C5FD',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  otpSubInstruction: {
+    color: '#94A3B8',
+    fontSize: 12.5,
     textAlign: 'center',
+    marginBottom: 16,
   },
   otpInteractiveContainer: {
     width: '100%',
-    marginVertical: 12,
+    marginVertical: 8,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
@@ -969,97 +1247,177 @@ const styles = StyleSheet.create({
     opacity: 0.01,
     zIndex: 10,
   },
+  pinInteractiveContainer: {
+    width: '100%',
+    marginVertical: 6,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pinBoxesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  pinDigitBox: {
+    width: 68,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#263044',
+    backgroundColor: '#0F131C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pinDigitBoxFilled: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#1E293B',
+  },
+  pinDigitBoxFocused: {
+    borderColor: '#60A5FA',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pinDigitBoxError: {
+    borderColor: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  pinDotSymbol: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#60A5FA',
+    marginTop: -4,
+  },
   otpBoxesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 4,
   },
   otpDigitBox: {
-    width: 44,
-    height: 54,
-    borderRadius: 12,
+    width: 46,
+    height: 56,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#334155',
+    borderColor: '#263044',
     backgroundColor: '#0F131C',
     alignItems: 'center',
     justifyContent: 'center',
   },
   otpDigitBoxFilled: {
     borderColor: '#3B82F6',
-    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    backgroundColor: '#1E293B',
   },
   otpDigitBoxFocused: {
-    borderColor: '#208AEF',
-    backgroundColor: 'rgba(32, 138, 239, 0.15)',
-    shadowColor: '#208AEF',
+    borderColor: '#60A5FA',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.5,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
   },
   otpDigitBoxSuccess: {
     borderColor: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
   otpDigitBoxError: {
     borderColor: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  activeFocusCursor: {
+    width: 2,
+    height: 22,
+    backgroundColor: '#60A5FA',
+    borderRadius: 1,
+  },
+  inactiveDotPlaceholder: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#334155',
   },
   otpDigitText: {
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#64748B',
   },
   otpDigitTextFilled: {
     color: '#FFFFFF',
-    fontWeight: '800',
   },
   otpDigitTextSuccess: {
     color: '#10B981',
   },
-  resendRow: {
+  resendRowContainer: {
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 14,
+  },
+  resendTimerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   resendTimerText: {
     fontSize: 12.5,
     color: '#64748B',
   },
   timerBold: {
-    color: '#3B82F6',
+    color: '#60A5FA',
     fontWeight: '700',
+  },
+  resendBtnLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   resendLinkText: {
     fontSize: 13,
-    color: '#3B82F6',
-    fontWeight: '700',
+    color: '#60A5FA',
+    fontWeight: '600',
   },
-  actionBtn: {
+  primaryActionBtn: {
     width: '100%',
-    height: 50,
-    backgroundColor: '#208AEF',
+    height: 48,
+    backgroundColor: '#2563EB',
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#208AEF',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 4,
+    marginTop: 8,
   },
-  actionBtnText: {
+  primaryActionBtnDisabled: {
+    backgroundColor: 'rgba(37, 99, 235, 0.4)',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  btnRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryActionBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   backStepBtn: {
-    marginTop: 12,
+    marginTop: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 6,
   },
   backStepBtnText: {
     color: '#94A3B8',
-    fontSize: 12.5,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
