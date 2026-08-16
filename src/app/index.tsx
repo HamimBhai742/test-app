@@ -544,25 +544,72 @@ export default function HomeScreen() {
             </View>
           </ThemedView>
 
-          {/* কুইক অ্যাকশন বাটন */}
+          {/* Senior UI/UX Redesigned Quick Action Buttons */}
           <View style={styles.quickActionRow}>
+            {/* Add Income Button */}
             <TouchableOpacity
-              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
-              onPress={() => { setType('income'); setModalVisible(true); }}
+              style={[
+                styles.quickButton,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected || 'rgba(255, 255, 255, 0.08)',
+                },
+              ]}
+              onPress={() => {
+                setType('income');
+                setModalVisible(true);
+              }}
+              activeOpacity={0.7}
             >
-              <ThemedText style={styles.quickButtonText}>{t.addIncome}</ThemedText>
+              <View style={[styles.quickButtonIconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
+                <Feather name="arrow-down-left" size={15} color="#10B981" />
+              </View>
+              <ThemedText style={styles.quickButtonText}>
+                {language === 'bn' ? 'আয় যোগ' : 'Add Income'}
+              </ThemedText>
             </TouchableOpacity>
+
+            {/* Add Expense Button */}
             <TouchableOpacity
-              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
-              onPress={() => { setType('expense'); setModalVisible(true); }}
+              style={[
+                styles.quickButton,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected || 'rgba(255, 255, 255, 0.08)',
+                },
+              ]}
+              onPress={() => {
+                setType('expense');
+                setModalVisible(true);
+              }}
+              activeOpacity={0.7}
             >
-              <ThemedText style={styles.quickButtonText}>{t.addExpense}</ThemedText>
+              <View style={[styles.quickButtonIconBadge, { backgroundColor: 'rgba(239, 68, 68, 0.14)' }]}>
+                <Feather name="arrow-up-right" size={15} color="#EF4444" />
+              </View>
+              <ThemedText style={styles.quickButtonText}>
+                {language === 'bn' ? 'খরচ যোগ' : 'Add Expense'}
+              </ThemedText>
             </TouchableOpacity>
+
+            {/* Auto / Recurring Button */}
             <TouchableOpacity
-              style={[styles.quickButton, { backgroundColor: theme.backgroundElement }]}
+              style={[
+                styles.quickButton,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected || 'rgba(255, 255, 255, 0.08)',
+                },
+              ]}
               onPress={() => setShowRecurringModal(true)}
+              activeOpacity={0.7}
             >
-              <ThemedText style={styles.quickButtonText}>🔁 {language === 'bn' ? 'অটো' : 'Auto'}</ThemedText>
+              <View style={[styles.quickButtonIconBadge, { backgroundColor: 'rgba(59, 130, 246, 0.14)' }]}>
+                <Feather name="repeat" size={15} color="#3B82F6" />
+              </View>
+              <ThemedText style={styles.quickButtonText}>
+                {language === 'bn' ? 'অটো লেনদেন' : 'Auto Entry'}
+              </ThemedText>
             </TouchableOpacity>
           </View>
 
@@ -1485,19 +1532,30 @@ const styles = StyleSheet.create({
   },
   quickActionRow: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: 8,
     marginBottom: Spacing.five,
   },
   quickButton: {
     flex: 1,
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  quickButtonIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 5,
   },
   quickButtonText: {
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 12.5,
   },
   recentSection: {
     gap: Spacing.three,

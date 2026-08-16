@@ -135,8 +135,8 @@ export const translations = {
     // Dashboard
     dailyTracker: 'Daily Expense Tracker',
     appTitle: 'হিসাব কিতাব',
-    addIncome: '💰 আয় যোগ করুন',
-    addExpense: '💸 খরচ যোগ করুন',
+    addIncome: 'আয় যোগ',
+    addExpense: 'খরচ যোগ',
     recentTx: 'সাম্প্রতিক লেনদেন সমূহ',
     last5: 'সর্বশেষ ৫টি',
     noTxYet: 'এখনো কোনো লেনদেন যুক্ত করা হয়নি।',
