@@ -137,6 +137,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Logout Handler
+  const logout = async () => {
+    try {
+      setUser(null);
+      setToken(null);
+      await removeStorageItem(STORAGE_KEY_USER);
+      await removeStorageItem(STORAGE_KEY_TOKEN);
+    } catch (error) {
+      console.error('Logout Error:', error);
+    }
+  };
+
   // Restore user session permanently on app start across device restarts
   useEffect(() => {
     const restoreSession = async () => {
@@ -444,17 +456,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Logout Handler
-  const logout = async () => {
-    try {
-      setUser(null);
-      setToken(null);
-      await removeStorageItem(STORAGE_KEY_USER);
-      await removeStorageItem(STORAGE_KEY_TOKEN);
-    } catch (error) {
-      console.error('Logout Error:', error);
-    }
-  };
 
   // Refresh user details from server to keep local state up to date
   const refreshUser = async () => {
