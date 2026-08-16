@@ -69,9 +69,8 @@ const setStorageItem = async (key: string, value: string) => {
     } else {
       try {
         await SecureStore.setItemAsync(key, value);
-      } catch {
-        await AsyncStorage.setItem(key, value).catch(() => {});
-      }
+      } catch {}
+      await AsyncStorage.setItem(key, value).catch(() => {});
     }
   } catch (e) {}
 };

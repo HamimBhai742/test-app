@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { triggerBudgetWarning } from '@/services/notificationService';
@@ -29,6 +30,8 @@ interface TransactionContextType {
   refreshTransactions: () => Promise<void>;
 }
 
+const STORAGE_KEY = '@hisabkitab_transactions';
+
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
 export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -36,10 +39,46 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { token, logout } = useAuth();
 
-  // Fetch transactions from Backend API
+  // Helper to persist transactions locally and update state
+  const saveLocal = useCallback((items: Transaction[]) => {
+    setTransactions(items);
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch (e) {}
+    } else {
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items)).catch(() => {});
+    }
+  }, []);
+
+  // 1. Initial Load: Immediately load cached transactions from AsyncStorage
+  useEffect(() => {
+    const loadCachedTransactions = async () => {
+      try {
+        let stored: string | null = null;
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          stored = localStorage.getItem(STORAGE_KEY);
+        } else {
+          stored = await AsyncStorage.getItem(STORAGE_KEY);
+        }
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setTransactions(parsed);
+          }
+        }
+      } catch (e) {
+        console.warn('Error reading cached transactions:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadCachedTransactions();
+  }, []);
+
+  // 2. Fetch transactions from Backend API and sync with local storage
   const fetchTransactions = useCallback(async () => {
     if (!token) {
-      setTransactions([]);
       setIsLoading(false);
       return;
     }
@@ -53,28 +92,30 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
         },
       });
 
-      const data = await response.json();
-      if (response.ok && data.success && Array.isArray(data.data)) {
-        const mappedTx: Transaction[] = data.data.map((item: any) => ({
-          id: item.id || item._id,
-          title: item.title,
-          amount: Number(item.amount),
-          type: item.type,
-          category: item.category || 'Others',
-          date: item.date ||
-            (item.createdAt ? item.createdAt.toString().split('T')[0] : getLocalDateString()),
-          createdAt: item.createdAt,
-        }));
-        setTransactions(mappedTx);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          const mappedTx: Transaction[] = data.data.map((item: any) => ({
+            id: item.id || item._id,
+            title: item.title,
+            amount: Number(item.amount),
+            type: item.type,
+            category: item.category || 'Others',
+            date: item.date ||
+              (item.createdAt ? item.createdAt.toString().split('T')[0] : getLocalDateString()),
+            createdAt: item.createdAt,
+          }));
+          saveLocal(mappedTx);
+        }
       } else if (response.status === 401 || response.status === 403) {
         await logout();
       }
     } catch (error) {
-      console.warn('Backend fetch error:', error);
+      console.warn('Backend fetch error, keeping local cached transactions:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [token, logout]);
+  }, [token, logout, saveLocal]);
 
   useEffect(() => {
     let isMounted = true;
@@ -232,21 +273,29 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Add Transaction to Backend API & MongoDB
+  // Add Transaction to Local Cache & Backend API
   const addTransaction = async (newTx: Omit<Transaction, 'id'>) => {
-    const tempId = Math.random().toString(36).substring(2, 9);
-    const optimisticTx: Transaction = { ...newTx, id: tempId, createdAt: new Date().toISOString() };
+    const tempId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const optimisticTx: Transaction = {
+      ...newTx,
+      id: tempId,
+      createdAt: newTx.createdAt || new Date().toISOString(),
+    };
 
-    setTransactions((prev) => [optimisticTx, ...prev]);
+    setTransactions((prev) => {
+      const updated = [optimisticTx, ...prev];
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch (e) {}
+      } else {
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+      }
+      return updated;
+    });
 
     // Budget warning check for new expenses
     checkBudgetNotification(newTx, transactions).catch(() => {});
 
-    if (!token) {
-      // No token — rollback optimistic update
-      setTransactions((prev) => prev.filter((t) => t.id !== tempId));
-      return;
-    }
+    if (!token) return;
 
     try {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
@@ -266,29 +315,37 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
           amount: Number(data.data.amount),
           type: data.data.type,
           category: data.data.category || 'Others',
-          // Fallback: use createdAt date if 'date' field is missing
           date: data.data.date ||
             (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : getLocalDateString()),
           createdAt: data.data.createdAt,
         };
-        setTransactions((prev) => prev.map((t) => (t.id === tempId ? savedTx : t)));
-      } else {
-        // ✅ API returned non-OK — rollback optimistic update
-        setTransactions((prev) => prev.filter((t) => t.id !== tempId));
+        setTransactions((prev) => {
+          const synced = prev.map((t) => (t.id === tempId ? savedTx : t));
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(synced)); } catch (e) {}
+          } else {
+            AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(synced)).catch(() => {});
+          }
+          return synced;
+        });
       }
     } catch (error) {
-      // ✅ Network error — rollback optimistic update
-      setTransactions((prev) => prev.filter((t) => t.id !== tempId));
-      console.warn('Error adding transaction to backend:', error);
+      // Offline or network error: transaction remains safely in local storage
+      console.warn('Backend add transaction error (persisted locally):', error);
     }
   };
 
-  // Update Transaction in Backend API & MongoDB
+  // Update Transaction in Local Cache & Backend API
   const updateTransaction = async (id: string, updatedTx: Omit<Transaction, 'id'>) => {
-    // Optimistic UI update
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updatedTx } : t))
-    );
+    setTransactions((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, ...updatedTx } : t));
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch (e) {}
+      } else {
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+      }
+      return updated;
+    });
 
     if (!token) return;
     try {
@@ -313,18 +370,33 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
             (data.data.createdAt ? data.data.createdAt.toString().split('T')[0] : getLocalDateString()),
           createdAt: data.data.createdAt,
         };
-        setTransactions((prev) => prev.map((t) => (t.id === id ? savedTx : t)));
+        setTransactions((prev) => {
+          const synced = prev.map((t) => (t.id === id ? savedTx : t));
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(synced)); } catch (e) {}
+          } else {
+            AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(synced)).catch(() => {});
+          }
+          return synced;
+        });
       }
     } catch (error) {
       console.warn('Error updating transaction:', error);
     }
   };
 
-  // Delete Transaction from Backend API & MongoDB
+  // Delete Transaction from Local Cache & Backend API
   const deleteTransaction = async (id: string) => {
-    const updatedTransactions = transactions.filter((t) => t.id !== id);
-    setTransactions(updatedTransactions);
-    cleanupTriggeredAlerts(updatedTransactions).catch(() => {});
+    setTransactions((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch (e) {}
+      } else {
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+      }
+      cleanupTriggeredAlerts(updated).catch(() => {});
+      return updated;
+    });
 
     if (!token) return;
     try {
@@ -340,9 +412,9 @@ export const TransactionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Delete All Transactions from Backend API & MongoDB
+  // Delete All Transactions from Local Cache & Backend API
   const deleteAllTransactions = async () => {
-    setTransactions([]);
+    saveLocal([]);
 
     if (!token) return;
     try {
