@@ -33,7 +33,6 @@ export function AppLockScreen() {
   const [showRecoveryModal, setShowRecoveryModal] = useState<boolean>(false);
   const [recoveryStep, setRecoveryStep] = useState<RecoveryStep>('request');
   const [recoveryEmailInput, setRecoveryEmailInput] = useState<string>(user?.email || '');
-  const [generatedOtp, setGeneratedOtp] = useState<string>('');
   const [inputOtp, setInputOtp] = useState<string>('');
   const [newPinRecovery, setNewPinRecovery] = useState<string>('');
   const [confirmPinRecovery, setConfirmPinRecovery] = useState<string>('');
@@ -200,22 +199,20 @@ export function AppLockScreen() {
 
     try {
       const result = await forgotPassword(trimmedEmail);
-      const mockOtp = '123456';
-      setGeneratedOtp(mockOtp);
       setRecoveryLoading(false);
 
-      setRecoveryStep('verify_otp');
-      setOtpTimer(60);
-      setInputOtp('');
-      setRecoverySuccessMsg('');
-      setTimeout(() => otpInputRef.current?.focus(), 300);
+      if (result.success) {
+        setRecoveryStep('verify_otp');
+        setOtpTimer(60);
+        setInputOtp('');
+        setRecoverySuccessMsg('');
+        setTimeout(() => otpInputRef.current?.focus(), 300);
+      } else {
+        setRecoveryError(result.message || 'OTP পাঠাতে সমস্যা হয়েছে। পুনরায় চেষ্টা করুন।');
+      }
     } catch (e) {
       setRecoveryLoading(false);
-      setRecoveryStep('verify_otp');
-      setOtpTimer(60);
-      setInputOtp('');
-      setRecoverySuccessMsg('');
-      setTimeout(() => otpInputRef.current?.focus(), 300);
+      setRecoveryError('নেটওয়ার্ক সমস্যা। ইন্টারনেট সংযোগ পরীক্ষা করুন।');
     }
   };
 
@@ -249,18 +246,15 @@ export function AppLockScreen() {
 
     try {
       const res = await verifyResetOtp(recoveryEmailInput.trim(), targetOtp);
-      const isValid = res.success || targetOtp === generatedOtp || targetOtp === '123456';
 
       setRecoveryLoading(false);
 
-      if (isValid) {
+      if (res.success) {
         setOtpVerified(true);
-        setRecoverySuccessMsg('✓ OTP সফলভাবে ভেরিফাই হয়েছে!');
+        setRecoverySuccessMsg('OTP সফলভাবে ভেরিফাই হয়েছে!');
         if (Platform.OS !== 'web') {
           Vibration.vibrate([0, 80, 50, 80]);
         }
-
-        // Advance to Step 3: Set New PIN after short success animation!
         setTimeout(() => {
           setRecoveryStep('set_pin');
           setRecoverySuccessMsg('এখন আপনার নতুন ৪ ডিজিটের পিন সেভ করুন');
@@ -275,17 +269,8 @@ export function AppLockScreen() {
       }
     } catch (e) {
       setRecoveryLoading(false);
-      if (targetOtp === '123456' || targetOtp === generatedOtp) {
-        setOtpVerified(true);
-        setRecoverySuccessMsg('✓ OTP ভেরিফাই হয়েছে!');
-        setTimeout(() => {
-          setRecoveryStep('set_pin');
-          setRecoverySuccessMsg('এখন আপনার নতুন ৪ ডিজিটের পিন সেভ করুন');
-        }, 600);
-      } else {
-        triggerOtpShake();
-        setRecoveryError('ভুল OTP কোড! আবার চেষ্টা করুন (ডিফল্ট: 123456)');
-      }
+      triggerOtpShake();
+      setRecoveryError('নেটওয়ার্ক সমস্যা। ইন্টারনেট সংযোগ পরীক্ষা করুন।');
     }
   };
 
@@ -303,8 +288,7 @@ export function AppLockScreen() {
     setRecoveryLoading(false);
     setOtpTimer(60);
     setInputOtp('');
-    setGeneratedOtp('123456');
-    setRecoverySuccessMsg('নতুন OTP পুনরায় পাঠানো হয়েছে (ডিফল্ট: 123456)');
+    setRecoverySuccessMsg('');
   };
 
   // STEP 3: Confirm & Save New PIN

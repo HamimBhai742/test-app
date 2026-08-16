@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Hisab Kitab",
-    "slug": "my-test-app",
+    "slug": "hisab-kitab",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mytestapp",
+    "scheme": "hisabkitab",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -13,7 +13,6 @@
     "android": {
       "package": "com.hamimbhai.hisabkitab",
       "googleServicesFile": "./google-services.json",
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -45,8 +44,10 @@
         }
       ]
     ],
-    "typedRoutes": true,
-    "reactCompiler": true,
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
     "extra": {
       "router": {},
       "eas": {
