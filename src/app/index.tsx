@@ -40,9 +40,7 @@ import { useNotificationBanner } from '@/context/NotificationBannerContext';
 import { RecurringModal } from '@/components/recurring-modal';
 
 const CUSTOM_CATS_KEY = 'hisabkitab_custom_categories_home';
-
-
-
+const LAST_SELECTED_CAT_KEY = 'hisabkitab_last_selected_category';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -58,6 +56,7 @@ export default function HomeScreen() {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [lastSelectedCategory, setLastSelectedCategory] = useState<string>('Food');
   const [category, setCategory] = useState<string>('Food');
   const [selectedDateTime, setSelectedDateTime] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -93,11 +92,17 @@ export default function HomeScreen() {
     return language === 'bn' ? monthsBn[currentMonthIdx] : monthsEn[currentMonthIdx];
   };
 
-  // Load custom categories from AsyncStorage on mount
+  // Load custom categories and last selected category from AsyncStorage on mount
   useEffect(() => {
     AsyncStorage.getItem(CUSTOM_CATS_KEY).then((stored) => {
       if (stored) {
         try { setCustomCategories(JSON.parse(stored)); } catch {}
+      }
+    });
+    AsyncStorage.getItem(LAST_SELECTED_CAT_KEY).then((stored) => {
+      if (stored) {
+        setLastSelectedCategory(stored);
+        setCategory(stored);
       }
     });
   }, []);
@@ -156,6 +161,13 @@ export default function HomeScreen() {
     Others: t.catOthers,
   };
 
+  const handleSelectCategory = (cat: string) => {
+    setCategory(cat);
+    setLastSelectedCategory(cat);
+    AsyncStorage.setItem(LAST_SELECTED_CAT_KEY, cat).catch(() => {});
+    setShowCustomInput(false);
+  };
+
   const handleAddCustomCategory = () => {
     if (!newCatName.trim()) {
       triggerToast(t.errCustomCatEmpty, 'warning');
@@ -165,9 +177,8 @@ export default function HomeScreen() {
     if (!customCategories.includes(catName)) {
       setCustomCategories((prev) => [...prev, catName]);
     }
-    setCategory(catName);
+    handleSelectCategory(catName);
     setNewCatName('');
-    setShowCustomInput(false);
   };
 
   // Open modal for editing existing transaction
@@ -193,7 +204,7 @@ export default function HomeScreen() {
     setTitle('');
     setAmount('');
     setType('expense');
-    setCategory('Food');
+    setCategory(lastSelectedCategory || 'Food');
     setSelectedDateTime(new Date());
     setEditingTx(null);
   };
@@ -231,6 +242,10 @@ export default function HomeScreen() {
       date: finalDate,
       createdAt: finalCreatedAt,
     };
+
+    // Save and remember last selected category
+    setLastSelectedCategory(category);
+    AsyncStorage.setItem(LAST_SELECTED_CAT_KEY, category).catch(() => {});
 
     if (editingTx) {
       // Update existing transaction
@@ -353,6 +368,31 @@ export default function HomeScreen() {
       return rawList.indexOf(a) - rawList.indexOf(b);
     });
   }, [allCategories, filteredByPeriodTransactions, transactions]);
+
+  // Category list in Add/Edit modal: Selected category is always first, followed by transaction count
+  const modalCategoryList = useMemo(() => {
+    const standardKeys = Object.keys(categoryLabels);
+    const combined = Array.from(new Set([...standardKeys, ...customCategories]));
+    
+    // Count transactions per category
+    const countMap: Record<string, number> = {};
+    for (const tx of transactions) {
+      if (tx.category) {
+        countMap[tx.category] = (countMap[tx.category] || 0) + 1;
+      }
+    }
+
+    return combined.sort((a, b) => {
+      if (a === category) return -1;
+      if (b === category) return 1;
+      const countA = countMap[a] || 0;
+      const countB = countMap[b] || 0;
+      if (countB !== countA) {
+        return countB - countA;
+      }
+      return 0;
+    });
+  }, [category, categoryLabels, customCategories, transactions]);
 
   // Filter transactions by selected category, search query, and filter modal options
   const filteredTransactions = filteredByPeriodTransactions.filter((tx) => {
@@ -1135,47 +1175,25 @@ export default function HomeScreen() {
                 <View style={styles.inputContainer}>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.inputLabel}>{t.catLabel}</ThemedText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                    {/* স্ট্যান্ডার্ড ক্যাটাগরিগুলো */}
-                    {Object.keys(categoryLabels).map((cat) => {
+                    {/* ডাইনামিক ক্যাটাগরি তালিকা (নির্বাচিত ও বেশি ব্যবহৃত ক্যাটাগরি সবার আগে থাকবে) */}
+                    {modalCategoryList.map((cat) => {
                       const isSelected = category === cat;
+                      const isCustom = customCategories.includes(cat);
                       return (
                         <TouchableOpacity
                           key={cat}
                           style={[
                             styles.categoryChip,
                             { backgroundColor: theme.backgroundSelected },
-                            isSelected && { backgroundColor: theme.text }
+                            isSelected && { backgroundColor: isCustom ? '#3B82F6' : theme.text }
                           ]}
-                          onPress={() => { setCategory(cat); setShowCustomInput(false); }}
+                          onPress={() => handleSelectCategory(cat)}
                         >
                           <ThemedText style={[
                             styles.categoryChipText,
-                            isSelected && { color: theme.background, fontWeight: '700' }
+                            isSelected && { color: isCustom ? '#FFFFFF' : theme.background, fontWeight: '700' }
                           ]}>
-                            {categoryLabels[cat]}
-                          </ThemedText>
-                        </TouchableOpacity>
-                      );
-                    })}
-
-                    {/* ব্যবহারকারীর তৈরি ইউজার কাস্টম ক্যাটাগরিগুলো */}
-                    {customCategories.map((cat) => {
-                      const isSelected = category === cat;
-                      return (
-                        <TouchableOpacity
-                          key={cat}
-                          style={[
-                            styles.categoryChip,
-                            { backgroundColor: theme.backgroundSelected },
-                            isSelected && { backgroundColor: '#3B82F6' }
-                          ]}
-                          onPress={() => { setCategory(cat); setShowCustomInput(false); }}
-                        >
-                          <ThemedText style={[
-                            styles.categoryChipText,
-                            isSelected && { color: '#FFFFFF', fontWeight: '700' }
-                          ]}>
-                            🏷️ {cat}
+                            {isCustom ? `🏷️ ${cat}` : categoryLabels[cat] || cat}
                           </ThemedText>
                         </TouchableOpacity>
                       );
