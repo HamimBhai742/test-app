@@ -642,7 +642,12 @@ export default function ProfileScreen() {
     setAuthSuccessMsg('');
 
     try {
-      if (Platform.OS !== 'web' && GoogleSignin && typeof GoogleSignin.hasPlayServices === 'function') {
+      if (Platform.OS === 'web') {
+        setShowGoogleModal(true);
+        return;
+      }
+
+      if (GoogleSignin && typeof GoogleSignin.hasPlayServices === 'function') {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
         // Force account chooser by clearing cached sign-in state first
         try {
@@ -674,15 +679,23 @@ export default function ProfileScreen() {
             setGoogleLoading(false);
           }
           return;
+        } else {
+          setAuthError(language === 'bn' ? 'গুগল অ্যাকাউন্ট থেকে কোনো ইমেইল পাওয়া যায়নি' : 'No email returned from Google');
         }
+      } else {
+        setAuthError(language === 'bn' ? 'গুগল প্লে সার্ভিস পাওয়া যায়নি' : 'Google Sign-in service unavailable');
       }
-      setShowGoogleModal(true);
     } catch (error: any) {
       console.warn('Google Sign-in Error Details:', error);
       if (error?.code === statusCodes?.SIGN_IN_CANCELLED) {
         setAuthError(language === 'bn' ? 'গুগল সাইন-ইন বাতিল করা হয়েছে' : 'Google sign-in cancelled');
+      } else if (error?.code === statusCodes?.IN_PROGRESS) {
+        setAuthError(language === 'bn' ? 'গুগল সাইন-ইন প্রক্রিয়াধীন রয়েছে...' : 'Google sign-in in progress...');
+      } else if (error?.code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
+        setAuthError(language === 'bn' ? 'গুগল প্লে সার্ভিস আপডেট প্রয়োজন' : 'Google Play Services not available');
       } else {
-        setShowGoogleModal(true);
+        const errDetail = error?.code ? `(Code: ${error.code})` : '';
+        setAuthError(language === 'bn' ? `গুগল সাইন-ইন ব্যর্থ হয়েছে ${errDetail}। ${error?.message || ''}` : `Google sign-in failed ${errDetail}. ${error?.message || ''}`);
       }
     }
   };
@@ -975,7 +988,7 @@ export default function ProfileScreen() {
                               fontWeight: 'bold',
                             },
                           ]}
-                          placeholder="123456"
+                          placeholder="••••••"
                           placeholderTextColor={theme.textSecondary}
                           keyboardType="number-pad"
                           maxLength={6}
@@ -2105,18 +2118,43 @@ export default function ProfileScreen() {
 
           <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement, marginBottom: Spacing.four }]}>
             {/* Daily Accounting Reminder */}
-            <View style={styles.actionRow}>
-              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
-                <Feather name="bell" size={17} color="#3B82F6" />
+            <View>
+              <View style={styles.actionRow}>
+                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                  <Feather name="bell" size={17} color="#3B82F6" />
+                </View>
+                <View style={styles.notifTextContainer}>
+                  <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.dailyReminderTitle}</ThemedText>
+                  <ThemedText themeColor="textSecondary" style={styles.notifSubText}>
+                    {t.dailyReminderSub}
+                  </ThemedText>
+                </View>
+                <Switch
+                  value={notifSettings.dailyEnabled}
+                  onValueChange={(val) => {
+                    saveNotificationSettings({ dailyEnabled: val }).then((updated) => {
+                      setNotifSettings(updated);
+                      if (val) {
+                        handleOpenTimePicker();
+                      }
+                    });
+                  }}
+                  trackColor={{ false: theme.backgroundSelected, true: '#3B82F6' }}
+                  thumbColor="#FFFFFF"
+                />
               </View>
-              <View style={styles.notifTextContainer}>
-                <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.dailyReminderTitle}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.notifSubText}>
-                  {t.dailyReminderSub}
-                </ThemedText>
-                {notifSettings.dailyEnabled && (
+
+              {/* Time Selector Sub-Row */}
+              {notifSettings.dailyEnabled && (
+                <View style={[styles.reminderTimeSubRow, { borderTopColor: theme.backgroundSelected }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Feather name="clock" size={13} color={theme.textSecondary} />
+                    <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: '600' }}>
+                      {language === 'bn' ? 'রিমাইন্ডারের সময়:' : 'Reminder Time:'}
+                    </Text>
+                  </View>
                   <TouchableOpacity
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                     onPress={handleOpenTimePicker}
                     style={styles.timeBadgeContainer}
                   >
@@ -2124,23 +2162,10 @@ export default function ProfileScreen() {
                     <Text style={styles.timeBadgeText}>
                       {notifSettings.dailyHour > 12 ? notifSettings.dailyHour - 12 : notifSettings.dailyHour === 0 ? 12 : notifSettings.dailyHour}:{notifSettings.dailyMinute < 10 ? '0' : ''}{notifSettings.dailyMinute} {notifSettings.dailyHour >= 12 ? 'PM' : 'AM'}
                     </Text>
-                    <Feather name="edit-2" size={11} color="#3B82F6" style={{ marginLeft: 4 }} />
+                    <Feather name="edit-2" size={11} color="#3B82F6" style={{ marginLeft: 6 }} />
                   </TouchableOpacity>
-                )}
-              </View>
-              <Switch
-                value={notifSettings.dailyEnabled}
-                onValueChange={(val) => {
-                  saveNotificationSettings({ dailyEnabled: val }).then((updated) => {
-                    setNotifSettings(updated);
-                    if (val) {
-                      handleOpenTimePicker();
-                    }
-                  });
-                }}
-                trackColor={{ false: theme.backgroundSelected, true: '#3B82F6' }}
-                thumbColor="#FFFFFF"
-              />
+                </View>
+              )}
             </View>
 
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
@@ -4749,19 +4774,29 @@ const styles = StyleSheet.create({
     marginTop: 2,
     lineHeight: 16,
   },
+  reminderTimeSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+    marginLeft: 52,
+    marginRight: Spacing.four,
+  },
   timeBadgeContainer: {
-    marginTop: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#3B82F618',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
     borderWidth: 1,
-    borderColor: '#3B82F633',
+    borderColor: 'rgba(59, 130, 246, 0.25)',
   },
   timeBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#3B82F6',
   },
   otpBoxesContainer: {
