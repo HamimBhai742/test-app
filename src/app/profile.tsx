@@ -146,20 +146,10 @@ export default function ProfileScreen() {
   const [feedbackType, setFeedbackType] = useState<'feature' | 'question' | 'bug' | 'feedback'>('feature');
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
-  const [feedbackSenderName, setFeedbackSenderName] = useState<string>('');
-  const [feedbackSenderEmail, setFeedbackSenderEmail] = useState<string>('');
+  const [feedbackSenderName, setFeedbackSenderName] = useState<string>(user?.name || '');
+  const [feedbackSenderEmail, setFeedbackSenderEmail] = useState<string>(user?.email || '');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<boolean>(false);
   const [feedbackSending, setFeedbackSending] = useState<boolean>(false);
-
-  // Sync user info into sender fields
-  useEffect(() => {
-    if (user?.name && !feedbackSenderName) {
-      setFeedbackSenderName(user.name);
-    }
-    if (user?.email && !feedbackSenderEmail) {
-      setFeedbackSenderEmail(user.email);
-    }
-  }, [user, showContactModal]);
 
   const handleFeedbackSubmit = async (destination: 'server' | 'whatsapp') => {
     if (!feedbackMessage.trim()) {
@@ -2225,7 +2215,14 @@ export default function ProfileScreen() {
 
           <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement }]}>
             {/* Help & Support (Contact Us) */}
-            <TouchableOpacity style={styles.actionRow} onPress={() => setShowContactModal(true)}>
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => {
+                if (!feedbackSenderName && user?.name) setFeedbackSenderName(user.name);
+                if (!feedbackSenderEmail && user?.email) setFeedbackSenderEmail(user.email);
+                setShowContactModal(true);
+              }}
+            >
               <View style={[styles.menuIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
                 <Feather name="headphones" size={17} color="#3B82F6" />
               </View>

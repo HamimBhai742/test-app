@@ -46,38 +46,20 @@ function AddEditDueModal({
   const { language } = useLanguage();
   const t = translations[language];
 
-  const [personName, setPersonName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [amount, setAmount] = useState('');
-  const [type, setType] = useState<'receivable' | 'payable'>('receivable');
-  const [dueDate, setDueDate] = useState('');
-  const [note, setNote] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
-
-  // Prefill fields when editing an existing due record
-  React.useEffect(() => {
-    if (initialDue) {
-      setPersonName(initialDue.personName);
-      setPhone(initialDue.phone || '');
-      setAmount(initialDue.amount.toString());
-      setType(initialDue.type);
-      setDueDate(initialDue.dueDate || '');
-      setNote(initialDue.note || '');
-      if (initialDue.dueDate) {
-        const d = new Date(initialDue.dueDate);
-        if (!isNaN(d.getTime())) setSelectedDate(d);
-      }
-    } else {
-      setPersonName('');
-      setPhone('');
-      setAmount('');
-      setType('receivable');
-      setDueDate('');
-      setNote('');
-      setSelectedDate(new Date());
+  const [personName, setPersonName] = useState(initialDue?.personName || '');
+  const [phone, setPhone] = useState(initialDue?.phone || '');
+  const [amount, setAmount] = useState(initialDue ? initialDue.amount.toString() : '');
+  const [type, setType] = useState<'receivable' | 'payable'>(initialDue?.type || 'receivable');
+  const [dueDate, setDueDate] = useState(initialDue?.dueDate || '');
+  const [note, setNote] = useState(initialDue?.note || '');
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    if (initialDue?.dueDate) {
+      const d = new Date(initialDue.dueDate);
+      if (!isNaN(d.getTime())) return d;
     }
-  }, [initialDue, visible]);
+    return new Date();
+  });
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
 
   const setQuickDueDate = (daysToAdd: number) => {
     const d = new Date();
@@ -608,17 +590,27 @@ export default function DuesScreen() {
                 {/* Action Buttons */}
                 <View style={styles.dueCardActions}>
                   {!item.isSettled ? (
-                    <TouchableOpacity
-                      style={styles.editBtn}
-                      onPress={() => {
-                        setEditingDue(item);
-                        setModalVisible(true);
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Feather name="edit-2" size={12} color="#FFF" />
-                      <Text style={styles.editBtnText}>{t.editTxBtn}</Text>
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        style={styles.waBtn}
+                        onPress={() => handleWhatsAppReminder(item)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.waBtnText}>💬 WhatsApp</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.editBtn}
+                        onPress={() => {
+                          setEditingDue(item);
+                          setModalVisible(true);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Feather name="edit-2" size={12} color="#FFF" />
+                        <Text style={styles.editBtnText}>{t.editTxBtn}</Text>
+                      </TouchableOpacity>
+                    </>
                   ) : null}
 
                   <TouchableOpacity
@@ -664,6 +656,7 @@ export default function DuesScreen() {
 
       {/* Add / Edit Due Modal */}
       <AddEditDueModal
+        key={editingDue ? editingDue.id : (modalVisible ? 'create' : 'closed')}
         visible={modalVisible}
         onClose={handleCloseModal}
         onSave={handleSaveDue}
