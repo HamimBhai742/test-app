@@ -21,6 +21,8 @@ import {
   Vibration,
   LayoutAnimation,
   UIManager,
+  Pressable,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -2888,66 +2890,154 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </Modal>
 
-        {/* Privacy Policy Modal */}
+        {/* Privacy Policy & Terms Modal (Executive Scrollable BottomSheet) */}
         <Modal
           visible={showPrivacyModal}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setShowPrivacyModal(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowPrivacyModal(false)}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
-              onPress={(e) => e.stopPropagation()}
+          <View style={styles.privacyModalOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPrivacyModal(false)} />
+            <View
+              style={[
+                styles.privacyModalSheet,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected },
+              ]}
             >
-              <View style={styles.modalHeader}>
-                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>{t.privacyTitle}</ThemedText>
-                <TouchableOpacity onPress={() => setShowPrivacyModal(false)} style={styles.modalCloseBtn}>
-                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+              {/* Handle Bar */}
+              <View style={[styles.privacyModalHandle, { backgroundColor: theme.backgroundSelected }]} />
+
+              {/* Header */}
+              <View style={styles.privacyModalHeader}>
+                <View style={styles.privacyHeaderIconBox}>
+                  <Feather name="shield" size={18} color="#10B981" />
+                </View>
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                  <ThemedText type="subtitle" style={{ fontSize: 16, fontWeight: '800' }}>
+                    {t.privacyTitle || 'প্রাইভেসি পলিসি ও টার্মস'}
+                  </ThemedText>
+                  <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '500' }}>
+                    {language === 'bn' ? 'ব্যবহারকারীর নিরাপত্তা ও ডেটা প্রটেকশন' : 'User Security & Data Protection'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowPrivacyModal(false)}
+                  style={[styles.modalCloseBtn, { backgroundColor: theme.backgroundSelected }]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather name="x" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={{ maxHeight: 320, marginVertical: 14 }} showsVerticalScrollIndicator={false}>
-                <View style={{ gap: 14 }}>
-                  <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)', padding: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-                    <ThemedText style={{ fontSize: 24 }}>🔒</ThemedText>
-                    <ThemedText style={{ color: '#10B981', fontSize: 12.5, fontWeight: '700', flex: 1, lineHeight: 18 }}>
-                      আপনার সকল আর্থিক ডাটা ১০০% গোপনীয় ও আপনার নিজস্ব নিয়ন্ত্রণে সুরক্ষিত।
+              {/* Scrollable Content Body */}
+              <ScrollView
+                style={styles.privacyScrollView}
+                contentContainerStyle={{ paddingBottom: 16, gap: 12 }}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                bounces={true}
+              >
+                {/* Hero Security Assurance Card */}
+                <View style={[styles.privacyHeroBox, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.22)' }]}>
+                  <View style={styles.privacyHeroIconWrap}>
+                    <Feather name="lock" size={18} color="#10B981" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#10B981', fontSize: 13, fontWeight: '700', lineHeight: 18 }}>
+                      {language === 'bn' 
+                        ? 'আপনার সকল আর্থিক তথ্য ১০০% সুরক্ষিত ও সম্পূর্ণ আপনার নিজস্ব নিয়ন্ত্রণে।'
+                        : 'Your financial data is 100% private and protected under your direct control.'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Section 1 */}
+                <View style={[styles.privacySectionCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                  <View style={styles.privacySectionTitleRow}>
+                    <View style={[styles.sectionBadge, { backgroundColor: 'rgba(59, 130, 246, 0.10)' }]}>
+                      <Feather name="user-check" size={13} color="#3B82F6" />
+                    </View>
+                    <ThemedText style={styles.privacySectionTitle}>
+                      {language === 'bn' ? '১. তথ্য সুরক্ষা ও সর্বোচ্চ গোপনীয়তা:' : '1. Data Privacy & Zero-Sharing Policy:'}
                     </ThemedText>
                   </View>
+                  <Text style={[styles.privacySectionBody, { color: theme.textSecondary }]}>
+                    {language === 'bn'
+                      ? 'হিসাব কিতাব অ্যাপ আপনার কোনো ব্যক্তিগত বা আর্থিক লেনদেনের তথ্য বিজ্ঞাপনদাতা কিংবা তৃতীয় কোনো পক্ষের কাছে বিক্রি, শেয়ার বা অ্যাক্সেস দেয় না।'
+                      : 'Hisab Kitab never sells, trades, or shares your personal or financial records with any third parties or advertisers.'}
+                  </Text>
+                </View>
 
-                  <ThemedText type="smallBold" style={{ fontSize: 13 }}>১. তথ্য সুরক্ষা ও গোপনীয়তা:</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20 }}>
-                    হিসাব কিতাব অ্যাপ আপনার কোনো ব্যক্তিগত আর্থিক লেনদেনের তথ্য তৃতীয় কোনো পক্ষের কাছে বিক্রি বা শেয়ার করে না।
-                  </ThemedText>
+                {/* Section 2 */}
+                <View style={[styles.privacySectionCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                  <View style={styles.privacySectionTitleRow}>
+                    <View style={[styles.sectionBadge, { backgroundColor: 'rgba(16, 185, 129, 0.10)' }]}>
+                      <Feather name="cpu" size={13} color="#10B981" />
+                    </View>
+                    <ThemedText style={styles.privacySectionTitle}>
+                      {language === 'bn' ? '২. অন-ডিভাইস অফলাইন SMS পার্সিং:' : '2. On-Device Offline SMS Parsing:'}
+                    </ThemedText>
+                  </View>
+                  <Text style={[styles.privacySectionBody, { color: theme.textSecondary }]}>
+                    {language === 'bn'
+                      ? 'বিকাশ, নগদ, রকেট ও ব্যাংক SMS প্রসেসিং সম্পূর্ণ আপনার ফোনের অভ্যন্তরে অফলাইনে ঘটে। আপনার কোনো মেসেজ টেক্সট সার্ভারে পাঠানো বা সংরক্ষিত হয় না।'
+                      : 'All bKash, Nagad, Rocket, and Bank SMS parsing happens strictly offline on your device. SMS content is never transmitted to any external server.'}
+                  </Text>
+                </View>
 
-                  <ThemedText type="smallBold" style={{ fontSize: 13 }}>২. SMS পার্সিং ও নিরাপত্তা:</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20 }}>
-                    বিকাশ বা নগদ SMS পার্সিং অ্যালগরিদম সম্পূর্ণ আপনার ডিভাইসে অফলাইনে কাজ করে। আপনার মেসেজের টেক্সট কোনো সার্ভারে পাঠানো হয় না।
-                  </ThemedText>
+                {/* Section 3 */}
+                <View style={[styles.privacySectionCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                  <View style={styles.privacySectionTitleRow}>
+                    <View style={[styles.sectionBadge, { backgroundColor: 'rgba(139, 92, 246, 0.10)' }]}>
+                      <Feather name="cloud" size={13} color="#8B5CF6" />
+                    </View>
+                    <ThemedText style={styles.privacySectionTitle}>
+                      {language === 'bn' ? '৩. ক্লাউড ব্যাকআপ ও এন্ড-টু-এন্ড এনক্রিপশন:' : '3. Cloud Backup & End-to-End Encryption:'}
+                    </ThemedText>
+                  </View>
+                  <Text style={[styles.privacySectionBody, { color: theme.textSecondary }]}>
+                    {language === 'bn'
+                      ? 'ক্লাউড সিঙ্ক ব্যবহার করলে আপনার হিসাবসমূহ মিলিটারি-গ্রেড এনক্রিপশনে জমা থাকে, যা কেবলমাত্র আপনার নিজস্ব অথেনটিকেটেড আইডি ও পিন দিয়ে খোলা যায়।'
+                      : 'When Cloud Sync is enabled, your financial data is backed up using robust encryption, accessible solely through your authenticated credentials.'}
+                  </Text>
+                </View>
 
-                  <ThemedText type="smallBold" style={{ fontSize: 13 }}>৩. ডাটা ব্যাকআপ ও সিঙ্ক:</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20 }}>
-                    ক্লাউড সিঙ্ক ফিচার ব্যবহার করলে আপনার হিসাব নিরাপদ এনক্রিপ্টেড ব্যাকআপ হিসেবে জমা থাকে যা শুধুমাত্র আপনার অ্যাকাউন্ট থেকে অ্যাক্সেসযোগ্য।
-                  </ThemedText>
+                {/* Section 4 */}
+                <View style={[styles.privacySectionCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                  <View style={styles.privacySectionTitleRow}>
+                    <View style={[styles.sectionBadge, { backgroundColor: 'rgba(245, 158, 11, 0.10)' }]}>
+                      <Feather name="check-square" size={13} color="#F59E0B" />
+                    </View>
+                    <ThemedText style={styles.privacySectionTitle}>
+                      {language === 'bn' ? '৪. ব্যবহারের শর্তাবলী (Terms of Use):' : '4. Terms of Use & User Responsibility:'}
+                    </ThemedText>
+                  </View>
+                  <Text style={[styles.privacySectionBody, { color: theme.textSecondary }]}>
+                    {language === 'bn'
+                      ? 'হিসাব কিতাব একটি ব্যক্তিগত আর্থিক সহকারী অ্যাপ। ব্যবহারকারীর ব্যক্তিগত আয়-ব্যয় সুষ্ঠুভাবে পরিচালনার উদ্দেশ্যেই সকল ফিচার নিরপেক্ষভাবে প্রস্তুত করা হয়েছে।'
+                      : 'Hisab Kitab is a personal financial assistant app built to help you track your finances reliably, safely, and transparently.'}
+                  </Text>
                 </View>
               </ScrollView>
 
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16 }]}
-                onPress={() => setShowPrivacyModal(false)}
-              >
-                <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  বুঝেছি ✓
-                </ThemedText>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </TouchableOpacity>
+              {/* Fixed Footer Accept Button */}
+              <View style={[styles.privacyModalFooter, { borderTopColor: 'rgba(150, 150, 150, 0.1)' }]}>
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: '#10B981', borderRadius: 16, height: 48, marginTop: 0 }]}
+                  onPress={() => setShowPrivacyModal(false)}
+                  activeOpacity={0.88}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Feather name="check-circle" size={16} color="#FFF" />
+                    <ThemedText type="smallBold" style={[styles.primaryButtonText, { fontSize: 14 }]}>
+                      {language === 'bn' ? 'বুঝেছি ও সম্মত' : 'Understood & Accept'}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
 
         {/* Google Account Selector Modal */}
@@ -3743,6 +3833,104 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.three,
     width: '100%',
+  },
+  privacyModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  privacyModalSheet: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: Dimensions.get('window').height * 0.82,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  privacyModalHandle: {
+    width: 38,
+    height: 4.5,
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  privacyModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150, 150, 150, 0.1)',
+  },
+  privacyHeaderIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privacyScrollView: {
+    flexGrow: 0,
+    maxHeight: Dimensions.get('window').height * 0.58,
+    marginVertical: 4,
+  },
+  privacyHeroBox: {
+    padding: 14,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+  },
+  privacyHeroIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privacySectionCard: {
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  privacySectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privacySectionTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    flex: 1,
+  },
+  privacySectionBody: {
+    fontSize: 12,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
+  privacyModalFooter: {
+    paddingTop: 12,
+    borderTopWidth: 1,
   },
   modalCloseBtn: {
     width: 32,
