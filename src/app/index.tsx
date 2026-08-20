@@ -1,7 +1,7 @@
 import { formatNumber, getCurrencySymbol, toBanglaDigits, toEnglishDigits } from '@/utils/number';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -287,9 +287,6 @@ export default function HomeScreen() {
     }
   };
 
-  const allCategories = ['Food', 'Shopping', 'Utilities', 'Rent', 'Entertainment', 'Salary', 'Transport', 'Health', 'Education', 'Bills', 'Others', ...customCategories];
-  const uniqueCategories = Array.from(new Set(allCategories));
-
   // Filter transactions by selected period using robust Date comparison
   const filteredByPeriodTransactions = transactions.filter((tx) => {
     let txDate: Date;
@@ -319,6 +316,43 @@ export default function HomeScreen() {
     }
     return true; // 'total'
   });
+
+  const allCategories = ['Food', 'Shopping', 'Utilities', 'Rent', 'Entertainment', 'Salary', 'Transport', 'Health', 'Education', 'Bills', 'Others', ...customCategories];
+  
+  // Sort categories dynamically: highest transaction count appears first
+  const uniqueCategories = useMemo(() => {
+    const rawList = Array.from(new Set([...allCategories, ...transactions.map(t => t.category).filter(Boolean)]));
+    
+    // Count transactions per category in current filtered period
+    const periodCountMap: Record<string, number> = {};
+    for (const tx of filteredByPeriodTransactions) {
+      if (tx.category) {
+        periodCountMap[tx.category] = (periodCountMap[tx.category] || 0) + 1;
+      }
+    }
+
+    // Total transactions count map
+    const totalCountMap: Record<string, number> = {};
+    for (const tx of transactions) {
+      if (tx.category) {
+        totalCountMap[tx.category] = (totalCountMap[tx.category] || 0) + 1;
+      }
+    }
+
+    return [...rawList].sort((a, b) => {
+      const countA = periodCountMap[a] || 0;
+      const countB = periodCountMap[b] || 0;
+      if (countB !== countA) {
+        return countB - countA; // Higher transaction count in period comes first
+      }
+      const totalA = totalCountMap[a] || 0;
+      const totalB = totalCountMap[b] || 0;
+      if (totalB !== totalA) {
+        return totalB - totalA; // Higher overall transaction count comes next
+      }
+      return rawList.indexOf(a) - rawList.indexOf(b);
+    });
+  }, [allCategories, filteredByPeriodTransactions, transactions]);
 
   // Filter transactions by selected category, search query, and filter modal options
   const filteredTransactions = filteredByPeriodTransactions.filter((tx) => {
@@ -610,45 +644,6 @@ export default function HomeScreen() {
               <ThemedText style={styles.quickButtonText}>
                 {language === 'bn' ? 'অটো লেনদেন' : 'Auto Entry'}
               </ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Bar & Filter Toggle Row */}
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: Spacing.three, alignItems: 'center' }}>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.backgroundElement, borderRadius: 14, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.backgroundSelected }}>
-              <Feather name="search" size={18} color="#64748B" />
-              <TextInput
-                style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, color: theme.text, fontSize: 14 }}
-                placeholder={language === 'bn' ? 'খুঁজুন (টাইটেল বা ক্যাটাগরি)...' : 'Search transactions...'}
-                placeholderTextColor="#64748B"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery ? (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Feather name="x-circle" size={16} color="#64748B" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: (filterType !== 'all' || filterMinAmount || filterMaxAmount || filterSort !== 'date_desc') ? '#208AEF' : theme.backgroundElement,
-                paddingHorizontal: 14,
-                paddingVertical: 11,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: theme.backgroundSelected,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-              }}
-              onPress={() => setShowFilterModal(true)}
-            >
-              <Feather name="sliders" size={16} color={(filterType !== 'all' || filterMinAmount || filterMaxAmount || filterSort !== 'date_desc') ? '#FFFFFF' : theme.text} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: (filterType !== 'all' || filterMinAmount || filterMaxAmount || filterSort !== 'date_desc') ? '#FFFFFF' : theme.text }}>
-                {language === 'bn' ? 'ফিল্টার' : 'Filter'}
-              </Text>
             </TouchableOpacity>
           </View>
 
