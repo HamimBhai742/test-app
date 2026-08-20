@@ -2822,11 +2822,11 @@ export default function ProfileScreen() {
                   <View style={styles.brandLogoBox}>
                     <Feather name="trending-up" size={24} color="#10B981" />
                   </View>
-                  <ThemedText style={{ fontSize: 18, fontWeight: '800', marginTop: 8 }}>
+                  <ThemedText style={styles.aboutHeroTitle}>
                     {language === 'bn' ? 'হিসাব কিতাব' : 'Hisab Kitab'}
                   </ThemedText>
                   <View style={[styles.versionPill, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>
+                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700', textAlign: 'center' }}>
                       {t.appVersionLabel} • Pro Edition
                     </Text>
                   </View>
@@ -4539,30 +4539,50 @@ const styles = StyleSheet.create({
     marginRight: Spacing.three,
   },
   aboutHeroCard: {
-    padding: 16,
-    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
+    width: '100%',
   },
   brandLogoBox: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     borderRadius: 16,
     backgroundColor: 'rgba(16, 185, 129, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  aboutHeroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 8,
+    marginBottom: 2,
+    textAlign: 'center',
+    alignSelf: 'center',
+    lineHeight: 36,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   versionPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: 12,
     marginTop: 6,
-    marginBottom: 8,
+    marginBottom: 10,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   aboutHeroDesc: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 12.5,
+    lineHeight: 20,
     textAlign: 'center',
+    alignSelf: 'center',
+    width: '100%',
   },
   serviceTile: {
     padding: 12,
