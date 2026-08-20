@@ -318,7 +318,7 @@ export default function ReportScreen() {
           key,
           year: y,
           month: m - 1,
-          label: `${t.monthNames[m - 1]} ${y}`,
+          label: `${t.monthNames[m - 1]} ${language === 'bn' ? toBanglaDigits(y.toString()) : y}`,
           shortLabel: t.monthShort[m - 1],
           income: d.income,
           expense: d.expense,
@@ -327,7 +327,7 @@ export default function ReportScreen() {
           savingsRate,
         };
       });
-  }, [transactions, t]);
+  }, [transactions, t, language]);
 
   // Auto-select most recent month when data first loads (fixes stale-null bug)
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -556,41 +556,84 @@ export default function ReportScreen() {
           </View>
         </View>
 
-        {/* ── Selected Month Detail ── */}
+        {/* ── Selected Month Detail (Professional Financial Executive Card) ── */}
         {selected && (
           <ThemedView type="backgroundElement" style={styles.detailCard}>
             <View style={[styles.detailStripe, { backgroundColor: selected.net >= 0 ? colors.success : colors.danger }]} />
+            
             <View style={styles.detailInner}>
-              <Text style={[styles.detailEyebrow, { color: theme.textSecondary }]}>{t.detailReport}</Text>
-              <Text style={[styles.detailMonth, { color: theme.text }]}>{selected.label}</Text>
-              <View style={styles.detailStatsRow}>
-                <View style={styles.detailStatItem}>
-                  <Text style={[styles.detailStatVal, { color: colors.success }]}>{getCurrencySymbol()}{formatNumber(selected.income)}</Text>
-                  <Text style={[styles.detailStatLbl, { color: theme.textSecondary }]}>{t.income}</Text>
-                </View>
-                <View style={[styles.detailStatSep, { backgroundColor: theme.backgroundSelected }]} />
-                <View style={styles.detailStatItem}>
-                  <Text style={[styles.detailStatVal, { color: colors.danger }]}>{getCurrencySymbol()}{formatNumber(selected.expense)}</Text>
-                  <Text style={[styles.detailStatLbl, { color: theme.textSecondary }]}>{t.expense}</Text>
-                </View>
-                <View style={[styles.detailStatSep, { backgroundColor: theme.backgroundSelected }]} />
-                <View style={styles.detailStatItem}>
-                  <Text style={[styles.detailStatVal, { color: selected.net >= 0 ? colors.success : colors.danger }]}>
-                    {selected.net >= 0 ? '+' : '-'}{getCurrencySymbol()}{formatNumber(Math.abs(selected.net))}
+              {/* Header Row */}
+              <View style={styles.detailHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.detailBadge}>
+                    <Feather name="activity" size={11} color={colors.primary} />
+                    <Text style={[styles.detailBadgeText, { color: colors.primary }]}>{t.detailReport}</Text>
+                  </View>
+                  <Text style={[styles.detailMonth, { color: theme.text }]}>
+                    {selected.label}
                   </Text>
-                  <Text style={[styles.detailStatLbl, { color: theme.textSecondary }]}>
-                    {selected.net >= 0 ? t.savingsWord : t.deficitWord}
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: selected.net >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: selected.net >= 0 ? colors.success : colors.danger }]} />
+                  <Text style={[styles.statusPillText, { color: selected.net >= 0 ? colors.success : colors.danger }]}>
+                    {selected.net >= 0 ? (language === 'bn' ? 'উদ্বৃত্ত' : 'Surplus') : (language === 'bn' ? 'ঘাটতি' : 'Deficit')}
                   </Text>
                 </View>
               </View>
-              {selected.income > 0 && (
-                <View style={styles.detailSavingsSection}>
-                  <View style={styles.detailSavingsLabelRow}>
-                    <Text style={[styles.detailSavingsLabel, { color: theme.text }]}>{t.savingsRate}</Text>
-                    <Text style={[styles.detailSavingsPct, { color: selected.savingsRate >= 20 ? colors.success : selected.savingsRate >= 0 ? colors.warning : colors.danger }]}>
-                      {selected.savingsRate}%
-                    </Text>
+
+              {/* 3 Metric Cards Grid */}
+              <View style={styles.metricGrid}>
+                {/* Income */}
+                <View style={[styles.metricCard, { backgroundColor: theme.background, borderColor: 'rgba(16, 185, 129, 0.16)' }]}>
+                  <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+                    <Feather name="arrow-down-left" size={13} color={colors.success} />
                   </View>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>{t.income}</Text>
+                  <Text style={[styles.metricValue, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {getCurrencySymbol()}{formatNumber(selected.income)}
+                  </Text>
+                </View>
+
+                {/* Expense */}
+                <View style={[styles.metricCard, { backgroundColor: theme.background, borderColor: 'rgba(239, 68, 68, 0.16)' }]}>
+                  <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                    <Feather name="arrow-up-right" size={13} color={colors.danger} />
+                  </View>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>{t.expense}</Text>
+                  <Text style={[styles.metricValue, { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {getCurrencySymbol()}{formatNumber(selected.expense)}
+                  </Text>
+                </View>
+
+                {/* Net Savings */}
+                <View style={[styles.metricCard, { backgroundColor: theme.background, borderColor: selected.net >= 0 ? 'rgba(59, 130, 246, 0.16)' : 'rgba(239, 68, 68, 0.16)' }]}>
+                  <View style={[styles.metricIconWrap, { backgroundColor: selected.net >= 0 ? 'rgba(59, 130, 246, 0.12)' : 'rgba(239, 68, 68, 0.12)' }]}>
+                    <Feather name={selected.net >= 0 ? "shield" : "alert-circle"} size={13} color={selected.net >= 0 ? colors.primary : colors.danger} />
+                  </View>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                    {selected.net >= 0 ? t.savingsWord : t.deficitWord}
+                  </Text>
+                  <Text style={[styles.metricValue, { color: selected.net >= 0 ? colors.primary : colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {selected.net >= 0 ? '+' : '-'}{getCurrencySymbol()}{formatNumber(Math.abs(selected.net))}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Savings Efficiency Section */}
+              {selected.income > 0 && (
+                <View style={[styles.savingsBox, { backgroundColor: theme.background, borderColor: 'rgba(150,150,150,0.1)' }]}>
+                  <View style={styles.savingsBoxHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Feather name="pie-chart" size={13} color={theme.textSecondary} />
+                      <Text style={[styles.savingsBoxTitle, { color: theme.text }]}>{t.savingsRate}</Text>
+                    </View>
+                    <View style={[styles.savingsPctBadge, { backgroundColor: selected.savingsRate >= 20 ? 'rgba(16,185,129,0.12)' : selected.savingsRate >= 0 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)' }]}>
+                      <Text style={[styles.savingsPctBadgeText, { color: selected.savingsRate >= 20 ? colors.success : selected.savingsRate >= 0 ? colors.warning : colors.danger }]}>
+                        {language === 'bn' ? toBanglaDigits(selected.savingsRate.toString()) : selected.savingsRate}%
+                      </Text>
+                    </View>
+                  </View>
+
                   <View style={[styles.detailSavingsTrack, { backgroundColor: theme.backgroundSelected }]}>
                     <View
                       style={[
@@ -602,31 +645,52 @@ export default function ReportScreen() {
                       ]}
                     />
                   </View>
-                  <Text style={[styles.detailSavingsHint, { color: theme.textSecondary }]}>
-                    {selected.savingsRate >= 20
-                      ? t.savingsHintExcellent
-                      : selected.savingsRate >= 10
-                      ? t.savingsHintGood
-                      : selected.savingsRate >= 0
-                      ? t.savingsHintLow
-                      : t.savingsHintDeficit}
-                  </Text>
+
+                  <View style={[styles.hintPill, { backgroundColor: selected.savingsRate >= 20 ? 'rgba(16,185,129,0.08)' : selected.savingsRate >= 0 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)' }]}>
+                    <Feather 
+                      name={selected.savingsRate >= 20 ? "check-circle" : selected.savingsRate >= 0 ? "info" : "alert-triangle"} 
+                      size={13} 
+                      color={selected.savingsRate >= 20 ? colors.success : selected.savingsRate >= 0 ? colors.warning : colors.danger} 
+                    />
+                    <Text style={[styles.hintPillText, { color: selected.savingsRate >= 20 ? colors.success : selected.savingsRate >= 0 ? colors.warning : colors.danger }]}>
+                      {selected.savingsRate >= 20
+                        ? t.savingsHintExcellent
+                        : selected.savingsRate >= 10
+                        ? t.savingsHintGood
+                        : selected.savingsRate >= 0
+                        ? t.savingsHintLow
+                        : t.savingsHintDeficit}
+                    </Text>
+                  </View>
                 </View>
               )}
-              <View style={[styles.detailTxRow, { backgroundColor: theme.backgroundSelected }]}>
-                <Text style={styles.detailTxEmoji}>📝</Text>
-                <Text style={[styles.detailTxText, { color: theme.text }]}>
-                  {t.recordedTxPrefix} <Text style={{ fontWeight: '800' }}>{selected.txCount}</Text>{t.recordedTxSuffix}
+
+              {/* Transactions Recorded Count */}
+              <View style={[styles.txCountCard, { backgroundColor: theme.background, borderColor: 'rgba(150,150,150,0.1)' }]}>
+                <View style={[styles.txCountIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.10)' }]}>
+                  <Feather name="file-text" size={14} color={colors.primary} />
+                </View>
+                <Text style={[styles.txCountCardText, { color: theme.text }]}>
+                  {t.recordedTxPrefix} <Text style={{ fontWeight: '800', color: colors.primary }}>{language === 'bn' ? toBanglaDigits(selected.txCount.toString()) : selected.txCount}</Text>{t.recordedTxSuffix}
                 </Text>
               </View>
 
-              {/* PDF Statement Download Action Button */}
+              {/* Professional Download CTA Button */}
               <TouchableOpacity
                 style={styles.downloadStatementBtn}
                 onPress={() => setPdfModalVisible(true)}
-                activeOpacity={0.85}
+                activeOpacity={0.88}
               >
-                <Text style={styles.downloadStatementBtnText}>{t.pdfDownloadThisMonthBtn}</Text>
+                <View style={styles.downloadBtnIconBg}>
+                  <Feather name="file-text" size={16} color="#FFF" />
+                </View>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={styles.downloadStatementBtnTitle}>{language === 'bn' ? 'মাসিক PDF স্টেটমেন্ট' : 'Monthly PDF Statement'}</Text>
+                  <Text style={styles.downloadStatementBtnSubtitle}>{language === 'bn' ? 'প্রফেশনাল মেমো ও রিপোর্ট ডাউনলোড' : 'Download statement & report memo'}</Text>
+                </View>
+                <View style={styles.downloadBtnArrow}>
+                  <Feather name="download" size={16} color="#FFF" />
+                </View>
               </TouchableOpacity>
             </View>
           </ThemedView>
@@ -732,22 +796,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   downloadStatementBtn: {
-    backgroundColor: '#208AEF',
-    paddingVertical: 14,
+    backgroundColor: '#0284C7',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 18,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: '#208AEF',
+    marginTop: 4,
+    shadowColor: '#0284C7',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
     elevation: 4,
   },
-  downloadStatementBtnText: {
+  downloadBtnIconBg: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  downloadStatementBtnTitle: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  downloadStatementBtnSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  downloadBtnArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroCard: {
     borderRadius: 24, overflow: 'hidden',
@@ -803,25 +891,131 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4,
     borderWidth: 1, borderColor: 'rgba(150,150,150,0.08)',
   },
-  detailStripe: { height: 5 },
+  detailStripe: { height: 4 },
   detailInner: { padding: Spacing.four, gap: Spacing.three },
-  detailEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
-  detailMonth: { fontSize: 22, fontWeight: '800', marginTop: -4 },
-  detailStatsRow: { flexDirection: 'row', alignItems: 'center' },
-  detailStatItem: { flex: 1, alignItems: 'center' },
-  detailStatSep: { width: 1, height: 32 },
-  detailStatVal: { fontSize: 15, fontWeight: '800', marginBottom: 2 },
-  detailStatLbl: { fontSize: 11, fontWeight: '600' },
-  detailSavingsSection: { gap: 8 },
-  detailSavingsLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  detailSavingsLabel: { fontSize: 14, fontWeight: '700' },
-  detailSavingsPct: { fontSize: 16, fontWeight: '800' },
-  detailSavingsTrack: { height: 10, borderRadius: 5, overflow: 'hidden' },
-  detailSavingsFill: { height: '100%', borderRadius: 5 },
-  detailSavingsHint: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
-  detailTxRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: 12, padding: Spacing.two },
-  detailTxEmoji: { fontSize: 18 },
-  detailTxText: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  detailHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  detailBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  detailBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  detailMonth: { fontSize: 20, fontWeight: '800' },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  metricGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metricCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  metricIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  metricValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  savingsBox: {
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  savingsBoxHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  savingsBoxTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  savingsPctBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  savingsPctBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  detailSavingsTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  detailSavingsFill: { height: '100%', borderRadius: 4 },
+  hintPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  hintPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 15,
+  },
+  txCountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  txCountIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  txCountCardText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   tipCard: {
     borderRadius: 20, padding: Spacing.three, flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start',
     borderWidth: 1, borderColor: 'rgba(150,150,150,0.08)',
