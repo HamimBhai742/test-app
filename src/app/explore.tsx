@@ -1,5 +1,6 @@
 import { formatNumber, getCurrencySymbol, toBanglaDigits, toEnglishDigits } from '@/utils/number';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   ScrollView,
   StyleSheet,
@@ -421,74 +422,87 @@ export default function BudgetScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [addCatModalVisible, setAddCatModalVisible] = useState(false);
 
-  // Load budgets and categories from AsyncStorage on mount
-  React.useEffect(() => {
-    const loadSavedData = async () => {
-      try {
-        const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
-        const storedCategories = await AsyncStorage.getItem('hisabkitab_categories');
-        const storedCustomCatsHome = await AsyncStorage.getItem('hisabkitab_custom_categories_home');
+  // Load and auto-sync budgets and categories whenever Budget screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const loadSavedData = async () => {
+        try {
+          const storedBudgets = await AsyncStorage.getItem('hisabkitab_budgets');
+          const storedCategories = await AsyncStorage.getItem('hisabkitab_categories');
+          const storedCustomCatsHome = await AsyncStorage.getItem('hisabkitab_custom_categories_home');
 
-        let loadedBudgets: BudgetMap = storedBudgets ? JSON.parse(storedBudgets) : { ...DEFAULT_BUDGETS };
-        let loadedCategories: CategoryItem[] = [];
-
-        if (storedCategories) {
-          const parsed = JSON.parse(storedCategories);
-          if (Array.isArray(parsed)) {
-            loadedCategories = parsed.map((c: any) => ({
-              key: c.key || c.label || 'Unknown',
-              label: c.label || c.key || 'Unknown',
-              emoji: c.emoji || '🏷️',
-              color: c.color || '#64748B',
-              defaultBudget: typeof c.defaultBudget === 'number' ? c.defaultBudget : 1000,
-            }));
+          let loadedBudgets: BudgetMap = { ...DEFAULT_BUDGETS };
+          if (storedBudgets) {
+            try {
+              const parsed = JSON.parse(storedBudgets);
+              loadedBudgets = { ...DEFAULT_BUDGETS, ...parsed };
+            } catch {}
           }
-        } else {
-          loadedCategories = [...DEFAULT_CATEGORIES];
-        }
 
-        // Auto-sync custom categories from Home screen
-        let parsedCustomCatsHome: string[] = [];
-        if (storedCustomCatsHome) {
-          try {
-            parsedCustomCatsHome = JSON.parse(storedCustomCatsHome);
-          } catch {}
-        }
+          // Always ensure all DEFAULT_CATEGORIES are present
+          let loadedCategories: CategoryItem[] = DEFAULT_CATEGORIES.map((c) => ({
+            ...c,
+            defaultBudget: loadedBudgets[c.key] !== undefined ? loadedBudgets[c.key] : c.defaultBudget,
+          }));
 
-        let needsSaving = false;
-        if (Array.isArray(parsedCustomCatsHome)) {
-          parsedCustomCatsHome.forEach((catName) => {
-            if (catName && !loadedCategories.some((c) => c.key === catName)) {
-              const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
-              const randomColor = colors[Math.floor(Math.random() * colors.length)];
-              loadedCategories.push({
-                key: catName,
-                label: catName,
-                emoji: '🏷️',
-                color: randomColor,
-                defaultBudget: 1000,
-              });
-              if (loadedBudgets[catName] === undefined) {
-                loadedBudgets[catName] = 1000;
+          // Merge custom categories from hisabkitab_categories storage
+          if (storedCategories) {
+            try {
+              const parsed = JSON.parse(storedCategories);
+              if (Array.isArray(parsed)) {
+                parsed.forEach((c: any) => {
+                  const key = c.key || c.label;
+                  if (key && !loadedCategories.some((existing) => existing.key === key)) {
+                    loadedCategories.push({
+                      key,
+                      label: c.label || key,
+                      emoji: c.emoji || '🏷️',
+                      color: c.color || '#64748B',
+                      defaultBudget: typeof c.defaultBudget === 'number' ? c.defaultBudget : (loadedBudgets[key] || 1000),
+                    });
+                  }
+                });
               }
-              needsSaving = true;
-            }
-          });
-        }
+            } catch {}
+          }
 
-        setBudgets(loadedBudgets);
-        setCategoriesList(loadedCategories);
+          // Auto-sync custom categories from Home screen
+          if (storedCustomCatsHome) {
+            try {
+              const parsedCustomCatsHome = JSON.parse(storedCustomCatsHome);
+              if (Array.isArray(parsedCustomCatsHome)) {
+                parsedCustomCatsHome.forEach((catName) => {
+                  if (catName && !loadedCategories.some((c) => c.key === catName)) {
+                    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                    loadedCategories.push({
+                      key: catName,
+                      label: catName,
+                      emoji: '🏷️',
+                      color: randomColor,
+                      defaultBudget: loadedBudgets[catName] || 1000,
+                    });
+                    if (loadedBudgets[catName] === undefined) {
+                      loadedBudgets[catName] = 1000;
+                    }
+                  }
+                });
+              }
+            } catch {}
+          }
 
-        if (needsSaving) {
+          setBudgets(loadedBudgets);
+          setCategoriesList(loadedCategories);
+
           await AsyncStorage.setItem('hisabkitab_categories', JSON.stringify(loadedCategories));
           await AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(loadedBudgets));
+        } catch (error) {
+          console.warn('Error loading budgets/categories from AsyncStorage:', error);
         }
-      } catch (error) {
-        console.warn('Error loading budgets/categories from AsyncStorage:', error);
-      }
-    };
-    loadSavedData();
-  }, []);
+      };
+      loadSavedData();
+    }, [])
+  );
 
   // Calculate actual spending per category — CURRENT MONTH ONLY
   const spentByCategory = useMemo(() => {
@@ -577,6 +591,19 @@ export default function BudgetScreen() {
       AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(updated)).catch(() => {});
       return updated;
     });
+
+    // Auto-sync new category to HomeScreen custom categories list
+    AsyncStorage.getItem('hisabkitab_custom_categories_home').then((stored) => {
+      let homeCats: string[] = [];
+      if (stored) {
+        try { homeCats = JSON.parse(stored); } catch {}
+      }
+      if (!Array.isArray(homeCats)) homeCats = [];
+      if (!homeCats.includes(name)) {
+        homeCats.push(name);
+        AsyncStorage.setItem('hisabkitab_custom_categories_home', JSON.stringify(homeCats)).catch(() => {});
+      }
+    });
   };
 
   const handleDeleteCategory = (catKey: string) => {
@@ -601,6 +628,18 @@ export default function BudgetScreen() {
               delete updated[catKey];
               AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(updated)).catch(() => {});
               return updated;
+            });
+            // Also remove from HomeScreen custom categories
+            AsyncStorage.getItem('hisabkitab_custom_categories_home').then((stored) => {
+              if (stored) {
+                try {
+                  const arr = JSON.parse(stored);
+                  if (Array.isArray(arr)) {
+                    const filtered = arr.filter((k: string) => k !== catKey);
+                    AsyncStorage.setItem('hisabkitab_custom_categories_home', JSON.stringify(filtered)).catch(() => {});
+                  }
+                } catch {}
+              }
             });
           },
         },

@@ -1,7 +1,8 @@
 import { formatNumber, getCurrencySymbol, toBanglaDigits, toEnglishDigits } from '@/utils/number';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   Platform,
   StyleSheet,
@@ -92,20 +93,53 @@ export default function HomeScreen() {
     return language === 'bn' ? monthsBn[currentMonthIdx] : monthsEn[currentMonthIdx];
   };
 
-  // Load custom categories and last selected category from AsyncStorage on mount
-  useEffect(() => {
-    AsyncStorage.getItem(CUSTOM_CATS_KEY).then((stored) => {
-      if (stored) {
-        try { setCustomCategories(JSON.parse(stored)); } catch {}
-      }
-    });
-    AsyncStorage.getItem(LAST_SELECTED_CAT_KEY).then((stored) => {
-      if (stored) {
-        setLastSelectedCategory(stored);
-        setCategory(stored);
-      }
-    });
-  }, []);
+  // Sync custom categories from both HomeScreen and Budget Planner storages whenever screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const syncCategories = async () => {
+        try {
+          const storedHome = await AsyncStorage.getItem(CUSTOM_CATS_KEY);
+          const storedBudget = await AsyncStorage.getItem('hisabkitab_categories');
+          const storedLastCat = await AsyncStorage.getItem(LAST_SELECTED_CAT_KEY);
+
+          if (storedLastCat) {
+            setLastSelectedCategory(storedLastCat);
+          }
+
+          let combinedSet = new Set<string>();
+
+          if (storedHome) {
+            try {
+              const arr = JSON.parse(storedHome);
+              if (Array.isArray(arr)) arr.forEach((k: string) => k && combinedSet.add(k));
+            } catch {}
+          }
+
+          if (storedBudget) {
+            try {
+              const arr = JSON.parse(storedBudget);
+              if (Array.isArray(arr)) {
+                arr.forEach((c: any) => {
+                  const key = c.key || c.label;
+                  const defaultKeys = ['Food', 'Shopping', 'Utilities', 'Rent', 'Entertainment', 'Salary', 'Transport', 'Health', 'Education', 'Bills', 'Others'];
+                  if (key && !defaultKeys.includes(key)) {
+                    combinedSet.add(key);
+                  }
+                });
+              }
+            } catch {}
+          }
+
+          const merged = Array.from(combinedSet);
+          setCustomCategories(merged);
+          AsyncStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(merged)).catch(() => {});
+        } catch (e) {
+          console.warn('Error syncing categories:', e);
+        }
+      };
+      syncCategories();
+    }, [])
+  );
 
   // Persist custom categories whenever they change
   useEffect(() => {
@@ -175,7 +209,40 @@ export default function HomeScreen() {
     }
     const catName = newCatName.trim();
     if (!customCategories.includes(catName)) {
-      setCustomCategories((prev) => [...prev, catName]);
+      const updated = [...customCategories, catName];
+      setCustomCategories(updated);
+      AsyncStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(updated)).catch(() => {});
+
+      // Auto-sync directly to Budget Planner storage (hisabkitab_categories & hisabkitab_budgets)
+      AsyncStorage.getItem('hisabkitab_categories').then((stored) => {
+        let list: any[] = [];
+        if (stored) {
+          try { list = JSON.parse(stored); } catch {}
+        }
+        if (Array.isArray(list) && !list.some((c: any) => (c.key || c.label) === catName)) {
+          const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+          const randomColor = colors[Math.floor(Math.random() * colors.length)];
+          list.push({
+            key: catName,
+            label: catName,
+            emoji: '🏷️',
+            color: randomColor,
+            defaultBudget: 1000,
+          });
+          AsyncStorage.setItem('hisabkitab_categories', JSON.stringify(list)).catch(() => {});
+        }
+      });
+
+      AsyncStorage.getItem('hisabkitab_budgets').then((storedBudgets) => {
+        let budgetMap: Record<string, number> = {};
+        if (storedBudgets) {
+          try { budgetMap = JSON.parse(storedBudgets); } catch {}
+        }
+        if (budgetMap[catName] === undefined) {
+          budgetMap[catName] = 1000;
+          AsyncStorage.setItem('hisabkitab_budgets', JSON.stringify(budgetMap)).catch(() => {});
+        }
+      });
     }
     handleSelectCategory(catName);
     setNewCatName('');
