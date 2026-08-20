@@ -111,7 +111,7 @@ function DonutChart({
             <>
               <Text style={styles.donutCenterEmoji}>{topSlice.emoji}</Text>
               <Text style={[styles.donutCenterPct, { color: topSlice.color }]}>
-                {topSlice.percentage}%
+                {language === 'bn' ? toBanglaDigits(topSlice.percentage.toString()) : topSlice.percentage}%
               </Text>
               <Text style={styles.donutCenterLabel}>{t.maxWord}</Text>
             </>
@@ -571,7 +571,7 @@ export default function StatsScreen() {
                   {expenseStats.trendPct >= 0 ? '▲' : '▼'}
                 </Text>
                 <Text style={[styles.trendText, { color: expenseStats.trendPct >= 0 ? '#EF4444' : '#10B981' }]}>
-                  {expenseStats.trendPct >= 0 ? '+' : ''}{expenseStats.trendPct}%
+                  {expenseStats.trendPct >= 0 ? '+' : ''}{language === 'bn' ? toBanglaDigits(expenseStats.trendPct.toString()) : expenseStats.trendPct}%
                 </Text>
               </View>
             </View>
@@ -588,7 +588,7 @@ export default function StatsScreen() {
             <View style={styles.heroStatsRow}>
               <View style={styles.heroStatItem}>
                 <Text style={[styles.heroStatValue, { color: colors.primary }]}>
-                  {expenseStats.expensesCount}
+                  {language === 'bn' ? toBanglaDigits(expenseStats.expensesCount.toString()) : expenseStats.expensesCount}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
                   {t.txWord}
@@ -614,7 +614,7 @@ export default function StatsScreen() {
                   {getCurrencySymbol()}{formatNumber(Math.abs(expenseStats.netBalance))}
                 </Text>
                 <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>
-                  {expenseStats.netBalance >= 0 ? `${t.savingsWord} (${expenseStats.savingsRate}%)` : t.deficitWord}
+                  {expenseStats.netBalance >= 0 ? `${t.savingsWord} (${language === 'bn' ? toBanglaDigits(expenseStats.savingsRate.toString()) : expenseStats.savingsRate}%)` : t.deficitWord}
                 </Text>
               </View>
             </View>
@@ -658,7 +658,7 @@ export default function StatsScreen() {
                           {item.emoji} {item.label}
                         </Text>
                         <Text style={[styles.legendPct, { color: item.color }]}>
-                          {item.percentage}% · {getCurrencySymbol()}{formatNumber(item.amount)}
+                          {language === 'bn' ? toBanglaDigits(item.percentage.toString()) : item.percentage}% · {getCurrencySymbol()}{formatNumber(item.amount)}
                         </Text>
                       </View>
                     </View>
@@ -688,7 +688,7 @@ export default function StatsScreen() {
               <View style={styles.ribbonLabels}>
                 {expenseStats.breakdown.map((item) => (
                   <Text key={item.category} style={[styles.ribbonLabel, { color: item.color, flex: item.percentage }]}>
-                    {item.percentage > 10 ? `${item.percentage}%` : ''}
+                    {item.percentage > 10 ? `${language === 'bn' ? toBanglaDigits(item.percentage.toString()) : item.percentage}%` : ''}
                   </Text>
                 ))}
               </View>
@@ -781,7 +781,7 @@ export default function StatsScreen() {
                         />
                       </View>
                       <Text style={[styles.catPct, { color: item.color }]}>
-                        {item.percentage}% {t.ofTotal}
+                        {language === 'bn' ? toBanglaDigits(item.percentage.toString()) : item.percentage}% {t.ofTotal}
                       </Text>
                     </View>
                   </View>
@@ -803,7 +803,7 @@ export default function StatsScreen() {
                     {t.warningTitle}
                   </Text>
                   <Text style={[styles.insightDesc, { color: '#7f1d1d' }]}>
-                    {expenseStats.highestExpense.emoji} {expenseStats.highestExpense.label} {t.warningDesc1} {expenseStats.highestExpense.percentage}% {t.warningDesc2}
+                    {expenseStats.highestExpense.emoji} {expenseStats.highestExpense.label} {t.warningDesc1} {language === 'bn' ? toBanglaDigits(expenseStats.highestExpense.percentage.toString()) : expenseStats.highestExpense.percentage}% {t.warningDesc2}
                   </Text>
                 </View>
               )}

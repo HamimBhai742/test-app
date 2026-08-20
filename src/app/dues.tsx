@@ -20,7 +20,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLanguage } from '@/context/LanguageContext';
-
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { translations } from '@/constants/translations';
 import { useDues, DueItem } from '@/context/DueContext';
@@ -52,6 +52,8 @@ function AddEditDueModal({
   const [type, setType] = useState<'receivable' | 'payable'>('receivable');
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
 
   // Prefill fields when editing an existing due record
   React.useEffect(() => {
@@ -62,6 +64,10 @@ function AddEditDueModal({
       setType(initialDue.type);
       setDueDate(initialDue.dueDate || '');
       setNote(initialDue.note || '');
+      if (initialDue.dueDate) {
+        const d = new Date(initialDue.dueDate);
+        if (!isNaN(d.getTime())) setSelectedDate(d);
+      }
     } else {
       setPersonName('');
       setPhone('');
@@ -69,8 +75,34 @@ function AddEditDueModal({
       setType('receivable');
       setDueDate('');
       setNote('');
+      setSelectedDate(new Date());
     }
   }, [initialDue, visible]);
+
+  const setQuickDueDate = (daysToAdd: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysToAdd);
+    setSelectedDate(d);
+    const dateStr = d.toISOString().split('T')[0];
+    setDueDate(dateStr);
+  };
+
+  const formatDisplayDueDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const year = parts[0];
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+
+    const monthsBn = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    if (language === 'bn') {
+      return `${toBanglaDigits(day.toString())} ${monthsBn[month - 1]} ${toBanglaDigits(year)}`;
+    }
+    return `${day} ${monthsEn[month - 1]} ${year}`;
+  };
 
   const handleSave = () => {
     if (!personName.trim()) return;
@@ -93,6 +125,7 @@ function AddEditDueModal({
       setType('receivable');
       setDueDate('');
       setNote('');
+      setSelectedDate(new Date());
     }
     onClose();
   };
@@ -186,15 +219,111 @@ function AddEditDueModal({
               onChangeText={setNote}
             />
 
-            {/* Due Date */}
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t.dueDateLabel}</Text>
-            <TextInput
-              style={[styles.inputBox, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: '#3B82F6' }]}
-              placeholder="2026-08-15"
-              placeholderTextColor={theme.textSecondary}
-              value={dueDate}
-              onChangeText={setDueDate}
-            />
+            {/* Due Date (Professional Interactive Calendar Picker) */}
+            <View style={{ marginTop: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={[styles.inputLabel, { color: theme.textSecondary, marginTop: 0 }]}>{t.dueDateLabel}</Text>
+                {dueDate ? (
+                  <TouchableOpacity onPress={() => setDueDate('')} style={{ paddingHorizontal: 4 }}>
+                    <Text style={{ fontSize: 12, color: '#EF4444', fontWeight: '700' }}>
+                      {language === 'bn' ? 'মুছে ফেলুন ✕' : 'Clear ✕'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {/* Calendar Trigger Box */}
+              <TouchableOpacity
+                style={[
+                  styles.datePickerCard,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: dueDate ? '#3B82F6' : theme.backgroundSelected,
+                  }
+                ]}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.calendarIconBox, { backgroundColor: dueDate ? 'rgba(59, 130, 246, 0.15)' : theme.backgroundSelected }]}>
+                  <Feather name="calendar" size={18} color={dueDate ? '#3B82F6' : theme.textSecondary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.datePickerMainText, { color: dueDate ? theme.text : theme.textSecondary }]}>
+                    {dueDate ? formatDisplayDueDate(dueDate) : (language === 'bn' ? 'ক্যালেন্ডার থেকে তারিখ নির্বাচন করুন' : 'Select due date from calendar')}
+                  </Text>
+                  {dueDate ? (
+                    <Text style={[styles.datePickerSubText, { color: theme.textSecondary }]}>
+                      {dueDate}
+                    </Text>
+                  ) : null}
+                </View>
+                <Feather name="chevron-right" size={16} color={theme.textSecondary} />
+              </TouchableOpacity>
+
+              {/* Quick Presets */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickDateScroll}>
+                <TouchableOpacity
+                  style={[styles.quickDateChip, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+                  onPress={() => setQuickDueDate(0)}
+                >
+                  <Text style={[styles.quickDateText, { color: theme.text }]}>
+                    {language === 'bn' ? 'আজকে' : 'Today'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickDateChip, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+                  onPress={() => setQuickDueDate(1)}
+                >
+                  <Text style={[styles.quickDateText, { color: theme.text }]}>
+                    {language === 'bn' ? 'আগামীকাল' : 'Tomorrow'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickDateChip, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+                  onPress={() => setQuickDueDate(7)}
+                >
+                  <Text style={[styles.quickDateText, { color: theme.text }]}>
+                    {language === 'bn' ? '৭ দিন পর' : '+7 Days'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickDateChip, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+                  onPress={() => setQuickDueDate(15)}
+                >
+                  <Text style={[styles.quickDateText, { color: theme.text }]}>
+                    {language === 'bn' ? '১৫ দিন পর' : '+15 Days'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickDateChip, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+                  onPress={() => setQuickDueDate(30)}
+                >
+                  <Text style={[styles.quickDateText, { color: theme.text }]}>
+                    {language === 'bn' ? '১ মাস পর' : '+1 Month'}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, date) => {
+                    setShowDatePicker(false);
+                    if (date) {
+                      setSelectedDate(date);
+                      const dateStr = date.toISOString().split('T')[0];
+                      setDueDate(dateStr);
+                    }
+                  }}
+                />
+              )}
+            </View>
 
             {/* Save Button */}
             <TouchableOpacity
@@ -794,6 +923,45 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     fontSize: 14,
+  },
+  datePickerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 10,
+  },
+  calendarIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePickerMainText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  datePickerSubText: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  quickDateScroll: {
+    marginTop: 8,
+    flexDirection: 'row',
+  },
+  quickDateChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 6,
+  },
+  quickDateText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   submitBtn: {
     height: 48,
