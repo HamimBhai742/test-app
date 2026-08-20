@@ -47,6 +47,7 @@ interface AuthContextType {
   verifyResetOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
   requestFinancialReport: () => Promise<{ success: boolean; message?: string }>;
+  submitFeedback: (payload: { category: string; message: string; name?: string; email?: string; phone?: string }) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -566,6 +567,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Submit User Feedback / Feature Idea Handler
+  const submitFeedback = async (payload: {
+    category: string;
+    message: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+  }): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${getApiBaseUrl()}/user/feedback`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'Failed to submit feedback' };
+      }
+    } catch (error: any) {
+      console.error('Submit Feedback Error:', error);
+      return { success: false, message: 'NETWORK_ERROR' };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -585,6 +620,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         verifyResetOtp,
         resetPassword,
         requestFinancialReport,
+        submitFeedback,
       }}
     >
       {children}

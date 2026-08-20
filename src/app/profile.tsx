@@ -75,7 +75,7 @@ try {
 export default function ProfileScreen() {
   const theme = useTheme();
   const { themeMode, setThemeMode } = useThemeMode();
-  const { user, token, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout, forgotPassword, verifyResetOtp, resetPassword, requestFinancialReport } = useAuth();
+  const { user, token, isLoading, login, register, verifyOtp, resendOtp, loginWithGoogle, updateProfile, uploadAvatarImage, logout, forgotPassword, verifyResetOtp, resetPassword, requestFinancialReport, submitFeedback } = useAuth();
   
   // Custom Auth State to support login/signup & OTP
   const { transactions, totalBalance, totalIncome, totalExpenses, deleteAllTransactions } = useTransactions();
@@ -141,6 +141,75 @@ export default function ProfileScreen() {
   const [showLeaderboardPage, setShowLeaderboardPage] = useState<boolean>(false);
   const [showInvestmentPage, setShowInvestmentPage] = useState<boolean>(false);
   const [showGoalPage, setShowGoalPage] = useState<boolean>(false);
+
+  // Helpline & Feature Feedback Form States
+  const [feedbackType, setFeedbackType] = useState<'feature' | 'question' | 'bug' | 'feedback'>('feature');
+  const [showFeedbackDropdown, setShowFeedbackDropdown] = useState<boolean>(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+  const [feedbackSenderName, setFeedbackSenderName] = useState<string>('');
+  const [feedbackSenderEmail, setFeedbackSenderEmail] = useState<string>('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<boolean>(false);
+  const [feedbackSending, setFeedbackSending] = useState<boolean>(false);
+
+  // Sync user info into sender fields
+  useEffect(() => {
+    if (user?.name && !feedbackSenderName) {
+      setFeedbackSenderName(user.name);
+    }
+    if (user?.email && !feedbackSenderEmail) {
+      setFeedbackSenderEmail(user.email);
+    }
+  }, [user, showContactModal]);
+
+  const handleFeedbackSubmit = async (destination: 'server' | 'whatsapp') => {
+    if (!feedbackMessage.trim()) {
+      Alert.alert(
+        language === 'bn' ? 'মেসেজ লিখুন' : 'Empty Message',
+        language === 'bn' ? 'অনুগ্রহ করে আপনার প্রশ্ন, মতামত বা ফিচার আইডিয়া লিখুন।' : 'Please enter your question, feedback or feature idea.'
+      );
+      return;
+    }
+
+    const typeLabels = {
+      feature: language === 'bn' ? '💡 নতুন ফিচার আইডিয়া' : '💡 Feature Idea',
+      question: language === 'bn' ? '❓ প্রশ্ন / জিজ্ঞাসা' : '❓ Question / Query',
+      bug: language === 'bn' ? '🐛 বাগ / সমস্যা' : '🐛 Bug Report',
+      feedback: language === 'bn' ? '⭐ সাধারণ মতামত' : '⭐ General Feedback',
+    };
+
+    const typeLabel = typeLabels[feedbackType];
+
+    if (destination === 'whatsapp') {
+      const text = `*হিসাব কিতাব অ্যাপ ফিডব্যাক*\n\n📌 বিষয়: ${typeLabel}\n👤 প্রেরক: ${feedbackSenderName || user?.name || 'ব্যবহারকারী'}\n📧 ইমেইল: ${feedbackSenderEmail || user?.email || 'N/A'}\n\n📝 বার্তা:\n${feedbackMessage.trim()}`;
+      Linking.openURL(`https://wa.me/8801318398640?text=${encodeURIComponent(text)}`).catch(() => {});
+      setFeedbackSubmitted(true);
+      return;
+    }
+
+    // Direct Server Email Dispatch to mdhamim5088@gmail.com
+    setFeedbackSending(true);
+    try {
+      const res = await submitFeedback({
+        category: feedbackType,
+        message: feedbackMessage.trim(),
+        name: feedbackSenderName || user?.name || 'ব্যবহারকারী',
+        email: feedbackSenderEmail || user?.email,
+      });
+
+      if (res.success) {
+        setFeedbackSubmitted(true);
+      } else {
+        Alert.alert(
+          language === 'bn' ? 'ব্যর্থ হয়েছে' : 'Submission Failed',
+          language === 'bn' ? 'সার্ভারে সমস্যা হয়েছে। আপনি হোয়াটসঅ্যাপে পাঠাতে পারেন।' : 'Could not send right now. Please try WhatsApp option.'
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to send feedback');
+    } finally {
+      setFeedbackSending(false);
+    }
+  };
 
   // Change Password Modal States
   const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
@@ -2932,7 +3001,7 @@ export default function ProfileScreen() {
           </View>
         </Modal>
 
-        {/* Contact Us Modal (Executive Scrollable BottomSheet) */}
+        {/* Contact Us & Feedback/Feature Idea Modal (Executive Scrollable BottomSheet) */}
         <Modal
           visible={showContactModal}
           transparent
@@ -2944,7 +3013,7 @@ export default function ProfileScreen() {
             <View
               style={[
                 styles.privacyModalSheet,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected },
+                { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, maxHeight: Dimensions.get('window').height * 0.88 },
               ]}
             >
               {/* Handle Bar */}
@@ -2953,14 +3022,14 @@ export default function ProfileScreen() {
               {/* Header */}
               <View style={styles.privacyModalHeader}>
                 <View style={styles.privacyHeaderIconBox}>
-                  <Feather name="headphones" size={18} color="#3B82F6" />
+                  <Feather name="message-square" size={18} color="#3B82F6" />
                 </View>
                 <View style={{ flex: 1, paddingHorizontal: 10 }}>
                   <ThemedText type="subtitle" style={{ fontSize: 16, fontWeight: '800' }}>
-                    {t.contactTitle}
+                    {language === 'bn' ? 'হেল্পলাইন ও ফিডব্যাক ফর্ম' : 'Helpline & Feedback Form'}
                   </ThemedText>
                   <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '500' }}>
-                    {language === 'bn' ? 'সাপোর্ট ও যেকোনো প্রশ্ন' : 'Support & Queries'}
+                    {language === 'bn' ? 'যেকোনো প্রশ্ন, আইডিয়া ও সরাসরি সহায়তা' : 'Questions, Feature Ideas & Direct Support'}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -2972,54 +3041,249 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Body */}
-              <View style={{ paddingBottom: 16, gap: 12 }}>
-                <Text style={{ color: theme.textSecondary, fontSize: 13, lineHeight: 19 }}>
-                  {t.contactSupportDesc}
-                </Text>
+              {/* Scrollable Body */}
+              <ScrollView
+                style={[styles.privacyScrollView, { maxHeight: Dimensions.get('window').height * 0.68 }]}
+                contentContainerStyle={{ paddingBottom: 24, gap: 14 }}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Direct Contact Cards */}
+                <View style={{ gap: 8 }}>
+                  {/* WhatsApp Support Card */}
+                  <TouchableOpacity
+                    style={[styles.contactCard, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }]}
+                    onPress={() => Linking.openURL('https://wa.me/8801318398640?text=Hi%20Hisab%20Kitab%20Support').catch(() => {})}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.contactIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.18)' }]}>
+                      <Feather name="message-circle" size={18} color="#10B981" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>{t.supportPhoneLabel}</Text>
+                      <Text style={{ color: '#10B981', fontSize: 13.5, fontWeight: '800', marginTop: 1 }}>+880 1318-398640</Text>
+                    </View>
+                    <Feather name="arrow-up-right" size={16} color="#10B981" />
+                  </TouchableOpacity>
 
-                {/* Email Support Card */}
-                <TouchableOpacity
-                  style={[styles.contactCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
-                  onPress={() => Linking.openURL('mailto:mdhamim5088@gmail.com').catch(() => {})}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.contactIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
-                    <Feather name="mail" size={18} color="#3B82F6" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>{t.supportEmailLabel}</Text>
-                    <Text style={{ color: '#3B82F6', fontSize: 14, fontWeight: '800', marginTop: 2 }}>mdhamim5088@gmail.com</Text>
-                  </View>
-                  <Feather name="external-link" size={15} color={theme.textSecondary} />
-                </TouchableOpacity>
+                  {/* Email Support Card */}
+                  <TouchableOpacity
+                    style={[styles.contactCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+                    onPress={() => Linking.openURL('mailto:mdhamim5088@gmail.com').catch(() => {})}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.contactIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                      <Feather name="mail" size={18} color="#3B82F6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>{t.supportEmailLabel}</Text>
+                      <Text style={{ color: '#3B82F6', fontSize: 13.5, fontWeight: '800', marginTop: 1 }}>mdhamim5088@gmail.com</Text>
+                    </View>
+                    <Feather name="external-link" size={14} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
 
-                {/* WhatsApp Support Card */}
-                <TouchableOpacity
-                  style={[styles.contactCard, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }]}
-                  onPress={() => Linking.openURL('https://wa.me/8801318398640?text=Hi%20Hisab%20Kitab%20Support').catch(() => {})}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.contactIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.18)' }]}>
-                    <Feather name="message-circle" size={18} color="#10B981" />
+                {/* Feedback & Feature Request Direct Server Email Form Section */}
+                <View style={[styles.feedbackBox, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                  <View style={styles.feedbackHeaderRow}>
+                    <Feather name="send" size={16} color="#10B981" />
+                    <ThemedText style={{ fontSize: 14, fontWeight: '800' }}>
+                      {language === 'bn' ? 'প্রশ্ন বা ফিচার আইডিয়া পাঠান' : 'Submit Question or Feature Idea'}
+                    </ThemedText>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>{t.supportPhoneLabel}</Text>
-                    <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '800', marginTop: 2 }}>+880 1318-398640</Text>
-                  </View>
-                  <Feather name="arrow-up-right" size={16} color="#10B981" />
-                </TouchableOpacity>
-              </View>
+                  <Text style={{ color: theme.textSecondary, fontSize: 11.5, lineHeight: 16 }}>
+                    {language === 'bn' 
+                      ? 'ফর্মটি পূরণ করে সাবমিট করলেই মেসেজটি সরাসরি আমাদের অফিশিয়াল ইমেইলে (mdhamim5088@gmail.com) পৌঁছে যাবে।'
+                      : 'Fill this form and submit to deliver directly to our developer email.'}
+                  </Text>
 
-              {/* Footer Button */}
+                  {feedbackSubmitted ? (
+                    <View style={styles.feedbackSuccessCard}>
+                      <Feather name="check-circle" size={36} color="#10B981" />
+                      <ThemedText style={{ fontSize: 16, fontWeight: '800', color: '#10B981', textAlign: 'center', marginTop: 4 }}>
+                        {language === 'bn' ? 'মেসেজটি সফলভাবে পৌঁছেছে!' : 'Message Delivered Successfully!'}
+                      </ThemedText>
+                      <Text style={{ color: theme.textSecondary, fontSize: 12, textAlign: 'center', lineHeight: 18, marginTop: 4 }}>
+                        {language === 'bn'
+                          ? 'ধন্যবাদ! আপনার প্রশ্ন/ফিচার আইডিয়া ডেভেলপার ইমেইলে সরাসরি জমা হয়েছে। আমরা দ্রুত এটি পর্যালোচনা করব।'
+                          : 'Thank you! Your feedback has been emailed directly to the developer.'}
+                      </Text>
+                      <TouchableOpacity
+                        style={[styles.smallActionBtn, { backgroundColor: '#10B981' }]}
+                        onPress={() => {
+                          setFeedbackSubmitted(false);
+                          setFeedbackMessage('');
+                        }}
+                      >
+                        <Text style={{ color: '#FFFFFF', fontSize: 12.5, fontWeight: '700' }}>
+                          {language === 'bn' ? 'আরেকটি বার্তা লিখুন' : 'Send Another Message'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <>
+                      {/* Topic Dropdown Selector */}
+                      <View style={{ zIndex: 10 }}>
+                        <TouchableOpacity
+                          style={[
+                            styles.feedbackDropdownTrigger,
+                            {
+                              backgroundColor: theme.backgroundElement,
+                              borderColor: showFeedbackDropdown ? '#10B981' : theme.backgroundSelected,
+                            },
+                          ]}
+                          onPress={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <Text style={{ fontSize: 16 }}>
+                              {feedbackType === 'feature' ? '💡' : feedbackType === 'question' ? '❓' : feedbackType === 'bug' ? '🐛' : '⭐'}
+                            </Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: theme.textSecondary, fontSize: 10, fontWeight: '600' }}>
+                                {language === 'bn' ? 'বিষয় / ক্যাটাগরি' : 'Topic / Category'}
+                              </Text>
+                              <ThemedText style={{ fontSize: 13.5, fontWeight: '700', marginTop: 1 }}>
+                                {feedbackType === 'feature'
+                                  ? (language === 'bn' ? 'ফিচার আইডিয়া' : 'Feature Idea')
+                                  : feedbackType === 'question'
+                                  ? (language === 'bn' ? 'যেকোনো প্রশ্ন' : 'Question')
+                                  : feedbackType === 'bug'
+                                  ? (language === 'bn' ? 'বাগ বা সমস্যা রিপোর্ট' : 'Bug Report')
+                                  : (language === 'bn' ? 'সাধারণ মতামত' : 'General Feedback')}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          <Feather name={showFeedbackDropdown ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textSecondary} />
+                        </TouchableOpacity>
+
+                        {/* Dropdown Menu Items */}
+                        {showFeedbackDropdown && (
+                          <View style={[styles.feedbackDropdownMenu, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
+                            {[
+                              { id: 'feature', icon: '💡', title: language === 'bn' ? 'ফিচার আইডিয়া' : 'Feature Idea', desc: language === 'bn' ? 'অ্যাপে নতুন কোনো সুবিধার প্রস্তাব' : 'Suggest a new feature' },
+                              { id: 'question', icon: '❓', title: language === 'bn' ? 'যেকোনো প্রশ্ন' : 'Question', desc: language === 'bn' ? 'অ্যাপ বা হিসাব সংক্রান্ত জিজ্ঞাসা' : 'Ask any question' },
+                              { id: 'bug', icon: '🐛', title: language === 'bn' ? 'বাগ বা সমস্যা রিপোর্ট' : 'Bug Report', desc: language === 'bn' ? 'অ্যাপের কোনো ত্রুটি বা সমস্যা' : 'Report an issue' },
+                              { id: 'feedback', icon: '⭐', title: language === 'bn' ? 'সাধারণ মতামত' : 'General Feedback', desc: language === 'bn' ? 'অ্যাপ সম্পর্কে সামগ্রিক ফিডব্যাক' : 'Share your thoughts' },
+                            ].map((item) => (
+                              <TouchableOpacity
+                                key={item.id}
+                                style={[
+                                  styles.feedbackDropdownOption,
+                                  feedbackType === item.id && { backgroundColor: 'rgba(16, 185, 129, 0.12)' },
+                                ]}
+                                onPress={() => {
+                                  setFeedbackType(item.id as any);
+                                  setShowFeedbackDropdown(false);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={{ fontSize: 16 }}>{item.icon}</Text>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: feedbackType === item.id ? '#10B981' : theme.text, fontSize: 13, fontWeight: feedbackType === item.id ? '800' : '600' }}>
+                                    {item.title}
+                                  </Text>
+                                  <Text style={{ color: theme.textSecondary, fontSize: 10.5, marginTop: 1 }}>
+                                    {item.desc}
+                                  </Text>
+                                </View>
+                                {feedbackType === item.id && (
+                                  <Feather name="check" size={16} color="#10B981" />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Name & Contact Fields */}
+                      <View style={{ gap: 8 }}>
+                        <TextInput
+                          style={[styles.feedbackSingleInput, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+                          placeholder={language === 'bn' ? 'আপনার নাম' : 'Your Name'}
+                          placeholderTextColor={theme.textSecondary}
+                          value={feedbackSenderName}
+                          onChangeText={setFeedbackSenderName}
+                        />
+                        <TextInput
+                          style={[styles.feedbackSingleInput, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+                          placeholder={language === 'bn' ? 'আপনার ইমেইল বা ফোন' : 'Your Email or Phone'}
+                          placeholderTextColor={theme.textSecondary}
+                          value={feedbackSenderEmail}
+                          onChangeText={setFeedbackSenderEmail}
+                          keyboardType="email-address"
+                        />
+                      </View>
+
+                      {/* Text Input */}
+                      <View style={[styles.feedbackInputWrap, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
+                        <TextInput
+                          style={[styles.feedbackTextInput, { color: theme.text }]}
+                          placeholder={
+                            feedbackType === 'feature'
+                              ? (language === 'bn' ? 'অ্যাপে কী নতুন ফিচার বা সুবিধা চান তা বিস্তারিত লিখুন...' : 'Describe what new feature you would like...')
+                              : feedbackType === 'question'
+                              ? (language === 'bn' ? 'আপনার প্রশ্ন বা জিজ্ঞাসা বিস্তারিত লিখুন...' : 'Type your question or query here...')
+                              : feedbackType === 'bug'
+                              ? (language === 'bn' ? 'কোথায় বা কী ধরনের সমস্যা হচ্ছে লিখুন...' : 'Describe the issue or bug you faced...')
+                              : (language === 'bn' ? 'অ্যাপ সম্পর্কে আপনার মতামত লিখুন...' : 'Share your thoughts about the app...')
+                          }
+                          placeholderTextColor={theme.textSecondary}
+                          multiline
+                          numberOfLines={4}
+                          value={feedbackMessage}
+                          onChangeText={setFeedbackMessage}
+                          textAlignVertical="top"
+                        />
+                        <Text style={[styles.charCountText, { color: theme.textSecondary }]}>
+                          {language === 'bn' ? toBanglaDigits(feedbackMessage.length.toString()) : feedbackMessage.length} অক্ষর
+                        </Text>
+                      </View>
+
+                      {/* Direct Email Submit Button (Clean with Feather vector icon, no emoji) */}
+                      <TouchableOpacity
+                        style={[styles.feedbackSendBtn, { backgroundColor: '#10B981', opacity: feedbackSending ? 0.7 : 1 }]}
+                        onPress={() => handleFeedbackSubmit('server')}
+                        disabled={feedbackSending}
+                        activeOpacity={0.88}
+                      >
+                        {feedbackSending ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <>
+                            <Feather name="send" size={16} color="#FFF" />
+                            <Text style={styles.feedbackSendBtnText}>
+                              {language === 'bn' ? 'সরাসরি ডেভেলপারকে পাঠান' : 'Send Directly to Developer'}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* WhatsApp Quick Alternative */}
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 }}
+                        onPress={() => handleFeedbackSubmit('whatsapp')}
+                      >
+                        <Feather name="message-circle" size={14} color="#10B981" />
+                        <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '700' }}>
+                          {language === 'bn' ? 'অথবা হোয়াটসঅ্যাপে পাঠান' : 'Or send via WhatsApp'}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              </ScrollView>
+
+              {/* Close Button */}
               <View style={[styles.privacyModalFooter, { borderTopColor: 'rgba(150, 150, 150, 0.1)' }]}>
                 <TouchableOpacity
-                  style={[styles.primaryButton, { backgroundColor: '#3B82F6', borderRadius: 16, height: 48, marginTop: 0 }]}
+                  style={[styles.primaryButton, { backgroundColor: theme.backgroundSelected, borderRadius: 16, height: 46, marginTop: 0 }]}
                   onPress={() => setShowContactModal(false)}
                   activeOpacity={0.88}
                 >
-                  <ThemedText type="smallBold" style={[styles.primaryButtonText, { fontSize: 14 }]}>
-                    {language === 'bn' ? 'ঠিক আছে' : 'Done'}
+                  <ThemedText type="smallBold" style={{ fontSize: 13, color: theme.text }}>
+                    {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
@@ -4613,5 +4877,87 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  feedbackBox: {
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+  },
+  feedbackHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  feedbackSuccessCard: {
+    padding: 18,
+    alignItems: 'center',
+    gap: 6,
+  },
+  smallActionBtn: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  feedbackDropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  feedbackDropdownMenu: {
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  feedbackDropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(150, 150, 150, 0.1)',
+  },
+  feedbackSingleInput: {
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 13,
+  },
+  feedbackInputWrap: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10,
+  },
+  feedbackTextInput: {
+    minHeight: 80,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  charCountText: {
+    fontSize: 10,
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  feedbackSendBtn: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  feedbackSendBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
