@@ -2037,8 +2037,8 @@ export default function ProfileScreen() {
           <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement, marginBottom: Spacing.four }]}>
             {/* Daily Accounting Reminder */}
             <View style={styles.actionRow}>
-              <View style={[styles.notifBadge, { backgroundColor: '#3B82F61E' }]}>
-                <Text style={styles.notifIcon}>📝</Text>
+              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                <Feather name="bell" size={17} color="#3B82F6" />
               </View>
               <View style={styles.notifTextContainer}>
                 <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.dailyReminderTitle}</ThemedText>
@@ -2051,9 +2051,11 @@ export default function ProfileScreen() {
                     onPress={handleOpenTimePicker}
                     style={styles.timeBadgeContainer}
                   >
+                    <Feather name="clock" size={12} color="#3B82F6" style={{ marginRight: 4 }} />
                     <Text style={styles.timeBadgeText}>
-                      ⏰ {notifSettings.dailyHour > 12 ? notifSettings.dailyHour - 12 : notifSettings.dailyHour === 0 ? 12 : notifSettings.dailyHour}:{notifSettings.dailyMinute < 10 ? '0' : ''}{notifSettings.dailyMinute} {notifSettings.dailyHour >= 12 ? 'PM' : 'AM'} ✏️
+                      {notifSettings.dailyHour > 12 ? notifSettings.dailyHour - 12 : notifSettings.dailyHour === 0 ? 12 : notifSettings.dailyHour}:{notifSettings.dailyMinute < 10 ? '0' : ''}{notifSettings.dailyMinute} {notifSettings.dailyHour >= 12 ? 'PM' : 'AM'}
                     </Text>
+                    <Feather name="edit-2" size={11} color="#3B82F6" style={{ marginLeft: 4 }} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -2076,8 +2078,8 @@ export default function ProfileScreen() {
 
             {/* Due & Debt Alerts */}
             <View style={styles.actionRow}>
-              <View style={[styles.notifBadge, { backgroundColor: '#F59E0B1E' }]}>
-                <Text style={styles.notifIcon}>⏰</Text>
+              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
+                <Feather name="clock" size={17} color="#F59E0B" />
               </View>
               <View style={styles.notifTextContainer}>
                 <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.dueReminderTitle}</ThemedText>
@@ -2099,8 +2101,8 @@ export default function ProfileScreen() {
 
             {/* Budget Threshold Warnings */}
             <View style={styles.actionRow}>
-              <View style={[styles.notifBadge, { backgroundColor: '#EF44441E' }]}>
-                <Text style={styles.notifIcon}>⚡</Text>
+              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                <Feather name="alert-triangle" size={17} color="#EF4444" />
               </View>
               <View style={styles.notifTextContainer}>
                 <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.budgetWarningTitle}</ThemedText>
@@ -2119,7 +2121,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* ℹ️ Card 3: Help & Support Section */}
+          {/* Card 3: Help & Support Section */}
           <View style={styles.sectionHeaderRow}>
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionHeader}>
               {language === 'bn' ? 'তথ্য ও সহায়তা' : 'Help & Support'}
@@ -2130,42 +2132,66 @@ export default function ProfileScreen() {
           <View style={[styles.actionsList, { backgroundColor: theme.backgroundElement }]}>
             {/* Help & Support (Contact Us) */}
             <TouchableOpacity style={styles.actionRow} onPress={() => setShowContactModal(true)}>
-              <ThemedText style={styles.actionIcon}>📞</ThemedText>
-              <View style={styles.actionTextContainer}>
-                <ThemedText type="small">{t.contactTitle}</ThemedText>
+              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                <Feather name="headphones" size={17} color="#3B82F6" />
               </View>
+              <View style={styles.actionMenuContent}>
+                <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.contactTitle}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={{ fontSize: 11, marginTop: 2 }}>
+                  {language === 'bn' ? 'যেকোনো সহায়তায় আমাদের সাথে যোগাযোগ' : 'Get support & reach our team'}
+                </ThemedText>
+              </View>
+              <Feather name="chevron-right" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
 
             {/* About Us */}
             <TouchableOpacity style={styles.actionRow} onPress={() => setShowAboutModal(true)}>
-              <ThemedText style={styles.actionIcon}>ℹ️</ThemedText>
-              <View style={styles.actionTextContainer}>
-                <ThemedText type="small">{t.aboutTitle}</ThemedText>
+              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+                <Feather name="info" size={17} color="#10B981" />
               </View>
+              <View style={styles.actionMenuContent}>
+                <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.aboutTitle}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={{ fontSize: 11, marginTop: 2 }}>
+                  {language === 'bn' ? 'অ্যাপ পরিচিতি, ভার্সন ও সেবাসমূহ' : 'App overview, version & services'}
+                </ThemedText>
+              </View>
+              <Feather name="chevron-right" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
 
             {/* Privacy Policy & Terms */}
             <TouchableOpacity style={styles.actionRow} onPress={() => setShowPrivacyModal(true)}>
-              <ThemedText style={styles.actionIcon}>📜</ThemedText>
-              <View style={styles.actionTextContainer}>
-                <ThemedText type="small">{t.privacyTitle}</ThemedText>
+              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(139, 92, 246, 0.12)' }]}>
+                <Feather name="shield" size={17} color="#8B5CF6" />
               </View>
+              <View style={styles.actionMenuContent}>
+                <ThemedText type="smallBold" style={{ fontSize: 14 }}>{t.privacyTitle}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={{ fontSize: 11, marginTop: 2 }}>
+                  {language === 'bn' ? 'ডেটা নিরাপত্তা ও ব্যবহারের নিয়মাবলী' : 'Data security & terms of service'}
+                </ThemedText>
+              </View>
+              <Feather name="chevron-right" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
             <View style={[styles.rowDivider, { backgroundColor: theme.backgroundSelected }]} />
 
             {/* Clear All Transactions */}
             <TouchableOpacity style={styles.actionRow} onPress={handleResetData}>
-              <ThemedText style={styles.actionIcon}>🗑️</ThemedText>
-              <View style={styles.actionTextContainer}>
-                <ThemedText type="small" style={{ color: '#EF4444' }}>
+              <View style={[styles.menuIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                <Feather name="trash-2" size={17} color="#EF4444" />
+              </View>
+              <View style={styles.actionMenuContent}>
+                <ThemedText type="smallBold" style={{ color: '#EF4444', fontSize: 14 }}>
                   {t.resetData}
                 </ThemedText>
+                <ThemedText themeColor="textSecondary" style={{ fontSize: 11, marginTop: 2 }}>
+                  {language === 'bn' ? 'সকল লেনদেনের হিস্ট্রি মুছে ফেলুন' : 'Clear all transaction history'}
+                </ThemedText>
               </View>
+              <Feather name="chevron-right" size={16} color="#EF4444" />
             </TouchableOpacity>
           </View>
 
@@ -2743,151 +2769,262 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </Modal>
 
-        {/* About Us Modal */}
+        {/* About Us Modal (Executive Scrollable BottomSheet) */}
         <Modal
           visible={showAboutModal}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setShowAboutModal(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowAboutModal(false)}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
-              onPress={(e) => e.stopPropagation()}
+          <View style={styles.privacyModalOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowAboutModal(false)} />
+            <View
+              style={[
+                styles.privacyModalSheet,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected },
+              ]}
             >
-              <View style={styles.modalHeader}>
-                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>{t.aboutTitle}</ThemedText>
-                <TouchableOpacity onPress={() => setShowAboutModal(false)} style={styles.modalCloseBtn}>
-                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+              {/* Handle Bar */}
+              <View style={[styles.privacyModalHandle, { backgroundColor: theme.backgroundSelected }]} />
+
+              {/* Header */}
+              <View style={styles.privacyModalHeader}>
+                <View style={styles.privacyHeaderIconBox}>
+                  <Feather name="info" size={18} color="#10B981" />
+                </View>
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                  <ThemedText type="subtitle" style={{ fontSize: 16, fontWeight: '800' }}>
+                    {t.aboutTitle}
+                  </ThemedText>
+                  <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '500' }}>
+                    {language === 'bn' ? 'অ্যাপ পরিচিতি ও সেবাসমূহ' : 'App Details & Services'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowAboutModal(false)}
+                  style={[styles.modalCloseBtn, { backgroundColor: theme.backgroundSelected }]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather name="x" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              <View style={{ alignItems: 'center', marginVertical: 14 }}>
-                <ThemedText style={{ fontSize: 48 }}>📊</ThemedText>
-                <ThemedText type="subtitle" style={{ fontSize: 20, fontWeight: '800', marginTop: 4 }}>
-                  হিসাব কিতাব
-                </ThemedText>
-                <View style={{ backgroundColor: 'rgba(32, 138, 239, 0.15)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 14, marginTop: 8 }}>
-                  <ThemedText style={{ color: '#208AEF', fontSize: 12, fontWeight: '700' }}>
-                    {t.appVersionLabel}
+              {/* Scrollable Content Body */}
+              <ScrollView
+                style={styles.privacyScrollView}
+                contentContainerStyle={{ paddingBottom: 16, gap: 12 }}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                bounces={true}
+              >
+                {/* Brand Hero Card */}
+                <View style={[styles.aboutHeroCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                  <View style={styles.brandLogoBox}>
+                    <Feather name="trending-up" size={24} color="#10B981" />
+                  </View>
+                  <ThemedText style={{ fontSize: 18, fontWeight: '800', marginTop: 8 }}>
+                    {language === 'bn' ? 'হিসাব কিতাব' : 'Hisab Kitab'}
                   </ThemedText>
+                  <View style={[styles.versionPill, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>
+                      {t.appVersionLabel} • Pro Edition
+                    </Text>
+                  </View>
+                  <Text style={[styles.aboutHeroDesc, { color: theme.textSecondary }]}>
+                    {t.aboutDesc}
+                  </Text>
                 </View>
-              </View>
 
-              <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 22, marginBottom: 16, textAlign: 'center' }}>
-                {t.aboutDesc}
-              </ThemedText>
+                {/* Services Grid Section */}
+                <ThemedText type="smallBold" style={{ fontSize: 13, marginTop: 4 }}>
+                  {language === 'bn' ? 'মূল ফিচার ও সেবাসমূহ:' : 'Key Features & Capabilities:'}
+                </ThemedText>
 
-              <ScrollView style={{ maxHeight: 220, backgroundColor: theme.background, borderRadius: 16, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: theme.backgroundSelected }}>
-                <ThemedText type="smallBold" style={{ fontSize: 13, marginBottom: 6 }}>⚡ আমাদের সেবাসমূহ (Our Services):</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📊 **আয়-ব্যয় ট্র্যাকিং:** সহজে আয় ও খরচের হিসাব এন্ট্রি এবং ক্যাটাগরি অনুযায়ী পর্যবেক্ষণ।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📝 **স্মার্ট বাজেট প্ল্যানার:** ক্যাটাগরি লিমিট সেট করে খরচ পূর্ণ নিয়ন্ত্রণে রাখার সুবিধা।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🪙 **রিওয়ার্ড পয়েন্ট ও লিডারবোর্ড:** দৈনিক লগইন ও হিসাব লিখে রিওয়ার্ড কয়েন অর্জন এবং র‍্যাঙ্কিং লড়াই।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🤝 **দেনা-পাওনার ডিজিটাল খাতা:** দেনা ও পাওনার হিসাব রাখা এবং ১-ক্লিকে WhatsApp রিমাইন্ডার পাঠানো।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🎯 **সঞ্চয় লক্ষ্য (Savings Goals):** নিজের ভবিষ্যৎ লক্ষ্য নির্ধারণ করে সঞ্চয়ের অগ্রগতি ট্র্যাক করা।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📈 **বিনিয়োগ ট্র্যাকার (Investments):** বিভিন্ন ব্যবসা বা প্রজেক্টে করা বিনিয়োগ এবং লাভ-ক্ষতি পর্যবেক্ষণ।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📱 **মোবাইল SMS পার্সিং:** বিকাশ, নগদ ও ব্যাংক SMS থেকে অটোমেটিক ট্রানজেকশন এন্ট্রি।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 📄 **PDF স্টেটমেন্ট ও মেমো:** যেকোনো মাসের রিপোর্ট প্রফেশনাল মেমো বা শিট আকারে ডাউনলোড।</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 18, marginBottom: 4 }}>• 🔒 **উচ্চ নিরাপত্তা:** ক্লাউড ডেটা ব্যাকআপ ও বায়োমেট্রিক পিন লক সিকিউরিটি।</ThemedText>
+                <View style={{ gap: 8 }}>
+                  <View style={[styles.serviceTile, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                    <View style={[styles.serviceIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.10)' }]}>
+                      <Feather name="activity" size={14} color="#3B82F6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>
+                        {language === 'bn' ? 'আয়-ব্যয় ট্র্যাকিং' : 'Income & Expense Tracker'}
+                      </ThemedText>
+                      <Text style={{ color: theme.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 2 }}>
+                        {language === 'bn' ? 'দৈনিক লেনদেন এন্ট্রি ও রিয়েল-টাইম ব্যালেন্স হিসাব।' : 'Daily transactions and real-time category balance.'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.serviceTile, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                    <View style={[styles.serviceIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.10)' }]}>
+                      <Feather name="pie-chart" size={14} color="#10B981" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>
+                        {language === 'bn' ? 'স্মার্ট বাজেট প্ল্যানার' : 'Smart Budget Planner'}
+                      </ThemedText>
+                      <Text style={{ color: theme.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 2 }}>
+                        {language === 'bn' ? 'ক্যাটাগরি ভিত্তিক বাজেট সীমা ও অতিরিক্ত খরচ অ্যালার্ট।' : 'Set monthly category limits with overspending alerts.'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.serviceTile, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                    <View style={[styles.serviceIconBox, { backgroundColor: 'rgba(245, 158, 11, 0.10)' }]}>
+                      <Feather name="users" size={14} color="#F59E0B" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>
+                        {language === 'bn' ? 'দেনা-পাওনার ডিজিটাল খাতা' : 'Dues & Debts Ledger'}
+                      </ThemedText>
+                      <Text style={{ color: theme.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 2 }}>
+                        {language === 'bn' ? 'তারিখ ভিত্তিক রিমাইন্ডার ও ১-ক্লিক WhatsApp নোটিফিকেশন।' : 'Due date calendar tracking and 1-tap WhatsApp reminders.'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.serviceTile, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                    <View style={[styles.serviceIconBox, { backgroundColor: 'rgba(139, 92, 246, 0.10)' }]}>
+                      <Feather name="target" size={14} color="#8B5CF6" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>
+                        {language === 'bn' ? 'সঞ্চয় লক্ষ্য ও গোল ট্র্যাকার' : 'Savings Goals & Targets'}
+                      </ThemedText>
+                      <Text style={{ color: theme.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 2 }}>
+                        {language === 'bn' ? 'ভবিষ্যৎ আর্থিক লক্ষ্যের অগ্রগতি পর্যবেক্ষণ।' : 'Track savings milestones and future financial goals.'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.serviceTile, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}>
+                    <View style={[styles.serviceIconBox, { backgroundColor: 'rgba(236, 72, 153, 0.10)' }]}>
+                      <Feather name="file-text" size={14} color="#EC4899" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>
+                        {language === 'bn' ? 'প্রফেশনাল PDF রিপোর্ট ও মেমো' : 'Professional PDF Statements'}
+                      </ThemedText>
+                      <Text style={{ color: theme.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 2 }}>
+                        {language === 'bn' ? 'প্রিন্টযোগ্য অফিসিয়াল স্টেটমেন্ট ও মানি রিসিট ডাউনলোড।' : 'Export monthly financial statements and printable receipts.'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
               </ScrollView>
 
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16 }]}
-                onPress={() => setShowAboutModal(false)}
-              >
-                <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  বন্ধ করুন ✓
-                </ThemedText>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </TouchableOpacity>
+              {/* Fixed Footer Accept Button */}
+              <View style={[styles.privacyModalFooter, { borderTopColor: 'rgba(150, 150, 150, 0.1)' }]}>
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: '#10B981', borderRadius: 16, height: 48, marginTop: 0 }]}
+                  onPress={() => setShowAboutModal(false)}
+                  activeOpacity={0.88}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Feather name="check" size={16} color="#FFF" />
+                    <ThemedText type="smallBold" style={[styles.primaryButtonText, { fontSize: 14 }]}>
+                      {language === 'bn' ? 'ঠিক আছে' : 'Close'}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
 
-        {/* Contact Us Modal */}
+        {/* Contact Us Modal (Executive Scrollable BottomSheet) */}
         <Modal
           visible={showContactModal}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setShowContactModal(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowContactModal(false)}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              style={[styles.modalContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected, borderWidth: 1 }]}
-              onPress={(e) => e.stopPropagation()}
+          <View style={styles.privacyModalOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowContactModal(false)} />
+            <View
+              style={[
+                styles.privacyModalSheet,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected },
+              ]}
             >
-              <View style={styles.modalHeader}>
-                <ThemedText type="subtitle" style={{ flex: 1, paddingRight: 8 }}>{t.contactTitle}</ThemedText>
-                <TouchableOpacity onPress={() => setShowContactModal(false)} style={styles.modalCloseBtn}>
-                  <ThemedText style={styles.modalCloseText}>✕</ThemedText>
+              {/* Handle Bar */}
+              <View style={[styles.privacyModalHandle, { backgroundColor: theme.backgroundSelected }]} />
+
+              {/* Header */}
+              <View style={styles.privacyModalHeader}>
+                <View style={styles.privacyHeaderIconBox}>
+                  <Feather name="headphones" size={18} color="#3B82F6" />
+                </View>
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                  <ThemedText type="subtitle" style={{ fontSize: 16, fontWeight: '800' }}>
+                    {t.contactTitle}
+                  </ThemedText>
+                  <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '500' }}>
+                    {language === 'bn' ? 'সাপোর্ট ও যেকোনো প্রশ্ন' : 'Support & Queries'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowContactModal(false)}
+                  style={[styles.modalCloseBtn, { backgroundColor: theme.backgroundSelected }]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Feather name="x" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              <ThemedText type="small" themeColor="textSecondary" style={{ lineHeight: 20, marginBottom: 18, marginTop: 8 }}>
-                {t.contactSupportDesc}
-              </ThemedText>
+              {/* Body */}
+              <View style={{ paddingBottom: 16, gap: 12 }}>
+                <Text style={{ color: theme.textSecondary, fontSize: 13, lineHeight: 19 }}>
+                  {t.contactSupportDesc}
+                </Text>
 
-              <TouchableOpacity
-                style={{
-                  backgroundColor: theme.background,
-                  borderRadius: 16,
-                  padding: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 14,
-                  marginBottom: 14,
-                  borderWidth: 1,
-                  borderColor: theme.backgroundSelected,
-                }}
-                onPress={() => Linking.openURL('mailto:mdhamim5088@gmail.com').catch(() => {})}
-              >
-                <ThemedText style={{ fontSize: 26 }}>📩</ThemedText>
-                <View>
-                  <ThemedText type="small" themeColor="textSecondary" style={{ fontSize: 11, fontWeight: '600' }}>{t.supportEmailLabel}</ThemedText>
-                  <ThemedText style={{ color: '#208AEF', fontSize: 15, fontWeight: '800', marginTop: 2 }}>mdhamim5088@gmail.com</ThemedText>
-                </View>
-              </TouchableOpacity>
+                {/* Email Support Card */}
+                <TouchableOpacity
+                  style={[styles.contactCard, { backgroundColor: theme.background, borderColor: theme.backgroundSelected }]}
+                  onPress={() => Linking.openURL('mailto:mdhamim5088@gmail.com').catch(() => {})}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.contactIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                    <Feather name="mail" size={18} color="#3B82F6" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>{t.supportEmailLabel}</Text>
+                    <Text style={{ color: '#3B82F6', fontSize: 14, fontWeight: '800', marginTop: 2 }}>mdhamim5088@gmail.com</Text>
+                  </View>
+                  <Feather name="external-link" size={15} color={theme.textSecondary} />
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={{
-                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                  borderRadius: 16,
-                  padding: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 14,
-                  marginBottom: 22,
-                  borderWidth: 1.5,
-                  borderColor: 'rgba(16, 185, 129, 0.4)',
-                }}
-                onPress={() => Linking.openURL('https://wa.me/8801318398640?text=Hi%20Hisab%20Kitab%20Support').catch(() => {})}
-              >
-                <ThemedText style={{ fontSize: 26 }}>📲</ThemedText>
-                <View>
-                  <ThemedText style={{ color: '#10B981', fontSize: 11, fontWeight: '600' }}>{t.supportPhoneLabel}</ThemedText>
-                  <ThemedText style={{ color: '#10B981', fontSize: 15, fontWeight: '800', marginTop: 2 }}>+880 1318-398640</ThemedText>
-                </View>
-              </TouchableOpacity>
+                {/* WhatsApp Support Card */}
+                <TouchableOpacity
+                  style={[styles.contactCard, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }]}
+                  onPress={() => Linking.openURL('https://wa.me/8801318398640?text=Hi%20Hisab%20Kitab%20Support').catch(() => {})}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.contactIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.18)' }]}>
+                    <Feather name="message-circle" size={18} color="#10B981" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>{t.supportPhoneLabel}</Text>
+                    <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '800', marginTop: 2 }}>+880 1318-398640</Text>
+                  </View>
+                  <Feather name="arrow-up-right" size={16} color="#10B981" />
+                </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: '#208AEF', borderRadius: 16 }]}
-                onPress={() => setShowContactModal(false)}
-              >
-                <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  ঠিক আছে ✓
-                </ThemedText>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </TouchableOpacity>
+              {/* Footer Button */}
+              <View style={[styles.privacyModalFooter, { borderTopColor: 'rgba(150, 150, 150, 0.1)' }]}>
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: '#3B82F6', borderRadius: 16, height: 48, marginTop: 0 }]}
+                  onPress={() => setShowContactModal(false)}
+                  activeOpacity={0.88}
+                >
+                  <ThemedText type="smallBold" style={[styles.primaryButtonText, { fontSize: 14 }]}>
+                    {language === 'bn' ? 'ঠিক আছে' : 'Done'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
 
         {/* Privacy Policy & Terms Modal (Executive Scrollable BottomSheet) */}
@@ -4387,5 +4524,74 @@ const styles = StyleSheet.create({
   otpBoxText: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  actionMenuContent: {
+    flex: 1,
+    paddingRight: Spacing.two,
+    justifyContent: 'center',
+  },
+  menuIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.three,
+  },
+  aboutHeroCard: {
+    padding: 16,
+    borderRadius: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  brandLogoBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  versionPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  aboutHeroDesc: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  serviceTile: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  serviceIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactCard: {
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  contactIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
